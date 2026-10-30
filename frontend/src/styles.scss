@@ -1,0 +1,27 @@
+@use './styles/tokens';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--fonte);
+  font-size: var(--texto-md);
+  line-height: 1.5;
+  color: var(--cor-texto);
+  background: var(--cor-fundo);
+}
+
+h1 {
+  margin: 0 0 var(--espaco-4);
+  font-size: var(--texto-xl);
+  line-height: 1.2;
+}
+
+:focus-visible {
+  outline: var(--foco-largura) solid var(--cor-foco);
+  outline-offset: var(--foco-offset);
+}
