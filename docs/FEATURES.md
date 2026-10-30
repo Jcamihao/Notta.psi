@@ -59,3 +59,23 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 - [ ] 38. [M] Documentos formais do CFP
 - [ ] 39. [B] Bucket externo
 - [ ] 40. [B] Mais de um provedor de IA
+
+## Trilha de segurança e cybersecurity (itens 41-56, adicionada em 2026-10-30)
+Numeração separada para não quebrar as referências da Fase 1 em andamento. A coluna "Entra em" diz em que fase construir. Já existentes e relacionados: 2, 3, 5, 11, 19, 22, 23, 24, 25, 26.
+
+- [ ] 41. [B] Cabeçalhos HTTP de segurança (helmet), CORS só para a origem do front, limite de corpo e de tempo — entra na Fase 1 (junto do item 5)
+- [ ] 42. [B] Segredos e ambiente: nenhum segredo no repo, scan de segredos antes do commit, validação de env no boot, https obrigatório para o SelahIA — Fase 1 e 3
+- [ ] 43. [B] CI: testes, lint, `npm audit`, atualização de dependências e testes de RLS obrigatórios antes de merge — Fase 2
+- [ ] 44. [B] Trigger no banco: documento APROVADO imutável — Fase 2 (com o item 15)
+- [ ] 51. [B] Defesa contra prompt injection e saída insegura da IA (o texto da sessão vira instrução; validar o rascunho) — Fase 3
+- [ ] 45. [M] Senha forte, checagem de senha vazada e anti-enumeração de e-mail — Fase 4
+- [ ] 46. [M] Sessões revogáveis: refresh token rotativo, expiração curta, "sair de todos os aparelhos" — Fase 4
+- [ ] 47. [M] MFA para psicólogos (TOTP ou código por e-mail; decisão do dono) — Fase 4
+- [ ] 48. [B] Bloqueio de conta após falhas e aviso por e-mail de novo login — Fase 4
+- [ ] 49. [F] Sessão em cookie httpOnly com proteção CSRF, CSP e nada de innerHTML — Fase 4
+- [ ] 50. [B] Cifrar identificadores do paciente em repouso (nome, CPF, telefone, e-mail, endereço; decisão do dono) — Fase 4, antes de dado real
+- [ ] 52. [B] Retenção e descarte: expirar rascunhos antigos, apagar nota bruta, limpar backup e WAL — Fase 4
+- [ ] 54. [processo] Plano de incidente e notificação de vazamento (LGPD/ANPD) — antes de dado real
+- [ ] 53. [B] Monitoramento e alertas de segurança (falhas de login, picos, erros 5xx; logs sem dado clínico) — Fase 6
+- [ ] 56. [B] Hardening de infraestrutura: TLS no banco, banco em rede privada, firewall, backups cifrados com restauração testada — antes do deploy
+- [ ] 55. [processo] Teste de invasão externo e checklist OWASP ASVS — antes do lançamento
