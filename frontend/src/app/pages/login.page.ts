@@ -1,8 +1,67 @@
-import { Component } from '@angular/core';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Component, inject, signal } from '@angular/core';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import {
+  emailValido,
+  focarPrimeiroErro,
+  mensagemCampo,
+  mensagemHttp,
+  preenchido,
+  senhaBytes,
+} from '../core/formulario';
+import { SessaoStore } from '../core/sessao.store';
+import { AcessoComponent } from '../layout/acesso.component';
 
-// Placeholder: a tela real de login sai na Task 5.
+const OBRIGATORIO = { email: 'Informe seu e-mail.', senha: 'Informe sua senha.' };
+
 @Component({
   selector: 'app-login-page',
-  template: `<main><h1>Login</h1></main>`,
+  imports: [ReactiveFormsModule, RouterLink, AcessoComponent],
+  templateUrl: './login.page.html',
 })
-export class LoginPage {}
+export class LoginPage {
+  private readonly http = inject(HttpClient);
+  private readonly sessao = inject(SessaoStore);
+  private readonly router = inject(Router);
+
+  readonly enviando = signal(false);
+  readonly erroGeral = signal('');
+  readonly form = new FormGroup({
+    email: new FormControl('', { nonNullable: true, validators: [preenchido, emailValido] }),
+    senha: new FormControl('', {
+      nonNullable: true,
+      validators: [Validators.required, senhaBytes(1)],
+    }),
+  });
+
+  erro(nome: keyof typeof OBRIGATORIO): string {
+    return mensagemCampo(this.form.controls[nome], OBRIGATORIO[nome]);
+  }
+
+  entrar(): void {
+    if (this.enviando()) return;
+    this.erroGeral.set('');
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      focarPrimeiroErro(this.form, 'login');
+      return;
+    }
+    this.enviando.set(true);
+    const { email, senha } = this.form.getRawValue();
+    this.http.post<{ token: string }>('/api/auth/login', { email: email.trim(), senha }).subscribe({
+      next: ({ token }) => {
+        this.sessao.entrar(token);
+        void this.router.navigateByUrl('/');
+      },
+      error: (e: HttpErrorResponse) => {
+        this.enviando.set(false);
+        if (e.status !== 401) return this.erroGeral.set(mensagemHttp(e));
+        // Nunca dizer qual dos dois errou.
+        this.form.controls.senha.reset();
+        this.erroGeral.set('E-mail ou senha incorretos.');
+        document.getElementById('login-senha')?.focus();
+      },
+    });
+  }
+}

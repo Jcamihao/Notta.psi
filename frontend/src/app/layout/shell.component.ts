@@ -1,14 +1,24 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
-import { SessaoStore } from '../core/sessao.store';
+import { UsuarioStore } from '../core/usuario.store';
 
 @Component({
   selector: 'app-shell',
   imports: [RouterOutlet],
   template: `
     <header class="shell-topo">
-      <span class="shell-marca">Notta.psi</span>
-      <button type="button" class="shell-sair" (click)="sair()">Sair</button>
+      <div class="shell-onde">
+        <span class="marca">Notta<span class="marca-psi">.psi</span></span>
+        @if (usuario(); as u) {
+          <span class="shell-clinica">{{ u.clinica.nome }}</span>
+        }
+      </div>
+      <div class="shell-quem">
+        @if (usuario(); as u) {
+          <span class="shell-nome">{{ u.nome }}</span>
+        }
+        <button type="button" class="botao-discreto" (click)="sair()">Sair</button>
+      </div>
     </header>
     <main class="shell-conteudo">
       <router-outlet />
@@ -21,27 +31,34 @@ import { SessaoStore } from '../core/sessao.store';
     }
     .shell-topo {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
+      gap: var(--espaco-2) var(--espaco-4);
       padding: var(--espaco-3) var(--espaco-5);
       background: var(--cor-superficie);
       border-bottom: 1px solid var(--cor-borda);
     }
-    .shell-marca {
-      font-weight: 600;
-      font-size: var(--texto-lg);
+    .shell-onde,
+    .shell-quem {
+      display: flex;
+      align-items: center;
+      gap: var(--espaco-3);
+      min-width: 0;
     }
-    .shell-sair {
-      font: inherit;
-      padding: var(--espaco-2) var(--espaco-4);
-      color: var(--cor-texto);
-      background: transparent;
-      border: 1px solid var(--cor-borda-forte);
-      border-radius: var(--raio);
-      cursor: pointer;
+    .shell-quem {
+      margin-left: auto;
     }
-    .shell-sair:hover {
-      background: var(--cor-fundo);
+    .shell-clinica {
+      padding-left: var(--espaco-3);
+      border-left: 1px solid var(--cor-borda);
+      font-weight: 500;
+      overflow-wrap: anywhere;
+    }
+    .shell-nome {
+      color: var(--cor-texto-suave);
+      font-size: var(--texto-sm);
+      overflow-wrap: anywhere;
     }
     .shell-conteudo {
       padding: var(--espaco-5);
@@ -49,11 +66,13 @@ import { SessaoStore } from '../core/sessao.store';
   `,
 })
 export class ShellComponent {
-  private readonly sessao = inject(SessaoStore);
+  private readonly usuarios = inject(UsuarioStore);
   private readonly router = inject(Router);
 
+  readonly usuario = this.usuarios.usuario;
+
   sair(): void {
-    this.sessao.sair();
+    this.usuarios.sair();
     void this.router.navigateByUrl('/login');
   }
 }

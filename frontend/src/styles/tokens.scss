@@ -1,15 +1,27 @@
-// Tokens neutros e sobrios. Identidade visual real: Task 5.
-// Contraste: texto #1c1f24 sobre #f6f7f9 = ~15:1; texto-suave #4a5360 sobre #f6f7f9 = ~7:1 (AA).
+// Identidade do Notta.psi: papel claro e quente (consultorio de dia, leitura longa sem cansar)
+// e um verde-petroleo profundo como unica cor de acao. Verde-petroleo = calma e cuidado,
+// sem o azul generico de banco nem o verde-hospital. O painel de sigilo usa o mesmo tom, escuro.
+// Contraste medido (WCAG): texto/fundo 14.3; texto-suave/fundo 6.6; branco/acao 7.9;
+// acao/fundo 7.1; erro/superficie 6.6; erro/erro-fundo 5.9; borda-forte/superficie 4.3 (UI >= 3);
+// sigilo-texto/sigilo 10.7; sigilo-suave/sigilo 7.0. Tudo AA.
 :root {
-  --cor-fundo: #f6f7f9;
-  --cor-superficie: #ffffff;
-  --cor-texto: #1c1f24;
-  --cor-texto-suave: #4a5360;
-  --cor-borda: #dde1e6;
-  --cor-borda-forte: #8a94a3;
-  --cor-acao: #1f4f8f;
+  --cor-fundo: #f5f3ef;
+  --cor-superficie: #fffefb;
+  --cor-texto: #1d2422;
+  --cor-texto-suave: #4f5855;
+  --cor-borda: #dfdbd3;
+  --cor-borda-forte: #7f786d;
+  --cor-acao: #2a5a4e;
+  --cor-acao-forte: #1f463c;
   --cor-acao-texto: #ffffff;
-  --cor-foco: #1f4f8f;
+  --cor-acao-suave: #dbe8e3;
+  --cor-foco: #2a5a4e;
+  --cor-erro: #a8322a;
+  --cor-erro-fundo: #fbeeec;
+  --cor-sigilo: #1f3d36;
+  --cor-sigilo-texto: #f1f4f0;
+  --cor-sigilo-suave: #bccbc4;
+  --cor-sigilo-linha: #3a5a52;
 
   --espaco-1: 0.25rem;
   --espaco-2: 0.5rem;
@@ -17,15 +29,19 @@
   --espaco-4: 1rem;
   --espaco-5: 1.5rem;
   --espaco-6: 2.5rem;
+  --espaco-7: 4rem;
 
-  --raio: 0.375rem;
+  --raio: 0.5rem;
+  --altura-controle: 2.75rem;
 
+  // Tela de produto: a fonte do sistema e rapida, nitida e familiar. A marca vive nos detalhes.
   --fonte: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --texto-sm: 0.875rem;
   --texto-md: 1rem;
   --texto-lg: 1.25rem;
-  --texto-xl: 1.75rem;
+  --texto-xl: 1.625rem;
 
   --foco-largura: 3px;
   --foco-offset: 2px;
+  --transicao: 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }

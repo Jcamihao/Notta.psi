@@ -13,15 +13,171 @@ body {
   line-height: 1.5;
   color: var(--cor-texto);
   background: var(--cor-fundo);
+  caret-color: var(--cor-acao);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--cor-acao-suave);
+  color: var(--cor-texto);
 }
 
 h1 {
-  margin: 0 0 var(--espaco-4);
+  margin: 0 0 var(--espaco-2);
   font-size: var(--texto-xl);
+  font-weight: 600;
   line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+a {
+  color: var(--cor-acao);
+  font-weight: 500;
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+a:hover {
+  color: var(--cor-acao-forte);
+  text-decoration-thickness: 2px;
 }
 
 :focus-visible {
   outline: var(--foco-largura) solid var(--cor-foco);
   outline-offset: var(--foco-offset);
+}
+
+// Marca: "Notta" no tom do texto, ".psi" na cor de acao.
+.marca {
+  margin: 0;
+  font-weight: 650;
+  font-size: var(--texto-lg);
+  letter-spacing: -0.02em;
+}
+.marca-psi {
+  color: var(--cor-acao);
+}
+
+// Telas de acesso (login e cadastro).
+.acesso-coluna > .marca {
+  margin-bottom: var(--espaco-6);
+}
+.acesso-lead {
+  margin: 0 0 var(--espaco-5);
+  color: var(--cor-texto-suave);
+}
+.acesso-alternativa {
+  margin: var(--espaco-5) 0 0;
+  padding-top: var(--espaco-4);
+  border-top: 1px solid var(--cor-borda);
+  color: var(--cor-texto-suave);
+  font-size: var(--texto-sm);
+}
+
+// Formularios.
+.formulario {
+  display: grid;
+  gap: var(--espaco-1);
+}
+.campo {
+  display: grid;
+  gap: var(--espaco-1);
+}
+.campo label {
+  font-weight: 500;
+  font-size: var(--texto-sm);
+}
+.campo input,
+.campo select {
+  width: 100%;
+  min-height: var(--altura-controle);
+  padding: 0 var(--espaco-3);
+  font: inherit;
+  color: var(--cor-texto);
+  background: var(--cor-superficie);
+  border: 1px solid var(--cor-borda-forte);
+  border-radius: var(--raio);
+  transition:
+    border-color var(--transicao),
+    box-shadow var(--transicao);
+}
+.campo input:hover,
+.campo select:hover {
+  border-color: var(--cor-texto-suave);
+}
+.campo input:focus-visible,
+.campo select:focus-visible {
+  border-color: var(--cor-acao);
+  outline-offset: 1px;
+}
+.campo [aria-invalid='true'] {
+  border-color: var(--cor-erro);
+  box-shadow: inset 0 0 0 1px var(--cor-erro);
+}
+.campo-dica {
+  margin: 0;
+  color: var(--cor-texto-suave);
+  font-size: var(--texto-sm);
+}
+// Espaco reservado: a mensagem aparece sem empurrar o formulario.
+.campo-erro {
+  min-height: 1.25rem;
+  margin: 0 0 var(--espaco-1);
+  color: var(--cor-erro);
+  font-size: var(--texto-sm);
+  line-height: 1.25rem;
+}
+.aviso-erro {
+  margin: 0 0 var(--espaco-4);
+  padding: var(--espaco-3) var(--espaco-4);
+  color: var(--cor-erro);
+  background: var(--cor-erro-fundo);
+  border: 1px solid currentColor;
+  border-radius: var(--raio);
+  font-size: var(--texto-sm);
+}
+
+// Botoes.
+.botao-primario {
+  min-height: var(--altura-controle);
+  margin-top: var(--espaco-2);
+  padding: 0 var(--espaco-5);
+  font: inherit;
+  font-weight: 600;
+  color: var(--cor-acao-texto);
+  background: var(--cor-acao);
+  border: 0;
+  border-radius: var(--raio);
+  cursor: pointer;
+  transition: background-color var(--transicao);
+}
+.botao-primario:hover {
+  background: var(--cor-acao-forte);
+}
+.botao-primario:disabled {
+  background: var(--cor-acao-forte);
+  opacity: 0.75;
+  cursor: progress;
+}
+.botao-discreto {
+  min-height: 2.25rem;
+  padding: 0 var(--espaco-4);
+  font: inherit;
+  font-size: var(--texto-sm);
+  font-weight: 500;
+  color: var(--cor-texto);
+  background: transparent;
+  border: 1px solid var(--cor-borda-forte);
+  border-radius: var(--raio);
+  cursor: pointer;
+  transition: background-color var(--transicao);
+}
+.botao-discreto:hover {
+  background: var(--cor-fundo);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
 }

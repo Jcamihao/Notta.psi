@@ -9,6 +9,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/login.page').then((m) => m.LoginPage),
   },
   {
+    path: 'cadastro',
+    canActivate: [visitanteGuard],
+    loadComponent: () => import('./pages/cadastro.page').then((m) => m.CadastroPage),
+  },
+  {
     path: '',
     canActivate: [authGuard],
     loadComponent: () => import('./layout/shell.component').then((m) => m.ShellComponent),

@@ -1,0 +1,95 @@
+<app-acesso>
+  <h1>Cadastre sua clínica</h1>
+  <p class="acesso-lead">Quem cria a conta administra a equipe da clínica.</p>
+
+  <form class="formulario" [formGroup]="form" (ngSubmit)="criar()" novalidate>
+    <div class="aviso-regiao" aria-live="polite">
+      @if (erroGeral()) {
+        <p class="aviso-erro" data-teste="erro-geral">{{ erroGeral() }}</p>
+      }
+    </div>
+
+    <div class="campo">
+      <label for="cad-clinica">Nome da clínica</label>
+      <input
+        id="cad-clinica"
+        type="text"
+        formControlName="clinica"
+        autocomplete="organization"
+        maxlength="120"
+        [attr.aria-invalid]="erro('clinica') ? 'true' : null"
+        [attr.aria-describedby]="erro('clinica') ? 'cad-clinica-erro' : null"
+      />
+      <p id="cad-clinica-erro" class="campo-erro" aria-live="polite">{{ erro('clinica') }}</p>
+    </div>
+
+    <div class="campo">
+      <label for="cad-nome">Seu nome</label>
+      <input
+        id="cad-nome"
+        type="text"
+        formControlName="nome"
+        autocomplete="name"
+        maxlength="120"
+        [attr.aria-invalid]="erro('nome') ? 'true' : null"
+        [attr.aria-describedby]="erro('nome') ? 'cad-nome-erro' : null"
+      />
+      <p id="cad-nome-erro" class="campo-erro" aria-live="polite">{{ erro('nome') }}</p>
+    </div>
+
+    <div class="campo">
+      <label for="cad-email">E-mail</label>
+      <input
+        id="cad-email"
+        type="email"
+        formControlName="email"
+        autocomplete="email"
+        inputmode="email"
+        spellcheck="false"
+        maxlength="254"
+        [attr.aria-invalid]="erro('email') ? 'true' : null"
+        [attr.aria-describedby]="erro('email') ? 'cad-email-erro' : null"
+      />
+      <p id="cad-email-erro" class="campo-erro" aria-live="polite">{{ erro('email') }}</p>
+    </div>
+
+    <div class="campo">
+      <label for="cad-senha">Senha</label>
+      <input
+        id="cad-senha"
+        type="password"
+        formControlName="senha"
+        autocomplete="new-password"
+        [attr.aria-invalid]="erro('senha') ? 'true' : null"
+        [attr.aria-describedby]="erro('senha') ? 'cad-senha-dica cad-senha-erro' : 'cad-senha-dica'"
+      />
+      <p id="cad-senha-dica" class="campo-dica">Pelo menos 8 caracteres.</p>
+      <p id="cad-senha-erro" class="campo-erro" aria-live="polite">{{ erro('senha') }}</p>
+    </div>
+
+    <div class="campo">
+      <label for="cad-abordagem">Abordagem principal</label>
+      <select
+        id="cad-abordagem"
+        formControlName="abordagem"
+        [attr.aria-invalid]="erro('abordagem') ? 'true' : null"
+        [attr.aria-describedby]="
+          erro('abordagem') ? 'cad-abordagem-dica cad-abordagem-erro' : 'cad-abordagem-dica'
+        "
+      >
+        <option value="" disabled>Selecione</option>
+        @for (a of abordagens; track a[0]) {
+          <option [value]="a[0]">{{ a[1] }}</option>
+        }
+      </select>
+      <p id="cad-abordagem-dica" class="campo-dica">Orienta o tom dos rascunhos da IA.</p>
+      <p id="cad-abordagem-erro" class="campo-erro" aria-live="polite">{{ erro('abordagem') }}</p>
+    </div>
+
+    <button type="submit" class="botao-primario" [disabled]="enviando()">
+      {{ enviando() ? 'Criando…' : 'Criar conta da clínica' }}
+    </button>
+  </form>
+
+  <p class="acesso-alternativa">Já tem cadastro? <a routerLink="/login">Entrar</a></p>
+</app-acesso>
