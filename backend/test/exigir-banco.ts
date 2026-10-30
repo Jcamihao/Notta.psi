@@ -8,3 +8,4 @@ if (!process.env.DATABASE_URL) {
 // Chave mestra FIXA so de teste (nao e segredo), explicita aqui para o e2e nao
 // depender de .env. Se NOTTA_MASTER_KEY ja estiver exportada, ela vale.
 process.env.NOTTA_MASTER_KEY ||= 'e2e0'.repeat(16);
+process.env.NOTTA_JWT_SECRET ||= 'segredo-jwt-so-de-teste-e2e-'.repeat(2);

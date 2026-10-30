@@ -7,6 +7,7 @@ describe('AppModule + CriptografiaModule no boot', () => {
   const original = { ...process.env };
   beforeEach(() => {
     process.env.DATABASE_URL = 'postgresql://x:y@localhost:1/nenhum';
+    process.env.NOTTA_JWT_SECRET = 'segredo-jwt-de-teste-unitario-'.repeat(2);
   });
   afterEach(() => {
     process.env = { ...original };

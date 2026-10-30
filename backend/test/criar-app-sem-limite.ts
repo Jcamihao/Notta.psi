@@ -1,0 +1,60 @@
+import { LoggerService } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { Test } from '@nestjs/testing';
+import { AppModule } from '../src/app.module';
+import { configurarApp } from '../src/configurar-app';
+import { LimiteTentativasGuard } from '../src/limite-tentativas/limite-tentativas.guard';
+import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
+
+// Env de teste EXPLICITA (nao depende de .env). Valores fixos so de teste, nao sao segredo.
+// Se ja exportadas, valem as exportadas.
+process.env.NOTTA_MASTER_KEY ||= 'e2e0'.repeat(16);
+process.env.NOTTA_JWT_SECRET ||= 'segredo-jwt-so-de-teste-e2e-'.repeat(2);
+
+// App completo (AppModule + configurarApp), igual ao main.ts.
+export async function criarApp(
+  opcoes: { semLimite?: boolean; logger?: LoggerService } = {},
+) {
+  let b = Test.createTestingModule({ imports: [AppModule] });
+  if (opcoes.semLimite) {
+    b = b
+      .overrideGuard(LimiteTentativasGuard)
+      .useValue({ canActivate: () => true });
+  }
+  const app = (await b.compile()).createNestApplication<NestExpressApplication>(
+    opcoes.logger ? { logger: opcoes.logger } : undefined,
+  );
+  configurarApp(app);
+  await app.init();
+  return app;
+}
+
+// Para suites que NAO testam limite de tentativas (guards de throttle desligados).
+export function criarAppSemLimite(opcoes: { logger?: LoggerService } = {}) {
+  return criarApp({ ...opcoes, semLimite: true });
+}
+
+// Limpeza SEMPRE dentro de contexto (FORCE RLS vale para todo papel).
+export async function apagarClinicas(
+  app: NestExpressApplication,
+  ids: string[],
+) {
+  const tenant = app.get(TenantPrismaService);
+  for (const id of ids) {
+    await tenant.run(id, async (tx) => {
+      await tx.psicologo.deleteMany({ where: { clinicaId: id } });
+      await tx.clinica.deleteMany({ where: { id } });
+    });
+  }
+}
+
+export function corpoClinica(email: string, extra: object = {}) {
+  return {
+    nomeClinica: 'Clinica Teste',
+    nomePsicologo: 'Ana Teste',
+    email,
+    senha: 'senha-forte-123',
+    abordagemPadrao: 'TCC',
+    ...extra,
+  };
+}

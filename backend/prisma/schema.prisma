@@ -42,4 +42,6 @@ model Psicologo {
 
   // Alvo das FKs compostas (x, clinicaId) das fases futuras.
   @@unique([id, clinicaId])
+  // RLS filtra toda consulta por clinicaId.
+  @@index([clinicaId])
 }
