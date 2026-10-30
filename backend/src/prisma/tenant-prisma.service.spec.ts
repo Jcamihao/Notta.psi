@@ -31,6 +31,17 @@ describe('TenantPrismaService (sem banco)', () => {
     expect($transaction).not.toHaveBeenCalled();
   });
 
+  it('runComoUsuario = run com clinicaId e psicologoId do usuario', async () => {
+    const { tenant } = criar();
+    const run = jest.spyOn(tenant, 'run').mockResolvedValue('ok');
+    const fn = () => Promise.resolve(1);
+    const psicologoId = '0b1c2d3e-4f50-4a6b-8c7d-9e0f1a2b3c4d';
+    await expect(
+      tenant.runComoUsuario({ clinicaId: UUID, psicologoId }, fn),
+    ).resolves.toBe('ok');
+    expect(run).toHaveBeenCalledWith(UUID, fn, { psicologoId });
+  });
+
   it('usa timeout 5 s e maxWait 2 s', async () => {
     const { tenant, $transaction } = criar();
     $transaction.mockResolvedValue('ok');

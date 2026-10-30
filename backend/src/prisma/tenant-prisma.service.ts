@@ -37,6 +37,15 @@ export class TenantPrismaService {
     }, OPCOES_TX);
   }
 
+  // Atalho para dado clinico com dono (policy psicologo_proprio, docs/ACESSO.md):
+  // clinica E psicologo do usuario logado no contexto.
+  runComoUsuario<T>(
+    user: { clinicaId: string; psicologoId: string },
+    fn: Fn<T>,
+  ): Promise<T> {
+    return this.run(user.clinicaId, fn, { psicologoId: user.psicologoId });
+  }
+
   // So para o login: abre a policy login_lookup (SELECT em Psicologo pelo e-mail).
   // O e-mail ja chega normalizado (trim + lowercase) por quem chama.
   runLogin<T>(email: string, fn: Fn<T>): Promise<T> {

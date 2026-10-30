@@ -1,4 +1,4 @@
-import { LoggerService } from '@nestjs/common';
+import { LoggerService, Type } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
@@ -12,10 +12,18 @@ process.env.NOTTA_MASTER_KEY ||= 'e2e0'.repeat(16);
 process.env.NOTTA_JWT_SECRET ||= 'segredo-jwt-so-de-teste-e2e-'.repeat(2);
 
 // App completo (AppModule + configurarApp), igual ao main.ts.
+// `controllers`: controllers SO de teste, somados ao AppModule.
 export async function criarApp(
-  opcoes: { semLimite?: boolean; logger?: LoggerService } = {},
+  opcoes: {
+    semLimite?: boolean;
+    logger?: LoggerService;
+    controllers?: Type[];
+  } = {},
 ) {
-  let b = Test.createTestingModule({ imports: [AppModule] });
+  let b = Test.createTestingModule({
+    imports: [AppModule],
+    controllers: opcoes.controllers,
+  });
   if (opcoes.semLimite) {
     b = b
       .overrideGuard(LimiteTentativasGuard)
@@ -30,7 +38,9 @@ export async function criarApp(
 }
 
 // Para suites que NAO testam limite de tentativas (guards de throttle desligados).
-export function criarAppSemLimite(opcoes: { logger?: LoggerService } = {}) {
+export function criarAppSemLimite(
+  opcoes: { logger?: LoggerService; controllers?: Type[] } = {},
+) {
   return criarApp({ ...opcoes, semLimite: true });
 }
 
