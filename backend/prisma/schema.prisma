@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_OWNER")
+}
+
+enum Papel {
+  ADMIN
+  PSICOLOGO
+}
+
+enum Abordagem {
+  SISTEMICA
+  TCC
+  PSICANALISE
+  ACT
+  HUMANISTA
+  OUTRA
+}
