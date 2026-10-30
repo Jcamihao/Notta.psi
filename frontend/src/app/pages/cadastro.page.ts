@@ -3,6 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { switchMap } from 'rxjs';
+import { ABORDAGENS } from '../core/abordagens';
 import {
   emailValido,
   focarPrimeiroErro,
@@ -21,16 +22,6 @@ const OBRIGATORIO = {
   senha: 'Crie uma senha.',
   abordagem: 'Escolha sua abordagem principal.',
 };
-
-// Valores = enum Abordagem do contrato; rotulos para gente.
-const ABORDAGENS = [
-  ['SISTEMICA', 'Sistêmica'],
-  ['TCC', 'TCC'],
-  ['PSICANALISE', 'Psicanálise'],
-  ['ACT', 'ACT'],
-  ['HUMANISTA', 'Humanista'],
-  ['OUTRA', 'Outra'],
-] as const;
 
 const texto = () => new FormControl('', { nonNullable: true, validators: [preenchido] });
 

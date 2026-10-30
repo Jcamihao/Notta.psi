@@ -33,14 +33,24 @@ exemplo em `/tmp/notta-falso/falso.mjs` (so Node, sem dependencia):
 
 ```js
 import http from 'node:http';
+const conta = (nome, papel, criadoEm) => ({
+  senha: 'senha-forte-1',
+  nome,
+  papel,
+  abordagemPadrao: 'TCC',
+  clinica: 'Clinica Horizonte',
+  criadoEm,
+});
 const contas = new Map([
-  ['ana@clinica.com', { senha: 'senha-forte-1', nome: 'Ana Souza', clinica: 'Clinica Horizonte' }],
+  ['ana@clinica.com', conta('Ana Souza', 'ADMIN', '2026-03-12T14:00:00.000Z')],
+  ['bruno@clinica.com', conta('Bruno Lima', 'PSICOLOGO', '2026-10-01T14:00:00.000Z')],
 ]);
 const tokens = new Map();
 const responder = (res, status, body, extra = {}) => {
   res.writeHead(status, { 'Content-Type': 'application/json', ...extra });
   res.end(JSON.stringify(body));
 };
+const proibido = { statusCode: 403, message: 'Forbidden resource', error: 'Forbidden' };
 http
   .createServer((req, res) => {
     let raw = '';
@@ -55,13 +65,17 @@ http
         return responder(
           res,
           429,
-          { statusCode: 429, message: 'Too Many Requests' },
+          { statusCode: 429, message: 'Muitas tentativas. Tente mais tarde.' },
           { 'Retry-After': '30' },
         );
       if (rota === 'POST /clinicas') {
         if (contas.has(email))
           return responder(res, 409, { statusCode: 409, message: 'E-mail ja cadastrado' });
-        contas.set(email, { senha: b.senha, nome: b.nomePsicologo, clinica: b.nomeClinica });
+        contas.set(email, {
+          ...conta(b.nomePsicologo, 'ADMIN', new Date().toISOString()),
+          senha: b.senha,
+          clinica: b.nomeClinica,
+        });
         return responder(res, 201, { clinicaId: 'c1', psicologoId: 'p1' });
       }
       if (rota === 'POST /auth/login') {
@@ -72,18 +86,46 @@ http
         return responder(res, 200, { token: t });
       }
       const dono = tokens.get(String(req.headers.authorization).replace('Bearer ', ''));
-      if (rota === 'GET /eu' && dono) {
-        const c = contas.get(dono);
+      const eu = contas.get(dono);
+      if (!eu) return responder(res, 401, { statusCode: 401, message: 'Unauthorized' });
+      if (rota === 'GET /eu')
         return responder(res, 200, {
-          psicologoId: 'p1',
-          nome: c.nome,
+          psicologoId: dono,
+          nome: eu.nome,
           email: dono,
-          papel: 'ADMIN',
-          abordagemPadrao: 'TCC',
-          clinica: { id: 'c1', nome: c.clinica },
+          papel: eu.papel,
+          abordagemPadrao: eu.abordagemPadrao,
+          clinica: { id: 'c1', nome: eu.clinica },
         });
+      if (req.url === '/psicologos' && eu.papel !== 'ADMIN') return responder(res, 403, proibido);
+      if (rota === 'GET /psicologos')
+        return responder(
+          res,
+          200,
+          [...contas]
+            .filter(([, c]) => c.clinica === eu.clinica)
+            .map(([e, c]) => ({
+              psicologoId: e,
+              nome: c.nome,
+              email: e,
+              papel: c.papel,
+              abordagemPadrao: c.abordagemPadrao,
+              criadoEm: c.criadoEm,
+            })),
+        );
+      if (rota === 'POST /psicologos') {
+        if (email.startsWith('proibido@')) return responder(res, 403, proibido);
+        if (contas.has(email))
+          return responder(res, 409, { statusCode: 409, message: 'E-mail ja cadastrado' });
+        contas.set(email, {
+          ...conta(b.nome.trim(), 'PSICOLOGO', new Date().toISOString()),
+          senha: b.senha,
+          abordagemPadrao: b.abordagemPadrao,
+          clinica: eu.clinica,
+        });
+        return responder(res, 201, { psicologoId: email });
       }
-      responder(res, 401, { statusCode: 401, message: 'Unauthorized' });
+      responder(res, 404, { statusCode: 404, message: 'Not Found' });
     });
   })
   .listen(3000, () => console.log('servidor falso na porta 3000'));
@@ -94,8 +136,20 @@ node /tmp/notta-falso/falso.mjs   # terminal 1
 npm start                         # terminal 2, abra http://localhost:4200/cadastro
 ```
 
-Conta pronta: `ana@clinica.com` / `senha-forte-1` (cadastrar com ela da 409). Qualquer e-mail
-comecando com `limite@` responde 429 com `Retry-After: 30`. Senha errada da 401.
+Contas prontas (senha `senha-forte-1`): `ana@clinica.com` (ADMIN) e `bruno@clinica.com`
+(PSICOLOGO). Cadastrar com elas da 409. Qualquer e-mail comecando com `limite@` responde 429
+com `Retry-After: 30`. Senha errada da 401.
+
+### Tela de equipe (`/equipe`, so ADMIN)
+
+1. Entre como `ana@clinica.com`: o cabecalho mostra o link **Equipe**.
+2. A tabela lista Ana (Administrador) e Bruno (Psicologo).
+3. Adicione alguem com e-mail novo: a pessoa aparece na lista e uma confirmacao lembra de
+   combinar a senha inicial por canal seguro. O campo senha fica vazio.
+4. E-mail ja usado (ex.: `bruno@clinica.com`): erro no campo e-mail.
+5. E-mail comecando com `limite@`: "Muitas tentativas. Tente de novo em 30 segundos."
+6. E-mail comecando com `proibido@`: o servidor falso responde 403 e a tela volta para `/`.
+7. Saia e entre como `bruno@clinica.com`: sem link Equipe; abrir `/equipe` na mao volta para `/`.
 
 ## Sessao
 
@@ -103,7 +157,10 @@ comecando com `limite@` responde 429 com `Retry-After: 30`. Senha errada da 401.
 Cookie httpOnly fica como decisao futura. O `authInterceptor` anexa `Authorization: Bearer`
 so em URLs `/api/` e, em 401 (exceto `POST /api/auth/login`), limpa a sessao e vai para `/login`.
 `UsuarioStore` segue o token: ao entrar ou ao restaurar a sessao busca `GET /api/eu` (nome,
-papel, clinica) para o cabecalho; ao sair, limpa.
+papel, clinica) para o cabecalho; ao sair, limpa. `ehAdmin()` vem do papel; `pronto()` diz que o
+`/eu` do token atual ja respondeu. O `adminGuard` (rota `/equipe`) espera `pronto()` antes de
+decidir: ADMIN entra, outro papel vai para `/`, sem sessao vai para `/login`. O servidor continua
+sendo a autoridade (403).
 
 ## Estrutura
 
@@ -112,7 +169,7 @@ src/
   app/
     core/      sessao.store, usuario.store, auth.interceptor, guards, formulario (validacao e erros)
     layout/    shell.component (cabecalho + <router-outlet>), acesso.component (moldura de login/cadastro)
-    pages/     login, cadastro, inicio (placeholder)
+    pages/     login, cadastro, equipe (so ADMIN), inicio (placeholder)
     app.routes.ts   rotas com lazy loading (loadComponent)
   styles/tokens.scss   tokens de design (CSS custom properties)
   styles.scss          estilos globais

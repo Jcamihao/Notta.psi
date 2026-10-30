@@ -23,6 +23,7 @@ const MENSAGENS: Record<string, string> = {
   senhaCurta: 'A senha precisa de pelo menos 8 caracteres.',
   senhaLonga: 'Senha longa demais: o limite é 72 bytes (acentos e emojis ocupam mais).',
   emUso: 'Este e-mail já tem cadastro. Entre com ele ou use outro.',
+  emUsoEquipe: 'Este e-mail já está cadastrado no Notta.psi. Use outro e-mail.',
 };
 
 // Erro so aparece depois do blur ou do envio (touched), nunca a cada tecla.

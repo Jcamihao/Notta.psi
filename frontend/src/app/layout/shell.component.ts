@@ -1,16 +1,27 @@
 import { Component, inject } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { UsuarioStore } from '../core/usuario.store';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <header class="shell-topo">
       <div class="shell-onde">
-        <span class="marca">Notta<span class="marca-psi">.psi</span></span>
+        <a class="marca" routerLink="/">Notta<span class="marca-psi">.psi</span></a>
         @if (usuario(); as u) {
           <span class="shell-clinica">{{ u.clinica.nome }}</span>
+        }
+        @if (ehAdmin()) {
+          <nav aria-label="Principal">
+            <a
+              class="shell-link"
+              routerLink="/equipe"
+              routerLinkActive="shell-link-ativo"
+              ariaCurrentWhenActive="page"
+              >Equipe</a
+            >
+          </nav>
         }
       </div>
       <div class="shell-quem">
@@ -55,6 +66,33 @@ import { UsuarioStore } from '../core/usuario.store';
       font-weight: 500;
       overflow-wrap: anywhere;
     }
+    a.marca {
+      color: inherit;
+      text-decoration: none;
+    }
+    .shell-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 2.25rem;
+      padding: 0 var(--espaco-3);
+      color: var(--cor-texto-suave);
+      font-size: var(--texto-sm);
+      text-decoration: none;
+      border-radius: var(--raio);
+      transition:
+        background-color var(--transicao),
+        color var(--transicao);
+    }
+    .shell-link:hover {
+      color: var(--cor-texto);
+      background: var(--cor-fundo);
+    }
+    .shell-link-ativo,
+    .shell-link-ativo:hover {
+      color: var(--cor-acao-forte);
+      background: var(--cor-acao-suave);
+      font-weight: 600;
+    }
     .shell-nome {
       color: var(--cor-texto-suave);
       font-size: var(--texto-sm);
@@ -70,6 +108,7 @@ export class ShellComponent {
   private readonly router = inject(Router);
 
   readonly usuario = this.usuarios.usuario;
+  readonly ehAdmin = this.usuarios.ehAdmin;
 
   sair(): void {
     this.usuarios.sair();

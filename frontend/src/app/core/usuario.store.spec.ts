@@ -82,4 +82,37 @@ describe('UsuarioStore', () => {
     TestBed.tick();
     expect(u.usuario()).toBeNull();
   });
+  it('ehAdmin segue o papel do /eu', () => {
+    configurar();
+    const u = TestBed.inject(UsuarioStore);
+    expect(u.ehAdmin()).toBeFalse();
+    TestBed.inject(SessaoStore).entrar('tok');
+    TestBed.tick();
+    ctrl.expectOne('/api/eu').flush(EU);
+    expect(u.ehAdmin()).toBeTrue();
+  });
+
+  it('ehAdmin falso para PSICOLOGO', () => {
+    configurar();
+    const u = TestBed.inject(UsuarioStore);
+    TestBed.inject(SessaoStore).entrar('tok');
+    TestBed.tick();
+    ctrl.expectOne('/api/eu').flush({ ...EU, papel: 'PSICOLOGO' });
+    expect(u.ehAdmin()).toBeFalse();
+  });
+
+  it('pronto: sem sessao e pronto; com sessao so depois do /eu responder (ok ou erro)', () => {
+    sessionStorage.setItem('notta.token', 'guardado');
+    configurar();
+    const u = TestBed.inject(UsuarioStore);
+    expect(u.pronto()).toBeFalse();
+    TestBed.tick();
+    expect(u.pronto()).toBeFalse();
+    ctrl.expectOne('/api/eu').error(new ProgressEvent('error'));
+    expect(u.pronto()).toBeTrue();
+    expect(u.usuario()).toBeNull();
+    TestBed.inject(SessaoStore).sair();
+    TestBed.tick();
+    expect(u.pronto()).toBeTrue();
+  });
 });

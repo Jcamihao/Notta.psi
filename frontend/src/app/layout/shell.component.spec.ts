@@ -61,4 +61,49 @@ describe('ShellComponent', () => {
     expect(TestBed.inject(UsuarioStore).usuario()).toBeNull();
     expect(navegar).toHaveBeenCalledWith('/login');
   });
+
+  it('PSICOLOGO nao ve o link Equipe', () => {
+    expect(el().querySelector('a[href="/equipe"]')).toBeNull();
+  });
+});
+
+describe('ShellComponent (ADMIN)', () => {
+  let ctrl: HttpTestingController;
+
+  afterEach(() => {
+    ctrl.verify();
+    sessionStorage.clear();
+  });
+
+  it('ADMIN ve o link Equipe com aria-current na rota ativa', async () => {
+    sessionStorage.clear();
+    await TestBed.configureTestingModule({
+      imports: [ShellComponent],
+      providers: [
+        provideRouter([{ path: 'equipe', children: [] }]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
+    }).compileComponents();
+    ctrl = TestBed.inject(HttpTestingController);
+    TestBed.inject(SessaoStore).entrar('t');
+    const fixture = TestBed.createComponent(ShellComponent);
+    await fixture.whenStable();
+    ctrl.expectOne('/api/eu').flush({
+      psicologoId: 'p1',
+      nome: 'Ana Souza',
+      email: 'ana@clinica.com',
+      papel: 'ADMIN',
+      abordagemPadrao: 'TCC',
+      clinica: { id: 'c1', nome: 'Clinica Horizonte' },
+    });
+    await fixture.whenStable();
+    const link = () =>
+      (fixture.nativeElement as HTMLElement).querySelector('header a[href="/equipe"]');
+    expect(link()?.textContent?.trim()).toBe('Equipe');
+    expect(link()?.getAttribute('aria-current')).toBeNull();
+    await TestBed.inject(Router).navigateByUrl('/equipe');
+    await fixture.whenStable();
+    expect(link()?.getAttribute('aria-current')).toBe('page');
+  });
 });

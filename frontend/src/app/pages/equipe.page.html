@@ -1,0 +1,149 @@
+<div class="equipe">
+  <div class="equipe-topo">
+    <h1>Equipe</h1>
+    <p class="equipe-lead">
+      Cada psicólogo vê só os próprios pacientes e documentos. Como administrador, você decide quem
+      tem acesso à clínica.
+    </p>
+  </div>
+
+  <section class="equipe-lista" aria-label="Pessoas da equipe">
+    @if (lista(); as l) {
+      <table class="tabela">
+        <caption>
+          Equipe da clínica,
+          {{
+            l.length
+          }}
+          {{
+            l.length === 1 ? 'pessoa' : 'pessoas'
+          }}
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Nome</th>
+            <th scope="col">E-mail</th>
+            <th scope="col">Papel</th>
+            <th scope="col">Abordagem</th>
+            <th scope="col">Desde</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of l; track p.psicologoId) {
+            <tr>
+              <th scope="row">{{ p.nome }}</th>
+              <td data-rotulo="E-mail" class="tabela-email">{{ p.email }}</td>
+              <td data-rotulo="Papel">
+                <span class="papel" [class.papel-admin]="p.papel === 'ADMIN'">
+                  {{ p.papel === 'ADMIN' ? 'Administrador' : 'Psicólogo' }}
+                </span>
+              </td>
+              <td data-rotulo="Abordagem">{{ rotuloAbordagem(p.abordagemPadrao) }}</td>
+              <td data-rotulo="Desde">
+                <time class="tabela-data" [attr.datetime]="p.criadoEm">{{ data(p.criadoEm) }}</time>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="tabela-vazia">Ninguém na equipe ainda.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else if (erroLista()) {
+      <div class="aviso-erro equipe-falha" role="alert">
+        <p>Não foi possível carregar a equipe. Confira sua conexão.</p>
+        <button type="button" class="botao-discreto" (click)="carregar()">Tentar de novo</button>
+      </div>
+    } @else {
+      <p class="equipe-carregando" role="status">Carregando a equipe…</p>
+    }
+  </section>
+
+  <section class="equipe-novo" aria-labelledby="eq-titulo">
+    <h2 id="eq-titulo">Adicionar psicólogo</h2>
+    <p class="equipe-novo-lead">
+      A pessoa entra com o e-mail e a senha inicial que você definir aqui.
+    </p>
+
+    <form class="formulario" [formGroup]="form" (ngSubmit)="adicionar()" novalidate>
+      <div class="aviso-regiao" aria-live="polite">
+        @if (erroGeral()) {
+          <p class="aviso-erro" data-teste="erro-geral">{{ erroGeral() }}</p>
+        }
+        @if (confirmacao()) {
+          <p class="aviso-ok" data-teste="confirmacao">{{ confirmacao() }}</p>
+        }
+      </div>
+
+      <div class="campo">
+        <label for="eq-nome">Nome</label>
+        <input
+          id="eq-nome"
+          type="text"
+          formControlName="nome"
+          autocomplete="off"
+          maxlength="120"
+          [attr.aria-invalid]="erro('nome') ? 'true' : null"
+          [attr.aria-describedby]="erro('nome') ? 'eq-nome-erro' : null"
+        />
+        <p id="eq-nome-erro" class="campo-erro" aria-live="polite">{{ erro('nome') }}</p>
+      </div>
+
+      <div class="campo">
+        <label for="eq-email">E-mail</label>
+        <input
+          id="eq-email"
+          type="email"
+          formControlName="email"
+          autocomplete="off"
+          inputmode="email"
+          spellcheck="false"
+          maxlength="254"
+          [attr.aria-invalid]="erro('email') ? 'true' : null"
+          [attr.aria-describedby]="erro('email') ? 'eq-email-erro' : null"
+        />
+        <p id="eq-email-erro" class="campo-erro" aria-live="polite">{{ erro('email') }}</p>
+      </div>
+
+      <div class="campo">
+        <label for="eq-senha">Senha inicial</label>
+        <input
+          id="eq-senha"
+          type="password"
+          formControlName="senha"
+          autocomplete="new-password"
+          [attr.aria-invalid]="erro('senha') ? 'true' : null"
+          [attr.aria-describedby]="erro('senha') ? 'eq-senha-dica eq-senha-erro' : 'eq-senha-dica'"
+        />
+        <p id="eq-senha-dica" class="campo-dica">
+          Pelo menos 8 caracteres. Passe para a pessoa fora do Notta.psi.
+        </p>
+        <p id="eq-senha-erro" class="campo-erro" aria-live="polite">{{ erro('senha') }}</p>
+      </div>
+
+      <div class="campo">
+        <label for="eq-abordagem">Abordagem principal</label>
+        <select
+          id="eq-abordagem"
+          formControlName="abordagem"
+          [attr.aria-invalid]="erro('abordagem') ? 'true' : null"
+          [attr.aria-describedby]="
+            erro('abordagem') ? 'eq-abordagem-dica eq-abordagem-erro' : 'eq-abordagem-dica'
+          "
+        >
+          <option value="" disabled>Selecione</option>
+          @for (a of abordagens; track a[0]) {
+            <option [value]="a[0]">{{ a[1] }}</option>
+          }
+        </select>
+        <p id="eq-abordagem-dica" class="campo-dica">Orienta o tom dos rascunhos da IA.</p>
+        <p id="eq-abordagem-erro" class="campo-erro" aria-live="polite">{{ erro('abordagem') }}</p>
+      </div>
+
+      <button type="submit" class="botao-primario" [disabled]="enviando()">
+        {{ enviando() ? 'Adicionando…' : 'Adicionar psicólogo' }}
+      </button>
+    </form>
+  </section>
+</div>
