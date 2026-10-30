@@ -79,3 +79,7 @@ Numeração separada para não quebrar as referências da Fase 1 em andamento. A
 - [ ] 53. [B] Monitoramento e alertas de segurança (falhas de login, picos, erros 5xx; logs sem dado clínico) — Fase 6
 - [ ] 56. [B] Hardening de infraestrutura: TLS no banco, banco em rede privada, firewall, backups cifrados com restauração testada — antes do deploy
 - [ ] 55. [processo] Teste de invasão externo e checklist OWASP ASVS — antes do lançamento
+
+## Lacunas descobertas durante a Fase 1 (adicionadas em 2026-10-30)
+- [ ] 57. [M] Trocar a própria senha (o admin define a senha inicial do colega; o colega precisa poder trocá-la) — Fase 4, junto do item 24
+- [ ] 58. [M] Desativar psicólogo da equipe (hoje não há como remover quem saiu da clínica) — Fase 2, antes de haver pacientes reais
