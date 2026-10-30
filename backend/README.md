@@ -19,7 +19,7 @@ export DATABASE_URL=postgresql://notta_app:notta_app@localhost:5436/notta_psi
 export DATABASE_URL_OWNER=postgresql://notta_owner:notta_owner@localhost:5436/notta_psi
 export NOTTA_MASTER_KEY=<64 hex, ver "Chave mestra" abaixo>
 npm run db:generate
-npm run db:migrate              # sem migrations ainda: "No migration found"
+npm run db:migrate              # prisma migrate deploy, roda como notta_owner (DATABASE_URL_OWNER)
 npm run start:dev
 curl localhost:3000/saude       # {"status":"ok"}
 ```
@@ -27,9 +27,16 @@ curl localhost:3000/saude       # {"status":"ok"}
 ## Testes
 ```bash
 npm test                        # unitarios (sem banco)
-npm run test:e2e                # exige DATABASE_URL, falha alto sem ela
+npm run test:e2e                # exige DATABASE_URL e DATABASE_URL_OWNER, falha alto sem elas
 npm run lint && npm run format:check && npm run build
 ```
+
+## Isolamento por clinica (RLS)
+- Dois papeis: `notta_app` (runtime, `DATABASE_URL`, so SELECT/INSERT/UPDATE/DELETE, nao e dono) e `notta_owner` (dono das tabelas, `DATABASE_URL_OWNER`, so migrations).
+- Toda tabela de dado de clinica tem RLS ENABLE + FORCE e policy `tenant_isolation` por `app.current_clinica_id`. Sem contexto = zero linhas.
+- Acesso a dado de clinica so via `TenantPrismaService.run(clinicaId, tx => ...)` (unico lugar com `set_config`). Login usa `runLogin(email, tx => ...)` (policy `login_lookup`, so SELECT em Psicologo). Dentro de `fn`: sem I/O de rede e sem `run` aninhado.
+- Migration nova: escreva a mao (`npx prisma migrate diff --from-url "$DATABASE_URL_OWNER" --to-schema-datamodel prisma/schema.prisma --script`) e acrescente ENABLE/FORCE/policy. Migration de DADOS com FORCE precisa de laco por clinica com `set_config`.
+- Sem drift: `npx prisma migrate diff --from-url "$DATABASE_URL_OWNER" --to-schema-datamodel prisma/schema.prisma --exit-code` -> "No difference detected."
 
 ## Variaveis
 Ver `.env.example` (PORT, DATABASE_URL, DATABASE_URL_OWNER, NOTTA_TRUST_PROXY, NOTTA_MASTER_KEY, NOTTA_JWT_SECRET).

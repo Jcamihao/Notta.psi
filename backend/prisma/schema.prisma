@@ -21,3 +21,25 @@ enum Abordagem {
   HUMANISTA
   OUTRA
 }
+
+model Clinica {
+  id         String      @id @default(uuid())
+  nome       String
+  createdAt  DateTime    @default(now())
+  psicologos Psicologo[]
+}
+
+model Psicologo {
+  id              String    @id @default(uuid())
+  clinicaId       String
+  clinica         Clinica   @relation(fields: [clinicaId], references: [id])
+  nome            String
+  email           String    @unique
+  senhaHash       String
+  abordagemPadrao Abordagem
+  papel           Papel     @default(PSICOLOGO)
+  createdAt       DateTime  @default(now())
+
+  // Alvo das FKs compostas (x, clinicaId) das fases futuras.
+  @@unique([id, clinicaId])
+}
