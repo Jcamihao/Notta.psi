@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+graphify-out/
+.superpowers/
+coverage/
+.angular/
+*.log
