@@ -92,6 +92,8 @@ export class CadastroPage {
             );
           } else if (e.status === 409) {
             this.form.controls.email.setErrors({ emUso: true });
+            // markAsTouched: quem enviou com Enter no campo ainda nao saiu dele.
+            this.form.controls.email.markAsTouched();
             document.getElementById('cad-email')?.focus();
           } else {
             this.erroGeral.set(mensagemHttp(e));
