@@ -33,12 +33,19 @@ export class LimiteTentativasGuard extends ThrottlerGuard {
 // (O guard roda antes do ValidationPipe: conta tambem as requisicoes invalidas.)
 export const LimiteLogin = () =>
   applyDecorators(
-    SkipThrottle({ clinicas: true }),
+    SkipThrottle({ clinicas: true, equipe: true }),
     UseGuards(LimiteTentativasGuard),
   );
 
 export const LimiteCadastroClinica = () =>
   applyDecorators(
-    SkipThrottle({ 'login-ip': true, 'login-chave': true }),
+    SkipThrottle({ 'login-ip': true, 'login-chave': true, equipe: true }),
+    UseGuards(LimiteTentativasGuard),
+  );
+
+// Guard de rota: roda DEPOIS dos guards globais (JWT), entao `req.user` ja existe.
+export const LimiteEquipe = () =>
+  applyDecorators(
+    SkipThrottle({ 'login-ip': true, 'login-chave': true, clinicas: true }),
     UseGuards(LimiteTentativasGuard),
   );

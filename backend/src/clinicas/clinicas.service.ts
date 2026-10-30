@@ -1,13 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import {
-  ConflictException,
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-} from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Injectable, Logger } from '@nestjs/common';
 import bcrypt from 'bcryptjs';
 import { CUSTO_BCRYPT } from '../auth/auth.service';
+import { erroAoCriarPsicologo } from '../comum/novo-psicologo';
 import { normalizarEmail } from '../comum/validacao';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import type { CriarClinicaDto } from './clinicas.controller';
@@ -42,17 +37,7 @@ export class ClinicasService {
       });
       return { clinicaId, psicologoId: psicologo.id };
     } catch (e) {
-      if (
-        e instanceof Prisma.PrismaClientKnownRequestError &&
-        e.code === 'P2002'
-      ) {
-        throw new ConflictException('E-mail ja cadastrado');
-      }
-      // Erro do Prisma pode trazer os argumentos da query (hash, e-mail): loga so o tipo.
-      this.logger.error(
-        `falha ao criar clinica: ${e instanceof Prisma.PrismaClientKnownRequestError ? e.code : (e as Error).name}`,
-      );
-      throw new InternalServerErrorException();
+      throw erroAoCriarPsicologo(e, this.logger, 'clinica');
     }
   }
 }

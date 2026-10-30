@@ -50,8 +50,13 @@ Contrato completo: `.superpowers/sdd/fase-1/contrato.md`.
 - `GET /eu` (Bearer): dados do psicologo e da clinica.
 - `JwtAuthGuard` e GLOBAL: toda rota nova exige token. Rota publica precisa de `@Publico()` (hoje: `/saude`, `POST /clinicas`, `POST /auth/login`). O guard confere no banco que o psicologo ainda existe e le o papel fresco; use `@UsuarioAtual()` para pegar `{ psicologoId, clinicaId, papel }`.
 
+## Equipe da clinica (so ADMIN)
+- `POST /psicologos` (Bearer, ADMIN): `{ nome, email, senha, abordagemPadrao }` -> 201 `{ psicologoId }`. Mesmas regras do cadastro (e-mail normalizado e unico global = 409, senha 8..72 bytes, bcrypt 12). A clinica vem SO do token; o novo nasce `PSICOLOGO`. Campo extra (`clinicaId`, `papel`) = 400.
+- `GET /psicologos` (Bearer, ADMIN): equipe da clinica do token, por `criadoEm` crescente, sem `senhaHash`.
+- PSICOLOGO = 403 generico. Regra de acesso completa: `docs/ACESSO.md`.
+
 ## Limite de tentativas
-- Login: 5/min por IP + e-mail e 20/min por IP. Cadastro de clinica: 5/h por IP. Conta sucesso e falha (e requisicao invalida). 429 com `Retry-After` em segundos.
+- Login: 5/min por IP + e-mail e 20/min por IP. Cadastro de clinica: 5/h por IP. `POST /psicologos`: 20/h por psicologo do token (nao por IP). Conta sucesso e falha (e requisicao invalida). 429 com `Retry-After` em segundos.
 - Armazenamento EM MEMORIA: vale para UMA instancia. Com mais instancias, trocar por Redis. Reiniciar o backend zera os contadores.
 - Atras de proxy/load balancer: `NOTTA_TRUST_PROXY=<saltos>` para o IP real vir do `X-Forwarded-For`. Sem ela, o header e ignorado (todo mundo atras do proxy dividiria o mesmo limite).
 - Throttler novo: acrescentar no `SkipThrottle` de TODA rota com limite (`src/limite-tentativas/limite-tentativas.guard.ts`).

@@ -8,13 +8,14 @@ Decisao do dono (2026-10-30): **cada psicologo ve so os proprios pacientes e doc
 |---|---|---|---|
 | Cadastrar clinica (`POST /clinicas`), login, `/saude` | sim | sim | sim (rotas publicas) |
 | Ver os proprios dados (`GET /eu`) | sim | sim | nao (401) |
-| Gerenciar equipe (`/psicologos`, item 8) | sim | nao (403) | nao (401) |
+| Gerenciar equipe: criar e listar psicologos (`POST/GET /psicologos`, item 8) | sim | nao (403) | nao (401) |
 | Atender e ler os PROPRIOS pacientes/documentos (Fase 2) | sim | sim | nao (401) |
 | Ler paciente/documento de COLEGA | **nao** | **nao** | nao |
 
 - ADMIN = quem cadastrou a clinica. Ele gerencia a equipe e tambem atende como qualquer psicologo (clinica solo). O papel NAO abre prontuario alheio.
 - O papel e lido do banco a cada requisicao (nao vai no token): rebaixar alguem vale na hora.
 - 403 e sempre generico (`Forbidden resource`): nunca diz qual papel faltou.
+- A tabela `Psicologo` usa a policy `tenant_isolation` (por clinica), nao `psicologo_proprio`: o ADMIN lista nome, e-mail, papel e abordagem dos colegas (nunca `senhaHash`). Isso nao abre prontuario: paciente/documento seguem o padrao abaixo.
 
 ## Como proteger uma rota por papel
 
