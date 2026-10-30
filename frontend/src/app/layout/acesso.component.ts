@@ -22,8 +22,8 @@ import { Component } from '@angular/core';
           <div>
             <dt>Cada um vê o que é seu</dt>
             <dd>
-              Cada psicólogo acessa só os próprios pacientes. Quem administra a equipe não lê
-              prontuários.
+              Cada psicólogo acessa só os próprios pacientes. Nem quem administra a clínica lê
+              prontuários de colegas.
             </dd>
           </div>
           <div>
