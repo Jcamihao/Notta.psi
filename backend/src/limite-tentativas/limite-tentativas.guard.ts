@@ -11,6 +11,7 @@ import {
   type ThrottlerLimitDetail,
 } from '@nestjs/throttler';
 import type { Response } from 'express';
+import { THROTTLERS } from './limite-tentativas.module';
 
 // O throttler nomeado poe `Retry-After-<nome>`; o contrato pede `Retry-After` (segundos).
 // Corpo generico: nunca ecoa o e-mail.
@@ -28,24 +29,23 @@ export class LimiteTentativasGuard extends ThrottlerGuard {
   }
 }
 
-// Cada rota liga SO os seus throttlers e pula os demais.
-// Throttler novo em limite-tentativas.module.ts => acrescente ao SkipThrottle de TODA rota abaixo.
+// Cada rota liga SO os seus throttlers e pula todos os outros. A lista de pulados e derivada
+// de THROTTLERS: throttler novo no modulo ja e pulado nas rotas que nao o usam (nada a lembrar).
 // (O guard roda antes do ValidationPipe: conta tambem as requisicoes invalidas.)
-export const LimiteLogin = () =>
+const limite = (...ativos: string[]) =>
   applyDecorators(
-    SkipThrottle({ clinicas: true, equipe: true }),
+    SkipThrottle(
+      Object.fromEntries(
+        THROTTLERS.filter((t) => !ativos.includes(t.name)).map((t) => [
+          t.name,
+          true,
+        ]),
+      ),
+    ),
     UseGuards(LimiteTentativasGuard),
   );
 
-export const LimiteCadastroClinica = () =>
-  applyDecorators(
-    SkipThrottle({ 'login-ip': true, 'login-chave': true, equipe: true }),
-    UseGuards(LimiteTentativasGuard),
-  );
-
+export const LimiteLogin = () => limite('login-ip', 'login-chave');
+export const LimiteCadastroClinica = () => limite('clinicas');
 // Guard de rota: roda DEPOIS dos guards globais (JWT), entao `req.user` ja existe.
-export const LimiteEquipe = () =>
-  applyDecorators(
-    SkipThrottle({ 'login-ip': true, 'login-chave': true, clinicas: true }),
-    UseGuards(LimiteTentativasGuard),
-  );
+export const LimiteEquipe = () => limite('equipe');
