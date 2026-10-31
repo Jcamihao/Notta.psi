@@ -73,9 +73,17 @@ beforeAll(async () => {
   a = await novaClinica(email('admin-a'));
   b = await novaClinica(email('admin-b'));
   const res = await post(a.token, corpoPsi(email('psi-a'))).expect(201);
+  // Senha provisoria (item 62): sem a troca, toda rota alem de /eu daria 403
+  // "Troca de senha obrigatoria" e o teste de papel nao provaria nada.
+  const provisorio = await login(email('psi-a'));
+  const troca = await request(app.getHttpServer())
+    .post('/auth/trocar-senha')
+    .set('Authorization', `Bearer ${provisorio}`)
+    .send({ senhaAtual: SENHA, novaSenha: 'senha-definitiva-1' })
+    .expect(200);
   psiA = {
     id: (res.body as { psicologoId: string }).psicologoId,
-    token: await login(email('psi-a')),
+    token: (troca.body as { token: string }).token,
   };
 });
 
@@ -116,6 +124,7 @@ describe('POST /psicologos', () => {
     expect(eu.body).toMatchObject({
       psicologoId,
       papel: 'PSICOLOGO',
+      senhaProvisoria: true,
       clinica: { id: a.clinicaId },
     });
   });

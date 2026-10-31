@@ -74,3 +74,4 @@ export const LimiteLogin = () => limite('login-ip', 'login-chave');
 export const LimiteCadastroClinica = () => limite('clinicas');
 // Guard de rota: roda DEPOIS dos guards globais (JWT), entao `req.user` ja existe.
 export const LimiteEquipe = () => limite('equipe');
+export const LimiteTrocarSenha = () => limite('trocar-senha');

@@ -77,7 +77,7 @@ afterAll(async () => {
 afterEach(() => jest.restoreAllMocks());
 
 describe('POST /auth/login', () => {
-  it('200 com JWT HS256, exp - iat = 8 h, claims sub e clinicaId', async () => {
+  it('200 com JWT HS256, exp - iat = 8 h, claims sub, clinicaId e tv', async () => {
     const res = await login(a.email).expect(200);
     expect(Object.keys(res.body as object)).toEqual(['token']);
     const [h, p] = (res.body as { token: string }).token.split('.');
@@ -85,6 +85,7 @@ describe('POST /auth/login', () => {
     const payload = decodificar(p);
     expect(payload.sub).toBe(a.psicologoId);
     expect(payload.clinicaId).toBe(a.clinicaId);
+    expect(payload.tv).toBe(0);
     expect((payload.exp as number) - (payload.iat as number)).toBe(28800);
     expect(payload.papel).toBeUndefined();
   });
@@ -131,6 +132,7 @@ describe('GET /eu e JwtAuthGuard', () => {
       email: a.email,
       papel: 'ADMIN',
       abordagemPadrao: 'ACT',
+      senhaProvisoria: false,
       clinica: { id: a.clinicaId, nome: 'Clinica A' },
     });
   });
@@ -140,7 +142,7 @@ describe('GET /eu e JwtAuthGuard', () => {
     const jwt = new JwtService({ secret: segredo });
     const outro = new JwtService({ secret: 'outro-segredo-'.repeat(4) });
     const agora = Math.floor(Date.now() / 1000);
-    const claims = { sub: a.psicologoId, clinicaId: a.clinicaId };
+    const claims = { sub: a.psicologoId, clinicaId: a.clinicaId, tv: 0 };
     const b64 = (o: object) =>
       Buffer.from(JSON.stringify(o)).toString('base64url');
 
@@ -164,6 +166,17 @@ describe('GET /eu e JwtAuthGuard', () => {
         ),
       ],
       ['sem exp', jwt.sign(claims, { algorithm: 'HS256' })],
+      [
+        'sem tv',
+        jwt.sign(
+          { sub: a.psicologoId, clinicaId: a.clinicaId },
+          { algorithm: 'HS256', expiresIn: '1h' },
+        ),
+      ],
+      [
+        'tv desatualizado',
+        jwt.sign({ ...claims, tv: 1 }, { algorithm: 'HS256', expiresIn: '1h' }),
+      ],
       [
         'clinicaId de outra clinica com sub valido',
         jwt.sign(

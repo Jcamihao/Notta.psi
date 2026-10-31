@@ -2,6 +2,7 @@ import {
   CanActivate,
   createParamDecorator,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   ServiceUnavailableException,
   SetMetadata,
@@ -18,6 +19,7 @@ export type UsuarioAutenticado = {
   psicologoId: string;
   clinicaId: string;
   papel: Papel;
+  senhaProvisoria: boolean;
 };
 
 type Req = {
@@ -28,6 +30,13 @@ type Req = {
 // Guard GLOBAL (APP_GUARD): toda rota exige JWT, salvo as marcadas com @Publico().
 const PUBLICO = 'publico';
 export const Publico = () => SetMetadata(PUBLICO, true);
+
+// Senha provisoria (criada pelo ADMIN, item 62): o guard responde 403 "Troca de senha
+// obrigatoria" em TODA rota autenticada, salvo as marcadas com @PermiteSenhaProvisoria()
+// (hoje GET /eu e POST /auth/trocar-senha). Rota nova nasce bloqueada (falha fechada).
+const PERMITE_SENHA_PROVISORIA = 'permiteSenhaProvisoria';
+export const PermiteSenhaProvisoria = () =>
+  SetMetadata(PERMITE_SENHA_PROVISORIA, true);
 
 const uuid = (v: unknown): v is string => isUUID(v);
 
@@ -45,11 +54,12 @@ export class JwtAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
-    const publico = this.reflector.getAllAndOverride<boolean>(PUBLICO, [
-      ctx.getHandler(),
-      ctx.getClass(),
-    ]);
-    if (publico) return true;
+    const marcado = (chave: string) =>
+      this.reflector.getAllAndOverride<boolean>(chave, [
+        ctx.getHandler(),
+        ctx.getClass(),
+      ]);
+    if (marcado(PUBLICO)) return true;
     const req = ctx.switchToHttp().getRequest<Req>();
     // 401 SO para token/payload invalido ou psicologo inexistente (autenticar devolve null).
     // Erro de banco/pool NAO e culpa do token: 503, senao o front desloga todo mundo sob carga.
@@ -61,6 +71,9 @@ export class JwtAuthGuard implements CanActivate {
       });
     });
     if (!user) throw new UnauthorizedException();
+    if (user.senhaProvisoria && !marcado(PERMITE_SENHA_PROVISORIA)) {
+      throw new ForbiddenException('Troca de senha obrigatoria');
+    }
     req.user = user;
     return true;
   }
@@ -75,18 +88,24 @@ export class JwtAuthGuard implements CanActivate {
       .verifyAsync<Record<string, unknown>>(token)
       .catch(() => null);
     if (!p) return null;
-    const { sub, clinicaId } = p;
+    const { sub, clinicaId, tv } = p;
     if (typeof p.exp !== 'number' || !uuid(sub) || !uuid(clinicaId)) {
       return null;
     }
-    // Psicologo ainda existe? Papel fresco. Filtro por clinicaId no codigo E RLS.
+    // Psicologo ainda existe? Papel e senhaProvisoria frescos. Filtro por clinicaId no codigo E RLS.
     const psicologo = await this.tenant.run(clinicaId, (tx) =>
       tx.psicologo.findFirst({
         where: { id: sub, clinicaId },
-        select: { papel: true },
+        select: { papel: true, senhaProvisoria: true, tokenVersao: true },
       }),
     );
-    if (!psicologo) return null;
-    return { psicologoId: sub, clinicaId, papel: psicologo.papel };
+    // tv diferente (ou ausente/nao numero) = token emitido antes da ultima troca de senha.
+    if (!psicologo || psicologo.tokenVersao !== tv) return null;
+    return {
+      psicologoId: sub,
+      clinicaId,
+      papel: psicologo.papel,
+      senhaProvisoria: psicologo.senhaProvisoria,
+    };
   }
 }

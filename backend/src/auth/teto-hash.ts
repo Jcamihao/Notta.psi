@@ -10,7 +10,7 @@ import type { Response } from 'express';
 import { finalize } from 'rxjs';
 
 // Teto GLOBAL de rotas com bcrypt em andamento (login, cadastro de clinica, criacao de
-// psicologo; a futura troca de senha tambem usa @TetoHash()). O bcrypt nativo roda no
+// psicologo, troca de senha). O bcrypt nativo roda no
 // threadpool do libuv (4 threads): sem teto, uma rajada enfileira centenas de hashes e
 // tudo que usa o threadpool espera. Acima do teto responde 503 na hora (sem fila).
 // Contador do processo: 1 instancia (como o limite em memoria).

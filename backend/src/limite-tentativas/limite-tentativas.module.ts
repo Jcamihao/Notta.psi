@@ -10,7 +10,8 @@ const PREFIXO_IPV6 = 64;
 
 // Armazenamento EM MEMORIA (padrao do throttler): vale para 1 instancia do backend.
 // Com mais de uma instancia, trocar por storage Redis. IP real atras de proxy: NOTTA_TRUST_PROXY.
-// Os throttlers sao ligados por rota (LimiteLogin / LimiteCadastroClinica / LimiteEquipe), nao globais.
+// Os throttlers sao ligados por rota (LimiteLogin / LimiteCadastroClinica / LimiteEquipe /
+// LimiteTrocarSenha), nao globais.
 // Excecao: `api`, aplicado pelo LimiteApiGuard GLOBAL a toda rota autenticada (as rotas com
 // limite proprio o pulam no guard de rota, entao ele nunca conta 2x).
 export const THROTTLERS = [
@@ -31,6 +32,14 @@ export const THROTTLERS = [
     // Chave = psicologo do token (nao IP). Sem `?.` de proposito: rota publica que
     // nao pulada no SkipThrottle quebra alto (500) em vez de dividir
     // um contador unico entre todo mundo.
+    getTracker: (req: Record<string, any>) =>
+      (req.user as { psicologoId: string }).psicologoId,
+  },
+  // Troca da propria senha (bcrypt compare + hash): por psicologo do token, como `equipe`.
+  {
+    name: 'trocar-senha',
+    ttl: 60 * MINUTO,
+    limit: 10,
     getTracker: (req: Record<string, any>) =>
       (req.user as { psicologoId: string }).psicologoId,
   },

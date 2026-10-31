@@ -13,6 +13,7 @@ const user = {
   psicologoId: randomUUID(),
   clinicaId: randomUUID(),
   papel: 'ADMIN' as const,
+  senhaProvisoria: false,
 };
 
 function montar() {
@@ -87,7 +88,7 @@ describe('EquipeService.listar', () => {
 });
 
 describe('EquipeService.criar', () => {
-  it('cria na clinica do usuario, papel PSICOLOGO, e-mail normalizado, hash bcrypt custo 12', async () => {
+  it('cria na clinica do usuario, papel PSICOLOGO, senha provisoria, e-mail normalizado, hash bcrypt custo 12', async () => {
     const { tx, tenant, service } = montar();
     await expect(service.criar(user, dto)).resolves.toEqual({
       psicologoId: 'novo-id',
@@ -100,6 +101,7 @@ describe('EquipeService.criar', () => {
       email: 'novo@clinica.com',
       abordagemPadrao: 'TCC',
       papel: 'PSICOLOGO',
+      senhaProvisoria: true,
     });
     expect(data.senhaHash).toMatch(/^\$2[aby]\$12\$/);
     expect(select).toEqual({ id: true });

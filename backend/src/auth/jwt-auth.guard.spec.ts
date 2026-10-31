@@ -1,20 +1,41 @@
 import { randomUUID } from 'node:crypto';
 import {
   ExecutionContext,
+  ForbiddenException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
-import { JwtAuthGuard } from './jwt-auth.guard';
+import {
+  JwtAuthGuard,
+  PermiteSenhaProvisoria,
+  Publico,
+} from './jwt-auth.guard';
 import { opcoesJwt } from './jwt.config';
 
 // Banco FALSO sem RLS: prova a camada do codigo sozinha (filtro por clinicaId no where).
 const A = randomUUID();
 const B = randomUUID();
 const psicologoA = randomUUID();
-const linhas = [{ id: psicologoA, clinicaId: A, papel: 'PSICOLOGO' }];
+const psicologoProvisorio = randomUUID();
+const linhas = [
+  {
+    id: psicologoA,
+    clinicaId: A,
+    papel: 'PSICOLOGO',
+    senhaProvisoria: false,
+    tokenVersao: 3,
+  },
+  {
+    id: psicologoProvisorio,
+    clinicaId: A,
+    papel: 'PSICOLOGO',
+    senhaProvisoria: true,
+    tokenVersao: 0,
+  },
+];
 
 const tenant = {
   run: (clinicaId: string, fn: (tx: unknown) => Promise<unknown>) =>
@@ -37,15 +58,27 @@ const jwt = new JwtService(
 );
 const guard = new JwtAuthGuard(new Reflector(), jwt, tenant);
 
-function contexto(token: string) {
+// Handlers e classe falsos com os metadados que o Reflector le.
+const rotaComum = () => {};
+const rotaLiberada = () => {};
+PermiteSenhaProvisoria()(rotaLiberada);
+const rotaPublica = () => {};
+Publico()(rotaPublica);
+class Comum {}
+
+function contexto(
+  token: string,
+  handler: () => void = rotaComum,
+  classe: object = Comum,
+) {
   const req: { headers: Record<string, string>; user?: unknown } = {
     headers: { authorization: `Bearer ${token}` },
   };
   const headers: Record<string, string> = {};
   const res = { header: (k: string, v: string) => (headers[k] = v) };
   const ctx = {
-    getHandler: () => contexto,
-    getClass: () => JwtAuthGuard,
+    getHandler: () => handler,
+    getClass: () => classe,
     switchToHttp: () => ({ getRequest: () => req, getResponse: () => res }),
   } as unknown as ExecutionContext;
   return { ctx, req, headers };
@@ -54,24 +87,84 @@ function contexto(token: string) {
 describe('JwtAuthGuard (camada do codigo)', () => {
   it('token valido: request.user com papel lido do banco', async () => {
     const { ctx, req } = contexto(
-      await jwt.signAsync({ sub: psicologoA, clinicaId: A }),
+      await jwt.signAsync({ sub: psicologoA, clinicaId: A, tv: 3 }),
     );
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
     expect(req.user).toEqual({
       psicologoId: psicologoA,
       clinicaId: A,
       papel: 'PSICOLOGO',
+      senhaProvisoria: false,
     });
   });
 
-  it('sub valido com clinicaId de outra clinica: 401 mesmo sem RLS', async () => {
+  it.each([
+    ['tv desatualizado', { tv: 2 }],
+    ['tv do futuro', { tv: 4 }],
+    ['sem tv', {}],
+    ['tv texto', { tv: '3' }],
+  ])('%s: 401', async (_n, extra) => {
     const { ctx, req } = contexto(
-      await jwt.signAsync({ sub: psicologoA, clinicaId: B }),
+      await jwt.signAsync({ sub: psicologoA, clinicaId: A, ...extra }),
     );
     await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
     expect(req.user).toBeUndefined();
+  });
+
+  it('sub valido com clinicaId de outra clinica: 401 mesmo sem RLS', async () => {
+    const { ctx, req } = contexto(
+      await jwt.signAsync({ sub: psicologoA, clinicaId: B, tv: 3 }),
+    );
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(req.user).toBeUndefined();
+  });
+});
+
+describe('JwtAuthGuard: senha provisoria', () => {
+  const token = () =>
+    jwt.signAsync({ sub: psicologoProvisorio, clinicaId: A, tv: 0 });
+
+  it('rota comum: 403 "Troca de senha obrigatoria" (corpo do contrato)', async () => {
+    const { ctx } = contexto(await token());
+    const erro = await guard.canActivate(ctx).catch((e: unknown) => e);
+    expect(erro).toBeInstanceOf(ForbiddenException);
+    expect((erro as ForbiddenException).getResponse()).toEqual({
+      statusCode: 403,
+      message: 'Troca de senha obrigatoria',
+      error: 'Forbidden',
+    });
+  });
+
+  it('rota com @PermiteSenhaProvisoria(): passa, request.user com senhaProvisoria true', async () => {
+    const { ctx, req } = contexto(await token(), rotaLiberada);
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(req.user).toMatchObject({
+      psicologoId: psicologoProvisorio,
+      senhaProvisoria: true,
+    });
+  });
+
+  it('@PermiteSenhaProvisoria() na classe vale para os metodos', async () => {
+    @PermiteSenhaProvisoria()
+    class Toda {}
+    const { ctx } = contexto(await token(), rotaComum, Toda);
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+  });
+
+  it('senha definitiva: rota comum passa', async () => {
+    const { ctx } = contexto(
+      await jwt.signAsync({ sub: psicologoA, clinicaId: A, tv: 3 }),
+    );
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+  });
+
+  it('@Publico(): passa sem token nem banco', async () => {
+    const { ctx } = contexto('', rotaPublica);
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
   });
 });
 
@@ -83,7 +176,7 @@ describe('JwtAuthGuard: 401 x 503', () => {
 
   it('erro de infraestrutura com token valido: 503 fixo + Retry-After 2', async () => {
     const { ctx, req, headers } = contexto(
-      await jwt.signAsync({ sub: psicologoA, clinicaId: A }),
+      await jwt.signAsync({ sub: psicologoA, clinicaId: A, tv: 3 }),
     );
     const erro = await quebrado.canActivate(ctx).catch((e: unknown) => e);
     expect(erro).toBeInstanceOf(ServiceUnavailableException);

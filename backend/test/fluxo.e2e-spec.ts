@@ -32,6 +32,7 @@ it('fluxo: cadastro -> login -> /eu', async () => {
       email,
       papel: 'ADMIN',
       abordagemPadrao: 'TCC',
+      senhaProvisoria: false,
       clinica: { id: clinicaId, nome: 'Clinica Fluxo' },
     });
     expect(eu.headers['x-content-type-options']).toBe('nosniff');

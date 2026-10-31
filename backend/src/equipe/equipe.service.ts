@@ -29,6 +29,9 @@ export class EquipeService {
             senhaHash,
             abordagemPadrao: dto.abordagemPadrao,
             papel: 'PSICOLOGO',
+            // Senha definida pelo ADMIN: o colega e obrigado a trocar no 1o acesso (item 62),
+            // assim o ADMIN nao fica com acesso a conta (e ao prontuario) dele.
+            senhaProvisoria: true,
           },
           select: { id: true },
         }),
