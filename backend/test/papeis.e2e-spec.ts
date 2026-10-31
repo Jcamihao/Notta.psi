@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import request from 'supertest';
 import { Papeis } from '../src/auth/papeis';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
+import { mudarPapelComoOwner } from './acesso-owner';
 import {
   apagarClinicas,
   corpoClinica,
@@ -115,13 +116,13 @@ describe("@Papeis('ADMIN') com JWT real", () => {
 
   it('papel lido do banco a cada requisicao: rebaixar o admin corta na hora', async () => {
     const tenant = app.get(TenantPrismaService);
+    const { id } = await tenant.run(clinicaId, (tx) =>
+      tx.psicologo.findFirstOrThrow({
+        where: { email: emailAdmin, clinicaId },
+      }),
+    );
     const mudar = (papel: 'ADMIN' | 'PSICOLOGO') =>
-      tenant.run(clinicaId, (tx) =>
-        tx.psicologo.updateMany({
-          where: { email: emailAdmin, clinicaId },
-          data: { papel },
-        }),
-      );
+      mudarPapelComoOwner(clinicaId, id, papel);
     await mudar('PSICOLOGO');
     try {
       await get('admin', tokenAdmin).expect(403);

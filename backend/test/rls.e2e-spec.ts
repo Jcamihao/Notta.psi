@@ -118,12 +118,28 @@ describe('RLS por clinica', () => {
   });
 
   it('WITH CHECK: mover Psicologo de A para B sob contexto A falha', async () => {
+    // App: clinicaId e coluna imutavel para o notta_app.
     await expect(
       tenant.run(A, (tx) =>
         tx.psicologo.updateMany({
           where: { email: emailA },
           data: { clinicaId: B },
         }),
+      ),
+    ).rejects.toThrow(/permission denied/);
+    // Owner tem a coluna, mas a policy de UPDATE barra a linha nova, mesmo a propria.
+    const { id } = await tenant.run(A, (tx) =>
+      tx.psicologo.findFirstOrThrow({ where: { email: emailA } }),
+    );
+    const comoOwner = new TenantPrismaService(
+      owner as unknown as PrismaService,
+    );
+    await expect(
+      comoOwner.run(
+        A,
+        (tx) =>
+          tx.psicologo.updateMany({ where: { id }, data: { clinicaId: B } }),
+        { psicologoId: id },
       ),
     ).rejects.toThrow(/row-level security/);
   });

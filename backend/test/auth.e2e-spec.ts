@@ -5,6 +5,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import bcrypt from 'bcrypt';
 import request from 'supertest';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
+import { mudarPapelComoOwner } from './acesso-owner';
 import {
   apagarClinicas,
   corpoClinica,
@@ -217,12 +218,7 @@ describe('GET /eu e JwtAuthGuard', () => {
     expect((await eu(token).expect(200)).body).toMatchObject({
       papel: 'ADMIN',
     });
-    await tenant.run(c.clinicaId, (tx) =>
-      tx.psicologo.updateMany({
-        where: { id: c.psicologoId, clinicaId: c.clinicaId },
-        data: { papel: 'PSICOLOGO' },
-      }),
-    );
+    await mudarPapelComoOwner(c.clinicaId, c.psicologoId, 'PSICOLOGO');
     expect((await eu(token).expect(200)).body).toMatchObject({
       papel: 'PSICOLOGO',
     });
