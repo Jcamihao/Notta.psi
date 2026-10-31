@@ -25,7 +25,8 @@ module.exports = tseslint.config(
       '@angular-eslint/component-selector': [
         'error',
         {
-          type: 'element',
+          // attribute: componentes de UI montados sobre o elemento nativo (button[app-button]).
+          type: ['element', 'attribute'],
           prefix: 'app',
           style: 'kebab-case',
         },
