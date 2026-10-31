@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
+import { BancoIndisponivelFilter } from './prisma/banco-indisponivel.filter';
 
 // A API e so JSON: sem os parsers padrao do Nest (json + urlencoded). main.ts e TODO teste que
 // cria o app passam isto, e configurarApp registra so o json.
@@ -46,6 +47,7 @@ export function configurarApp(app: NestExpressApplication): void {
       transform: true,
     }),
   );
+  app.useGlobalFilters(new BancoIndisponivelFilter(app.getHttpAdapter()));
   app.disable('x-powered-by');
   app.use(helmet());
   // So JSON, ate 256 kb (acima = 413), profundidade ate 32.

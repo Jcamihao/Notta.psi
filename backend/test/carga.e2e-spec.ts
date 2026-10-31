@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { JwtService } from '@nestjs/jwt';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { Prisma } from '@prisma/client';
 import request from 'supertest';
+import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import {
   apagarClinicas,
   corpoClinica,
@@ -73,7 +75,7 @@ describe('banco/pool fora: 503, nunca 401', () => {
   it('token valido -> 503 corpo fixo + Retry-After 2, sem detalhe do erro', async () => {
     const token = await app
       .get(JwtService)
-      .signAsync({ sub: randomUUID(), clinicaId: randomUUID() });
+      .signAsync({ sub: randomUUID(), clinicaId: randomUUID(), tv: 0 });
     const res = await request(app.getHttpServer())
       .get('/eu')
       .set('Authorization', `Bearer ${token}`)
@@ -214,4 +216,70 @@ describe('CPU do login: bcrypt nativo + teto de hashes', () => {
       await app.close();
     }
   });
+});
+
+// Pool/transacao esgotados DENTRO do handler (o guard ja passou): filtro global -> 503.
+describe('P2028/P2024 no handler: 503, sem detalhe e sem log', () => {
+  it.each(['P2028', 'P2024'])(
+    '%s -> 503 fixo + Retry-After 2',
+    async (code) => {
+      const linhas: string[] = [];
+      const guardar = (...args: unknown[]) => {
+        linhas.push(args.map((x) => String(x)).join(' '));
+      };
+      const app = await criarApp({
+        logger: {
+          log: guardar,
+          error: guardar,
+          warn: guardar,
+          debug: guardar,
+          verbose: guardar,
+          fatal: guardar,
+        },
+      });
+      try {
+        const tenant = app.get(TenantPrismaService);
+        const run = tenant.run.bind(tenant);
+        jest
+          .spyOn(tenant, 'run')
+          .mockImplementationOnce(run) // guard
+          .mockRejectedValueOnce(
+            new Prisma.PrismaClientKnownRequestError(
+              `detalhe-secreto ${code}`,
+              {
+                code,
+                clientVersion: 'x',
+              },
+            ),
+          );
+        const res = await request(app.getHttpServer())
+          .get('/eu')
+          .set('Authorization', `Bearer ${tokens[0]}`)
+          .expect(503);
+        expect(res.body).toEqual({
+          statusCode: 503,
+          message: 'Servico indisponivel',
+        });
+        expect(res.headers['retry-after']).toBe('2');
+        expect(linhas.join('\n')).not.toMatch(/detalhe-secreto|stack|at /);
+        // controle: outro erro do Prisma segue 500 (filtro nao engole tudo)
+        jest
+          .spyOn(tenant, 'run')
+          .mockImplementationOnce(run)
+          .mockRejectedValueOnce(
+            new Prisma.PrismaClientKnownRequestError('x', {
+              code: 'P2002',
+              clientVersion: 'x',
+            }),
+          );
+        await request(app.getHttpServer())
+          .get('/eu')
+          .set('Authorization', `Bearer ${tokens[0]}`)
+          .expect(500);
+      } finally {
+        jest.restoreAllMocks();
+        await app.close();
+      }
+    },
+  );
 });
