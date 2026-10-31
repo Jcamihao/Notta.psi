@@ -71,3 +71,6 @@ Contrato completo: `.superpowers/sdd/fase-1/contrato.md`.
 - O conteudo clinico e cifrado com AES-256-GCM usando uma chave por clinica derivada dela (HKDF-SHA256).
 - **Perder a chave = todo conteudo cifrado ilegivel para sempre.** Guarde backup fora do banco (cofre de senhas/secret manager), nunca no repo.
 - Trocar a chave sem rotacao (feature futura) tambem deixa o conteudo antigo ilegivel.
+- O boot recusa chave com todos os bytes iguais (inclui os 64 zeros do exemplo antigo).
+- AAD obrigatorio: `cifrar(clinicaId, texto, aad)` e `decifrar(clinicaId, valor, aad)` com `aad = aadDe(tabela, coluna, id, psicologoId)` (`tabela|coluna|id|psicologoId`). O GCM autentica `v1.k1|<aad>`: cifrado copiado para outra linha, coluna ou dono falha com `falha ao decifrar`. Gravar com o id final da linha (gere o uuid antes do INSERT).
+- Vetores independentes (Python) no `criptografia.service.spec.ts`: HKDF (chave por clinica) e um cifrado AES-GCM com AAD.

@@ -1,9 +1,12 @@
 import {
+  aadDe,
   CriptografiaService,
   derivarChaveClinica,
 } from './criptografia.service';
 
-const MASTER = 'ab'.repeat(32);
+const MASTER = '0123456789abcdef'.repeat(4);
+// AAD canonico de uma linha qualquer (tabela|coluna|id|psicologoId).
+const AAD = aadDe('Documento', 'texto', 'doc-1', 'psi-1');
 const FORMATO = /^v1\.k1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]*$/;
 
 // null = variavel ausente.
@@ -38,20 +41,22 @@ describe('CriptografiaService', () => {
       ['vazio', ''],
     ])('%s', (_, texto) => {
       const c = servico();
-      expect(c.decifrar('cli-a', c.cifrar('cli-a', texto))).toBe(texto);
+      expect(c.decifrar('cli-a', c.cifrar('cli-a', texto, AAD), AAD)).toBe(
+        texto,
+      );
     });
 
     it('outra instancia com a mesma chave mestra decifra', () => {
-      const v = servico().cifrar('cli-a', 'abc');
-      expect(servico().decifrar('cli-a', v)).toBe('abc');
+      const v = servico().cifrar('cli-a', 'abc', AAD);
+      expect(servico().decifrar('cli-a', v, AAD)).toBe('abc');
     });
   });
 
   describe('formato', () => {
     it('bate o regex, iv tem 16 chars e duas cifragens diferem', () => {
       const c = servico();
-      const a = c.cifrar('cli-a', 'mesmo texto');
-      const b = c.cifrar('cli-a', 'mesmo texto');
+      const a = c.cifrar('cli-a', 'mesmo texto', AAD);
+      const b = c.cifrar('cli-a', 'mesmo texto', AAD);
       expect(a).toMatch(FORMATO);
       expect(b).toMatch(FORMATO);
       expect(a.split('.')[2]).toHaveLength(16);
@@ -60,12 +65,12 @@ describe('CriptografiaService', () => {
     });
 
     it('texto vazio gera ct vazio no formato', () => {
-      expect(servico().cifrar('cli-a', '')).toMatch(FORMATO);
+      expect(servico().cifrar('cli-a', '', AAD)).toMatch(FORMATO);
     });
 
     it('nao contem o texto claro (UTF-8 nem base64)', () => {
       const texto = 'segredo clinico do paciente fulano';
-      const v = servico().cifrar('cli-a', texto);
+      const v = servico().cifrar('cli-a', texto, AAD);
       const buf = Buffer.from(texto, 'utf8');
       expect(v).not.toContain(texto);
       expect(v).not.toContain('segredo');
@@ -80,7 +85,7 @@ describe('CriptografiaService', () => {
     let v: string;
     beforeEach(() => {
       c = servico();
-      v = c.cifrar('cli-a', texto);
+      v = c.cifrar('cli-a', texto, AAD);
     });
 
     function falhaSemVazar(fn: () => unknown) {
@@ -99,12 +104,12 @@ describe('CriptografiaService', () => {
     }
 
     it('chave de outra clinica', () => {
-      falhaSemVazar(() => c.decifrar('cli-b', v));
+      falhaSemVazar(() => c.decifrar('cli-b', v, AAD));
     });
 
     it('outra chave mestra', () => {
-      const outra = servico('cd'.repeat(32));
-      falhaSemVazar(() => outra.decifrar('cli-a', v));
+      const outra = servico('fedcba9876543210'.repeat(4));
+      falhaSemVazar(() => outra.decifrar('cli-a', v, AAD));
     });
 
     it.each([
@@ -118,7 +123,11 @@ describe('CriptografiaService', () => {
     ])('adulterar %s', (_, parte, pos) => {
       const p = v.split('.')[parte];
       falhaSemVazar(() =>
-        c.decifrar('cli-a', adulterar(v, parte, pos < 0 ? p.length - 1 : pos)),
+        c.decifrar(
+          'cli-a',
+          adulterar(v, parte, pos < 0 ? p.length - 1 : pos),
+          AAD,
+        ),
       );
     });
 
@@ -134,53 +143,123 @@ describe('CriptografiaService', () => {
         Buffer.from(tag, 'base64url'),
       );
       partes[3] = trocado;
-      falhaSemVazar(() => c.decifrar('cli-a', partes.join('.')));
+      falhaSemVazar(() => c.decifrar('cli-a', partes.join('.'), AAD));
     });
 
     it('caractere invalido de base64url numa parte', () => {
       const partes = v.split('.');
       partes[2] = partes[2].slice(0, 15) + '!';
-      falhaSemVazar(() => c.decifrar('cli-a', partes.join('.')));
+      falhaSemVazar(() => c.decifrar('cli-a', partes.join('.'), AAD));
     });
 
     it('versao v2', () => {
-      falhaSemVazar(() => c.decifrar('cli-a', v.replace(/^v1/, 'v2')));
+      falhaSemVazar(() => c.decifrar('cli-a', v.replace(/^v1/, 'v2'), AAD));
     });
 
     it('kid k9', () => {
-      falhaSemVazar(() => c.decifrar('cli-a', v.replace('.k1.', '.k9.')));
+      falhaSemVazar(() => c.decifrar('cli-a', v.replace('.k1.', '.k9.'), AAD));
     });
 
     it('partes faltando e sobrando', () => {
       const partes = v.split('.');
-      falhaSemVazar(() => c.decifrar('cli-a', partes.slice(0, 4).join('.')));
-      falhaSemVazar(() => c.decifrar('cli-a', `${v}.AAAA`));
+      falhaSemVazar(() =>
+        c.decifrar('cli-a', partes.slice(0, 4).join('.'), AAD),
+      );
+      falhaSemVazar(() => c.decifrar('cli-a', `${v}.AAAA`, AAD));
     });
 
     it('iv e tag com tamanho errado', () => {
       const partes = v.split('.');
       const ivCurto = [...partes];
       ivCurto[2] = partes[2].slice(0, 12);
-      falhaSemVazar(() => c.decifrar('cli-a', ivCurto.join('.')));
+      falhaSemVazar(() => c.decifrar('cli-a', ivCurto.join('.'), AAD));
       const tagCurta = [...partes];
       tagCurta[3] = partes[3].slice(0, 16);
-      falhaSemVazar(() => c.decifrar('cli-a', tagCurta.join('.')));
+      falhaSemVazar(() => c.decifrar('cli-a', tagCurta.join('.'), AAD));
     });
 
     it('string aleatoria, vazia e nao-string', () => {
-      falhaSemVazar(() => c.decifrar('cli-a', 'qualquer coisa'));
-      falhaSemVazar(() => c.decifrar('cli-a', ''));
-      falhaSemVazar(() => c.decifrar('cli-a', 'v1.k1....'));
-      falhaSemVazar(() => c.decifrar('cli-a', null as unknown as string));
+      falhaSemVazar(() => c.decifrar('cli-a', 'qualquer coisa', AAD));
+      falhaSemVazar(() => c.decifrar('cli-a', '', AAD));
+      falhaSemVazar(() => c.decifrar('cli-a', 'v1.k1....', AAD));
+      falhaSemVazar(() => c.decifrar('cli-a', null as unknown as string, AAD));
+    });
+  });
+
+  describe('AAD (amarra o cifrado a tabela, coluna, linha e dono)', () => {
+    const texto = 'nota da sessao';
+    let c: CriptografiaService;
+    let v: string;
+    beforeEach(() => {
+      c = servico();
+      v = c.cifrar('cli-a', texto, AAD);
+    });
+
+    function falhaGenerica(fn: () => unknown) {
+      expect(fn).toThrow(new Error('falha ao decifrar'));
+    }
+
+    it('roundtrip com o mesmo AAD', () => {
+      expect(
+        c.decifrar('cli-a', v, aadDe('Documento', 'texto', 'doc-1', 'psi-1')),
+      ).toBe(texto);
+    });
+
+    it.each([
+      ['outra linha', aadDe('Documento', 'texto', 'doc-2', 'psi-1')],
+      ['outra coluna', aadDe('Documento', 'resumo', 'doc-1', 'psi-1')],
+      ['outra tabela', aadDe('Sessao', 'texto', 'doc-1', 'psi-1')],
+      ['outro psicologo', aadDe('Documento', 'texto', 'doc-1', 'psi-2')],
+      ['sem psicologo', aadDe('Documento', 'texto', 'doc-1')],
+    ])('AAD diferente (%s) falha com o erro generico', (_, outro) => {
+      falhaGenerica(() => c.decifrar('cli-a', v, outro));
+    });
+
+    it('cifrado copiado de uma linha para outra nao decifra', () => {
+      const linha1 = aadDe('Documento', 'texto', 'doc-1', 'psi-1');
+      const linha2 = aadDe('Documento', 'texto', 'doc-2', 'psi-1');
+      const daLinha1 = c.cifrar('cli-a', 'conteudo da linha 1', linha1);
+      expect(c.decifrar('cli-a', daLinha1, linha1)).toBe('conteudo da linha 1');
+      falhaGenerica(() => c.decifrar('cli-a', daLinha1, linha2));
+    });
+
+    it.each(['', undefined, null, 42])(
+      'AAD vazio ou ausente (%p) lanca no cifrar e no decifrar',
+      (aad) => {
+        expect(() => c.cifrar('cli-a', 'x', aad as string)).toThrow(
+          'aad invalido',
+        );
+        expect(() => c.decifrar('cli-a', v, aad as string)).toThrow(
+          'aad invalido',
+        );
+      },
+    );
+
+    it('vetor conhecido: cifrado gerado em Python (cryptography/AESGCM) decifra', () => {
+      // Chave mestra 000102..1f, clinica-teste-123 (chave HKDF do vetor abaixo),
+      // iv 00..0b, AAD do GCM = 'v1.k1|' + aadDe('Documento','texto','doc-1','psi-1').
+      process.env.NOTTA_MASTER_KEY =
+        '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f';
+      const kat = new CriptografiaService();
+      const valor =
+        'v1.k1.AAECAwQFBgcICQoL.UtRQmYiumFT16wf5vg42lg.Ix22cjLVbmN5';
+      expect(kat.decifrar('clinica-teste-123', valor, AAD)).toBe('Sessão 1');
+      falhaGenerica(() =>
+        kat.decifrar(
+          'clinica-teste-123',
+          valor,
+          aadDe('Documento', 'texto', 'doc-1', 'psi-2'),
+        ),
+      );
     });
   });
 
   describe('clinicaId', () => {
     it.each(['', null, undefined, 42])('invalido (%p) lanca', (id) => {
       const c = servico();
-      const v = c.cifrar('cli-a', 'x');
-      expect(() => c.cifrar(id as string, 'x')).toThrow();
-      expect(() => c.decifrar(id as string, v)).toThrow();
+      const v = c.cifrar('cli-a', 'x', AAD);
+      expect(() => c.cifrar(id as string, 'x', AAD)).toThrow();
+      expect(() => c.decifrar(id as string, v, AAD)).toThrow();
     });
   });
 
@@ -204,11 +283,28 @@ describe('CriptografiaService', () => {
       expect(erro?.message).not.toMatch(/\b6[0-9]\b/);
     });
 
+    it.each([
+      ['zeros (valor de exemplo antigo do .env.example)', '0'.repeat(64)],
+      ['todos os bytes iguais (ff)', 'f'.repeat(64)],
+      ['todos os bytes iguais (ab)', 'ab'.repeat(32)],
+      ['todos os bytes iguais, maiusculo', 'AB'.repeat(32)],
+    ])('fraca: %s lanca sem ecoar o valor', (_, chave) => {
+      let erro: Error | undefined;
+      try {
+        servico(chave);
+      } catch (e) {
+        erro = e as Error;
+      }
+      expect(erro?.message).toMatch(/NOTTA_MASTER_KEY/);
+      expect(erro?.message).not.toContain(chave);
+      expect(erro?.message).not.toContain(chave.slice(0, 8));
+    });
+
     it('aceita 64 hex minusculo e maiusculo', () => {
-      expect(() => servico('ab'.repeat(32))).not.toThrow();
-      expect(() => servico('AB'.repeat(32))).not.toThrow();
-      const v = servico('AB'.repeat(32)).cifrar('cli-a', 'x');
-      expect(servico('ab'.repeat(32)).decifrar('cli-a', v)).toBe('x');
+      expect(() => servico(MASTER)).not.toThrow();
+      expect(() => servico(MASTER.toUpperCase())).not.toThrow();
+      const v = servico(MASTER.toUpperCase()).cifrar('cli-a', 'x', AAD);
+      expect(servico(MASTER).decifrar('cli-a', v, AAD)).toBe('x');
     });
   });
 });
@@ -231,7 +327,31 @@ describe('derivarChaveClinica', () => {
     expect(a).toHaveLength(32);
     expect(derivarChaveClinica(m, 'cli-a').equals(a)).toBe(true);
     expect(derivarChaveClinica(m, 'cli-b').equals(a)).toBe(false);
-    const outra = Buffer.from('cd'.repeat(32), 'hex');
+    const outra = Buffer.from('fedcba9876543210'.repeat(4), 'hex');
     expect(derivarChaveClinica(outra, 'cli-a').equals(a)).toBe(false);
+  });
+});
+
+describe('aadDe', () => {
+  it('monta tabela|coluna|id|psicologoId (psicologoId opcional)', () => {
+    expect(aadDe('Documento', 'texto', 'doc-1', 'psi-1')).toBe(
+      'Documento|texto|doc-1|psi-1',
+    );
+    expect(aadDe('Clinica', 'nome', 'cli-1')).toBe('Clinica|nome|cli-1');
+  });
+
+  it.each([
+    ['tabela vazia', ['', 'texto', 'doc-1', 'psi-1']],
+    ['coluna vazia', ['Documento', '', 'doc-1', 'psi-1']],
+    ['id vazio', ['Documento', 'texto', '', 'psi-1']],
+    ['psicologoId vazio', ['Documento', 'texto', 'doc-1', '']],
+    ['| na tabela', ['Doc|umento', 'texto', 'doc-1', 'psi-1']],
+    ['| na coluna', ['Documento', 'te|xto', 'doc-1', 'psi-1']],
+    ['| no id', ['Documento', 'texto', 'doc|1', 'psi-1']],
+    ['| no psicologoId', ['Documento', 'texto', 'doc-1', 'psi|1']],
+    ['id nao-string', ['Documento', 'texto', 42, 'psi-1']],
+  ])('recusa %s', (_, partes) => {
+    const [t, c, i, p] = partes as [string, string, string, string];
+    expect(() => aadDe(t, c, i, p)).toThrow('aad invalido');
   });
 });

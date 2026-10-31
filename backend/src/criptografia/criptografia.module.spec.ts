@@ -14,13 +14,22 @@ describe('AppModule + CriptografiaModule no boot', () => {
   });
 
   it('sobe com NOTTA_MASTER_KEY valida e injeta o service', async () => {
-    process.env.NOTTA_MASTER_KEY = 'ab'.repeat(32);
+    process.env.NOTTA_MASTER_KEY = '0123456789abcdef'.repeat(4);
     const mod = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
     const c = mod.get(CriptografiaService);
-    expect(c.decifrar('cli', c.cifrar('cli', 'oi'))).toBe('oi');
+    expect(c.decifrar('cli', c.cifrar('cli', 'oi', 'T|c|1'), 'T|c|1')).toBe(
+      'oi',
+    );
     await mod.close();
+  });
+
+  it('falha no boot com a chave de exemplo antiga (64 zeros)', async () => {
+    process.env.NOTTA_MASTER_KEY = '0'.repeat(64);
+    await expect(
+      Test.createTestingModule({ imports: [AppModule] }).compile(),
+    ).rejects.toThrow(/NOTTA_MASTER_KEY/);
   });
 
   it('falha no boot sem NOTTA_MASTER_KEY', async () => {

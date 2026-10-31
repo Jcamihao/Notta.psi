@@ -30,6 +30,31 @@ export function derivarChaveClinica(
   );
 }
 
+// AAD canonico de um campo cifrado: tabela|coluna|id|psicologoId. Vai para o GCM:
+// cifrado copiado para outra linha, coluna ou dono nao decifra. Parte vazia ou com
+// '|' quebraria a forma canonica (duas listas diferentes, mesma string): recusa.
+export function aadDe(
+  tabela: string,
+  coluna: string,
+  id: string,
+  psicologoId?: string,
+): string {
+  const partes = [tabela, coluna, id];
+  if (psicologoId !== undefined) partes.push(psicologoId);
+  for (const p of partes) {
+    if (typeof p !== 'string' || p === '' || p.includes('|')) {
+      throw new Error('aad invalido');
+    }
+  }
+  return partes.join('|');
+}
+
+// O GCM autentica tambem versao e kid: 'v1.k1|' + aad.
+function aadGcm(aad: unknown): Buffer {
+  if (typeof aad !== 'string' || aad === '') throw new Error('aad invalido');
+  return Buffer.from(`${VERSAO}.${KID}|${aad}`, 'utf8');
+}
+
 function exigirClinicaId(clinicaId: unknown): asserts clinicaId is string {
   if (typeof clinicaId !== 'string' || clinicaId === '') {
     throw new Error('clinicaId invalido');
@@ -57,7 +82,14 @@ export class CriptografiaService {
         'NOTTA_MASTER_KEY invalida: precisa ser 32 bytes em hex (gere com: openssl rand -hex 32)',
       );
     }
-    this.master = Buffer.from(hex, 'hex');
+    const master = Buffer.from(hex, 'hex');
+    // Todos os bytes iguais cobre 64 zeros, o valor de exemplo antigo do .env.example.
+    if (master.every((b) => b === master[0])) {
+      throw new Error(
+        'NOTTA_MASTER_KEY fraca (bytes todos iguais ou valor de exemplo): gere com openssl rand -hex 32',
+      );
+    }
+    this.master = master;
   }
 
   private chave(clinicaId: string): Buffer {
@@ -69,10 +101,13 @@ export class CriptografiaService {
     return k;
   }
 
-  cifrar(clinicaId: string, texto: string): string {
+  // aad: use aadDe(tabela, coluna, id, psicologoId). O mesmo valor no decifrar.
+  cifrar(clinicaId: string, texto: string, aad: string): string {
     exigirClinicaId(clinicaId);
+    const extra = aadGcm(aad);
     const iv = randomBytes(IV_BYTES);
     const c = createCipheriv('aes-256-gcm', this.chave(clinicaId), iv);
+    c.setAAD(extra);
     const ct = Buffer.concat([c.update(texto, 'utf8'), c.final()]);
     return [
       VERSAO,
@@ -83,8 +118,9 @@ export class CriptografiaService {
     ].join('.');
   }
 
-  decifrar(clinicaId: string, valor: string): string {
+  decifrar(clinicaId: string, valor: string, aad: string): string {
     exigirClinicaId(clinicaId);
+    const extra = aadGcm(aad);
     try {
       const partes = valor.split('.');
       if (partes.length !== 5 || partes[0] !== VERSAO || partes[1] !== KID) {
@@ -97,6 +133,7 @@ export class CriptografiaService {
         authTagLength: TAG_BYTES,
       });
       d.setAuthTag(tag);
+      d.setAAD(extra);
       return Buffer.concat([d.update(ct), d.final()]).toString('utf8');
     } catch {
       throw new Error('falha ao decifrar');
