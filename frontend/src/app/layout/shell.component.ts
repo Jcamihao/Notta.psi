@@ -1,56 +1,120 @@
-import { Component, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  CircleCheck,
+  House,
+  KeyRound,
+  LogOut,
+  LucideAngularModule,
+  Menu,
+  Users,
+  X,
+} from 'lucide-angular';
 import { filter, map } from 'rxjs';
 import { UsuarioStore } from '../core/usuario.store';
+import { AvatarComponent } from '../ui/avatar.component';
+import { IconButtonComponent } from '../ui/icon-button.component';
+import { NavItemComponent } from '../ui/nav-item.component';
 
+// Sidebar escura flutuante do design system (196px, raio 18). Abaixo de 832px vira barra
+// superior com menu recolhivel (botao com aria-expanded). Com senha provisoria nao ha
+// navegacao: sobra o logo e o Sair (o guard trava as rotas do mesmo jeito).
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  host: { '(document:keydown.escape)': 'fecharMenu()' },
+  imports: [
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    LucideAngularModule,
+    AvatarComponent,
+    IconButtonComponent,
+    NavItemComponent,
+  ],
   template: `
-    <header class="shell-topo">
-      <div class="shell-onde">
-        <!-- Senha provisoria: sem navegacao, so o botao Sair (o guard trava as rotas do mesmo jeito). -->
+    <header class="lateral" [class.aberto]="menuAberto()" [class.sem-menu]="obrigatoria()">
+      <div class="lateral-topo">
         @if (obrigatoria()) {
-          <span class="marca">Notta<span class="marca-psi">.psi</span></span>
+          <span class="marca">Notta.psi</span>
         } @else {
-          <a class="marca" routerLink="/">Notta<span class="marca-psi">.psi</span></a>
-        }
-        @if (usuario(); as u) {
-          <span class="shell-clinica">{{ u.clinica.nome }}</span>
-        }
-        @if (ehAdmin() && !obrigatoria()) {
-          <nav aria-label="Principal">
-            <a
-              class="shell-link"
-              routerLink="/equipe"
-              routerLinkActive="shell-link-ativo"
-              ariaCurrentWhenActive="page"
-              >Equipe</a
-            >
-          </nav>
+          <a class="marca" routerLink="/">Notta.psi</a>
+          <button
+            #alternar
+            app-icon-button
+            type="button"
+            class="lateral-alternar"
+            tone="accent"
+            aria-label="Menu"
+            aria-controls="lateral-corpo"
+            [attr.aria-expanded]="menuAberto()"
+            [icon]="menuAberto() ? icones.X : icones.Menu"
+            (click)="menuAberto.set(!menuAberto())"
+          ></button>
         }
       </div>
-      <div class="shell-quem">
-        @if (usuario(); as u) {
-          <span class="shell-nome">{{ u.nome }}</span>
-          @if (!obrigatoria()) {
+      <div class="lateral-corpo" id="lateral-corpo">
+        @if (!obrigatoria()) {
+          <nav aria-label="Principal">
             <a
-              class="shell-link"
-              routerLink="/trocar-senha"
-              routerLinkActive="shell-link-ativo"
+              app-nav-item
+              routerLink="/"
+              routerLinkActive
+              [routerLinkActiveOptions]="{ exact: true }"
               ariaCurrentWhenActive="page"
-              >Trocar senha</a
+              [icon]="icones.House"
             >
-          }
+              Início
+            </a>
+            @if (ehAdmin()) {
+              <a
+                app-nav-item
+                routerLink="/equipe"
+                routerLinkActive
+                ariaCurrentWhenActive="page"
+                [icon]="icones.Users"
+              >
+                Equipe
+              </a>
+            }
+            <a
+              app-nav-item
+              routerLink="/trocar-senha"
+              routerLinkActive
+              ariaCurrentWhenActive="page"
+              [icon]="icones.KeyRound"
+            >
+              Trocar senha
+            </a>
+          </nav>
         }
-        <button type="button" class="botao-discreto" (click)="sair()">Sair</button>
+        <div class="lateral-rodape">
+          @if (usuario(); as u) {
+            <div class="quem">
+              <app-avatar [name]="u.nome" [size]="32" />
+              <div class="quem-texto">
+                <span class="quem-nome">{{ u.nome }}</span>
+                <span class="quem-clinica">{{ u.clinica.nome }}</span>
+              </div>
+            </div>
+          }
+          <button
+            app-nav-item
+            type="button"
+            data-teste="sair"
+            [icon]="icones.LogOut"
+            (click)="sair()"
+          >
+            Sair
+          </button>
+        </div>
       </div>
     </header>
     <main class="shell-conteudo">
-      <div class="shell-aviso" aria-live="polite">
+      <div aria-live="polite">
         @if (senhaTrocada()) {
           <p class="aviso-ok" data-teste="senha-trocada">
+            <lucide-icon [img]="icones.CircleCheck" [size]="18" [strokeWidth]="1.5" />
             Senha alterada. Use a nova senha no próximo acesso.
           </p>
         }
@@ -60,85 +124,128 @@ import { UsuarioStore } from '../core/usuario.store';
   `,
   styles: `
     :host {
-      display: block;
+      display: grid;
+      grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+      align-content: start;
+      gap: 36px;
       min-height: 100vh;
+      min-height: 100dvh;
+      padding: 22px 24px;
     }
-    .shell-topo {
+    .lateral {
+      position: sticky;
+      top: 22px;
+      align-self: start;
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--espaco-2) var(--espaco-4);
-      padding: var(--espaco-3) var(--espaco-5);
-      background: var(--cor-superficie);
-      border-bottom: 1px solid var(--cor-borda);
+      flex-direction: column;
+      height: calc(100dvh - 44px);
+      padding: 22px;
+      color: var(--text-inverse);
+      background: var(--bg-sidebar);
+      border-radius: var(--radius-panel);
     }
-    .shell-onde,
-    .shell-quem {
+    .lateral :focus-visible {
+      outline-color: var(--pink-300);
+    }
+    .lateral-alternar {
+      display: none;
+    }
+    .lateral-corpo {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: var(--space-9);
+      min-height: 0;
+      margin-top: 40px;
+    }
+    nav {
+      display: grid;
+      gap: var(--space-3);
+    }
+    .lateral-rodape {
+      display: grid;
+      gap: var(--space-6);
+      margin-top: auto;
+    }
+    .quem {
       display: flex;
       align-items: center;
-      gap: var(--espaco-3);
+      gap: var(--space-4);
       min-width: 0;
     }
-    .shell-quem {
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      margin-left: auto;
+    .quem-texto {
+      display: grid;
+      min-width: 0;
     }
-    .shell-clinica {
-      padding-left: var(--espaco-3);
-      border-left: 1px solid var(--cor-borda);
-      font-weight: 500;
+    .quem-nome {
+      font-weight: var(--fw-medium);
       overflow-wrap: anywhere;
     }
-    a.marca {
-      color: inherit;
-      text-decoration: none;
-    }
-    .shell-link {
-      display: inline-flex;
-      align-items: center;
-      min-height: 2.25rem;
-      padding: 0 var(--espaco-3);
-      color: var(--cor-texto-suave);
-      font-size: var(--texto-sm);
-      text-decoration: none;
-      border-radius: var(--raio);
-      transition:
-        background-color var(--transicao),
-        color var(--transicao);
-    }
-    .shell-link:hover {
-      color: var(--cor-texto);
-      background: var(--cor-fundo);
-    }
-    .shell-link-ativo,
-    .shell-link-ativo:hover {
-      color: var(--cor-acao-forte);
-      background: var(--cor-acao-suave);
-      font-weight: 600;
-    }
-    .shell-nome {
-      color: var(--cor-texto-suave);
-      font-size: var(--texto-sm);
+    .quem-clinica {
+      color: var(--text-sidebar-label);
+      font-size: var(--fs-day);
       overflow-wrap: anywhere;
     }
     .shell-conteudo {
-      padding: var(--espaco-5);
+      min-width: 0;
+      padding-top: var(--space-3);
     }
-    .shell-aviso {
-      max-width: 72rem;
-      margin: 0 auto;
+    @media (max-width: 831.98px) {
+      :host {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--space-8);
+        padding: var(--space-5);
+      }
+      .lateral {
+        top: var(--space-5);
+        z-index: 1;
+        height: auto;
+        max-height: calc(100dvh - 24px);
+        padding: var(--space-5) var(--space-5) var(--space-5) var(--space-7);
+        overflow-y: auto;
+      }
+      .lateral-topo {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-5);
+        min-height: var(--size-icon-btn);
+      }
+      .marca {
+        font-size: 26px;
+      }
+      .lateral-alternar {
+        display: inline-grid;
+      }
+      .lateral-corpo {
+        display: none;
+        margin-top: var(--space-8);
+        padding-bottom: var(--space-3);
+      }
+      .aberto .lateral-corpo,
+      .sem-menu .lateral-corpo {
+        display: flex;
+      }
+      .sem-menu .lateral-corpo {
+        margin-top: var(--space-6);
+      }
+      .shell-conteudo {
+        padding-top: 0;
+      }
     }
   `,
 })
 export class ShellComponent {
   private readonly usuarios = inject(UsuarioStore);
   private readonly router = inject(Router);
+  private readonly alternar = viewChild('alternar', { read: ElementRef });
 
+  readonly icones = { CircleCheck, House, KeyRound, LogOut, Menu, Users, X };
   readonly usuario = this.usuarios.usuario;
   readonly ehAdmin = this.usuarios.ehAdmin;
   readonly obrigatoria = this.usuarios.senhaProvisoria;
+  // So conta na barra superior (abaixo de 832px); no desktop a sidebar fica sempre aberta.
+  readonly menuAberto = signal(false);
   // Confirmacao leve da troca de senha: vem no state da navegacao e some na proxima.
   readonly senhaTrocada = toSignal(
     this.router.events.pipe(
@@ -147,6 +254,23 @@ export class ShellComponent {
     ),
     { initialValue: false },
   );
+
+  constructor() {
+    // Escolheu um destino no menu do celular: fecha.
+    this.router.events
+      .pipe(
+        filter((e) => e instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => this.menuAberto.set(false));
+  }
+
+  // Esc fecha o menu do celular e devolve o foco ao botao que o abriu.
+  fecharMenu(): void {
+    if (!this.menuAberto()) return;
+    this.menuAberto.set(false);
+    (this.alternar()?.nativeElement as HTMLElement | undefined)?.focus();
+  }
 
   sair(): void {
     this.usuarios.sair();

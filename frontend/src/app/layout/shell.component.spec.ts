@@ -54,7 +54,7 @@ describe('ShellComponent', () => {
   });
 
   it('botao Sair limpa sessao e usuario e navega para /login', () => {
-    const botao = el().querySelector('header button') as HTMLButtonElement;
+    const botao = el().querySelector('header [data-teste="sair"]') as HTMLButtonElement;
     expect(botao.textContent?.trim()).toBe('Sair');
     botao.click();
     expect(sessao.autenticado()).toBeFalse();
@@ -64,6 +64,20 @@ describe('ShellComponent', () => {
 
   it('PSICOLOGO nao ve o link Equipe', () => {
     expect(el().querySelector('a[href="/equipe"]')).toBeNull();
+  });
+
+  it('botao Menu (barra do celular) alterna aria-expanded; Esc fecha e devolve o foco', async () => {
+    const menu = el().querySelector('button[aria-controls="lateral-corpo"]') as HTMLButtonElement;
+    expect(menu.getAttribute('aria-label')).toBe('Menu');
+    expect(el().querySelector('#lateral-corpo')).not.toBeNull();
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+    menu.click();
+    await fixture.whenStable();
+    expect(menu.getAttribute('aria-expanded')).toBe('true');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await fixture.whenStable();
+    expect(menu.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(menu);
   });
 });
 
