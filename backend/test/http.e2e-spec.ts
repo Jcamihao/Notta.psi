@@ -1,0 +1,37 @@
+import { NestExpressApplication } from '@nestjs/platform-express';
+import request from 'supertest';
+import { AuthService } from '../src/auth/auth.service';
+import { criarAppSemLimite } from './criar-app-sem-limite';
+
+// App completo como no main.ts (OPCOES_APP): a API e so JSON.
+let app: NestExpressApplication;
+beforeAll(async () => {
+  app = await criarAppSemLimite();
+});
+afterAll(() => app.close());
+
+describe('corpo da requisicao', () => {
+  it('POST /auth/login com form urlencoded -> 415, login nunca processado', async () => {
+    const login = jest.spyOn(app.get(AuthService), 'login');
+    const res = await request(app.getHttpServer())
+      .post('/auth/login')
+      .type('form')
+      .send('email=a%40b.com&senha=senha-forte-123');
+    expect(res.status).toBe(415);
+    expect(login).not.toHaveBeenCalled();
+    login.mockRestore();
+  });
+
+  it('POST /auth/login com JSON de 100 mil niveis -> 400 fixo (antes: 500 + stack no log)', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/auth/login')
+      .set('Content-Type', 'application/json')
+      .send('['.repeat(100_000) + ']'.repeat(100_000))
+      .expect(400);
+    expect(res.body).toEqual({
+      statusCode: 400,
+      message: 'JSON invalido',
+      error: 'Bad Request',
+    });
+  });
+});

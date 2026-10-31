@@ -2,7 +2,7 @@ import { LoggerService, Type } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
-import { configurarApp } from '../src/configurar-app';
+import { configurarApp, OPCOES_APP } from '../src/configurar-app';
 import { LimiteTentativasGuard } from '../src/limite-tentativas/limite-tentativas.guard';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 
@@ -35,7 +35,7 @@ export async function criarApp(
       .useValue({ canActivate: () => true });
   }
   const app = (await b.compile()).createNestApplication<NestExpressApplication>(
-    opcoes.logger ? { logger: opcoes.logger } : undefined,
+    { ...OPCOES_APP, ...(opcoes.logger && { logger: opcoes.logger }) },
   );
   configurarApp(app);
   await app.init();

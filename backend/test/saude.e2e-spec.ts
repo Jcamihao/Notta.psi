@@ -2,15 +2,15 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { configurarApp } from '../src/configurar-app';
+import { configurarApp, OPCOES_APP } from '../src/configurar-app';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 async function criar(prisma?: Partial<PrismaService>) {
   let b = Test.createTestingModule({ imports: [AppModule] });
   if (prisma) b = b.overrideProvider(PrismaService).useValue(prisma);
-  const app = (
-    await b.compile()
-  ).createNestApplication<NestExpressApplication>();
+  const app = (await b.compile()).createNestApplication<NestExpressApplication>(
+    OPCOES_APP,
+  );
   configurarApp(app);
   await app.init();
   return app;
