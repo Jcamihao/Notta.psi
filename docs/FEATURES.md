@@ -1,20 +1,20 @@
 # Notta.psi — Lista de features (fonte única da ordem de construção)
 
-Aprovada pelo dono em 2026-10-30. Recomeço do zero: nada abaixo está feito.
+Aprovada pelo dono em 2026-10-30. Recomeço do zero. Fase 1 (itens 1-8) e item 41 feitos e verificados em 2026-10-30/31 (back 85 unit + 90 e2e, front 73, integração real no navegador, Postgres 16 do Docker).
 Spec e plano antigos em `docs/superpowers/` são só referência (decisões e riscos), não a ordem.
 
 Legenda: **[B]** só back · **[F]** só front · **[M]** misto (back e tela juntos, no mesmo módulo).
 Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 
 ## Fase 1 — Bases
-- [ ] 1. [B] Projeto base do back
-- [ ] 2. [B] Isolamento por clínica (RLS)
-- [ ] 3. [B] Criptografia por clínica
-- [ ] 4. [F] Base do front (pode andar junto com 2 e 3)
-- [ ] 5. [M] Cadastro de clínica
-- [ ] 6. [M] Login e sessão
-- [ ] 7. [B] Regras de acesso entre psicólogos (decisão do dono antes)
-- [ ] 8. [M] Adicionar psicólogos à clínica
+- [x] 1. [B] Projeto base do back
+- [x] 2. [B] Isolamento por clínica (RLS)
+- [x] 3. [B] Criptografia por clínica
+- [x] 4. [F] Base do front (pode andar junto com 2 e 3)
+- [x] 5. [M] Cadastro de clínica
+- [x] 6. [M] Login e sessão
+- [x] 7. [B] Regras de acesso entre psicólogos (decisão do dono antes)
+- [x] 8. [M] Adicionar psicólogos à clínica
 
 ## Fase 2 — Núcleo clínico
 - [ ] 9. [M] Cadastro de paciente
@@ -63,7 +63,7 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 ## Trilha de segurança e cybersecurity (itens 41-56, adicionada em 2026-10-30)
 Numeração separada para não quebrar as referências da Fase 1 em andamento. A coluna "Entra em" diz em que fase construir. Já existentes e relacionados: 2, 3, 5, 11, 19, 22, 23, 24, 25, 26.
 
-- [ ] 41. [B] Cabeçalhos HTTP de segurança (helmet), CORS só para a origem do front, limite de corpo e de tempo — entra na Fase 1 (junto do item 5)
+- [x] 41. [B] Cabeçalhos HTTP de segurança (helmet), CORS só para a origem do front, limite de corpo e de tempo — entra na Fase 1 (junto do item 5)
 - [ ] 42. [B] Segredos e ambiente: nenhum segredo no repo, scan de segredos antes do commit, validação de env no boot, https obrigatório para o SelahIA — Fase 1 e 3
 - [ ] 43. [B] CI: testes, lint, `npm audit`, atualização de dependências e testes de RLS obrigatórios antes de merge — Fase 2
 - [ ] 44. [B] Trigger no banco: documento APROVADO imutável — Fase 2 (com o item 15)
