@@ -1,8 +1,12 @@
 import { Module } from '@nestjs/common';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { normalizeIp, ThrottlerModule } from '@nestjs/throttler';
 import { normalizarEmail } from '../comum/validacao';
 
 const MINUTO = 60_000;
+// IPv6: um cliente costuma ter o /64 inteiro (IPs ilimitados). Todo limite por IP agrupa o
+// /64 (o tracker padrao do throttler usa ipv6SubnetPrefix; o login-chave, normalizeIp).
+// IPv4 nao muda.
+const PREFIXO_IPV6 = 64;
 
 // Armazenamento EM MEMORIA (padrao do throttler): vale para 1 instancia do backend.
 // Com mais de uma instancia, trocar por storage Redis. IP real atras de proxy: NOTTA_TRUST_PROXY.
@@ -17,7 +21,7 @@ export const THROTTLERS = [
     limit: 5,
     // Corpo CRU (o guard roda antes do ValidationPipe): normaliza aqui tambem.
     getTracker: (req: Record<string, any>) =>
-      `${req.ip}|${normalizarEmail((req.body as { email?: unknown } | undefined)?.email)}`,
+      `${normalizeIp(req.ip as string, PREFIXO_IPV6)}|${normalizarEmail((req.body as { email?: unknown } | undefined)?.email)}`,
   },
   { name: 'clinicas', ttl: 60 * MINUTO, limit: 5 },
   {
@@ -36,7 +40,11 @@ export const THROTTLERS = [
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot({ throttlers: THROTTLERS, setHeaders: false }),
+    ThrottlerModule.forRoot({
+      throttlers: THROTTLERS,
+      setHeaders: false,
+      ipv6SubnetPrefix: PREFIXO_IPV6,
+    }),
   ],
 })
 export class LimiteTentativasModule {}

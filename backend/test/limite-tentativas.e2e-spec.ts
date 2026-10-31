@@ -129,3 +129,45 @@ describe('limite de tentativas', () => {
     esperar429(await login(alvo, undefined, '203.0.113.2'));
   });
 });
+
+describe('IPv6: todos os limites por IP agrupam o /64', () => {
+  // 3 enderecos do MESMO /64 contam como um; outro /64 tem contador proprio. IPv4 inalterado
+  // (testes acima).
+  const mesmo64 = [
+    '2001:db8:1:2::a',
+    '2001:db8:1:2::b',
+    '2001:db8:1:2:ffff:1:2:3',
+  ];
+
+  beforeEach(async () => {
+    await app.close();
+    process.env.NOTTA_TRUST_PROXY = '1';
+    app = await criarApp();
+  });
+
+  it('login-chave: 5 erros do mesmo e-mail em 3 IPs do mesmo /64 -> 6o = 429; outro /64 segue 401', async () => {
+    const alvo = email('v6chave');
+    for (let i = 0; i < 5; i++) {
+      await login(alvo, undefined, mesmo64[i % 3]).expect(401);
+    }
+    esperar429(await login(alvo, undefined, mesmo64[2]), alvo);
+    await login(alvo, undefined, '2001:db8:1:3::a').expect(401);
+  });
+
+  it('login-ip: 20 e-mails diferentes em 3 IPs do mesmo /64 -> 21o = 429', async () => {
+    for (let i = 0; i < 20; i++) {
+      await login(email(`v6ip${i}`), undefined, mesmo64[i % 3]).expect(401);
+    }
+    esperar429(await login(email('v6ip-novo'), undefined, mesmo64[1]));
+  });
+
+  it('/clinicas: 5 em 3 IPs do mesmo /64 -> 6o = 429', async () => {
+    const post = (ip: string) =>
+      request(app.getHttpServer())
+        .post('/clinicas')
+        .set('X-Forwarded-For', ip)
+        .send({});
+    for (let i = 0; i < 5; i++) await post(mesmo64[i % 3]).expect(400);
+    esperar429(await post(mesmo64[0]));
+  });
+});

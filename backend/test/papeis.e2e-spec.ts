@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Controller, Get } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import request from 'supertest';
 import { Papeis } from '../src/auth/papeis';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';

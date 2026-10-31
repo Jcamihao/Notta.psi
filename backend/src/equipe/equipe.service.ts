@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { CUSTO_BCRYPT } from '../auth/auth.service';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
 import { erroAoCriarPsicologo } from '../comum/novo-psicologo';

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { CUSTO_BCRYPT } from '../auth/auth.service';
 import { erroAoCriarPsicologo } from '../comum/novo-psicologo';
 import { normalizarEmail } from '../comum/validacao';

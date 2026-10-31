@@ -3,6 +3,7 @@ import { IsString, MaxLength } from 'class-validator';
 import { Aparar, Bytes } from '../comum/validacao';
 import { LimiteLogin } from '../limite-tentativas/limite-tentativas.guard';
 import { AuthService } from './auth.service';
+import { TetoHash } from './teto-hash';
 import {
   Publico,
   UsuarioAtual,
@@ -26,6 +27,7 @@ export class AuthController {
 
   @Publico()
   @LimiteLogin()
+  @TetoHash()
   @Post('auth/login')
   @HttpCode(200)
   login(@Body() dto: LoginDto) {

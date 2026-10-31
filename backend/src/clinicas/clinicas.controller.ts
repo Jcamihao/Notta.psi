@@ -1,6 +1,7 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { IsString, Length } from 'class-validator';
 import { Publico } from '../auth/jwt-auth.guard';
+import { TetoHash } from '../auth/teto-hash';
 import { NovoPsicologoDto } from '../comum/novo-psicologo';
 import { Aparar } from '../comum/validacao';
 import { LimiteCadastroClinica } from '../limite-tentativas/limite-tentativas.guard';
@@ -25,6 +26,7 @@ export class ClinicasController {
 
   @Publico()
   @LimiteCadastroClinica()
+  @TetoHash()
   @Post()
   criar(@Body() dto: CriarClinicaDto) {
     return this.clinicas.criar(dto);

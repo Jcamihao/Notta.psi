@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import { IsString, Length } from 'class-validator';
 import { UsuarioAtual, type UsuarioAutenticado } from '../auth/jwt-auth.guard';
 import { Papeis } from '../auth/papeis';
+import { TetoHash } from '../auth/teto-hash';
 import { NovoPsicologoDto } from '../comum/novo-psicologo';
 import { Aparar } from '../comum/validacao';
 import { LimiteEquipe } from '../limite-tentativas/limite-tentativas.guard';
@@ -21,6 +22,7 @@ export class EquipeController {
   constructor(private readonly equipe: EquipeService) {}
 
   @LimiteEquipe()
+  @TetoHash()
   @Post()
   criar(
     @UsuarioAtual() user: UsuarioAutenticado,

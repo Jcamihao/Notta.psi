@@ -166,3 +166,52 @@ describe('throttler api: 300/min por psicologo em rota autenticada', () => {
     }
   });
 });
+
+describe('CPU do login: bcrypt nativo + teto de hashes', () => {
+  it('12 logins simultaneos: /saude responde em < 500 ms; acima do teto = 503 + Retry-After 1', async () => {
+    const app = await criarAppSemLimite();
+    try {
+      await app.listen(0, '127.0.0.1');
+      const base = await app.getUrl();
+      const t0 = performance.now();
+      const logins = Array.from({ length: 12 }, async (_, i) => {
+        const r = await fetch(`${base}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: email(`cpu${i}`),
+            senha: 'errada-123',
+          }),
+        });
+        return {
+          status: r.status,
+          retry: r.headers.get('retry-after'),
+          corpo: (await r.json()) as unknown,
+        };
+      });
+      await new Promise((ok) => setTimeout(ok, 30));
+      const ts = performance.now();
+      const saude = await fetch(`${base}/saude`);
+      const msSaude = performance.now() - ts;
+      const r = await Promise.all(logins);
+      const msLogins = performance.now() - t0;
+      console.log(
+        `carga: /saude ${Math.round(msSaude)} ms; 12 logins ${Math.round(msLogins)} ms; status ${r.map((x) => x.status).join(',')}`,
+      );
+      expect(saude.status).toBe(200);
+      expect(msSaude).toBeLessThan(500);
+      const recusados = r.filter((x) => x.status === 503);
+      expect(recusados.length).toBeGreaterThan(0);
+      for (const x of recusados) {
+        expect(x.retry).toBe('1');
+        expect(x.corpo).toEqual({
+          statusCode: 503,
+          message: 'Servico indisponivel',
+        });
+      }
+      expect(r.every((x) => [401, 503].includes(x.status))).toBe(true);
+    } finally {
+      await app.close();
+    }
+  });
+});
