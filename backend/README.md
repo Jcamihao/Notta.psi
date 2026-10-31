@@ -41,7 +41,10 @@ npm run lint && npm run format:check && npm run build
 
 ## Variaveis
 Ver `.env.example` (PORT, DATABASE_URL, DATABASE_URL_OWNER, NOTTA_TRUST_PROXY, NOTTA_MASTER_KEY, NOTTA_JWT_SECRET, NOTTA_CORS_ORIGIN).
-Obrigatorias no boot hoje: `DATABASE_URL`, `NOTTA_MASTER_KEY` e `NOTTA_JWT_SECRET` (>= 32 caracteres). Cada modulo novo valida a propria env.
+Obrigatorias no boot hoje: `DATABASE_URL`, `NOTTA_MASTER_KEY` e `NOTTA_JWT_SECRET`. Em producao (`NODE_ENV=production`) tambem `NOTTA_TRUST_PROXY` (`0` = sem proxy). Cada modulo novo valida a propria env.
+- O `.env.example` traz `NOTTA_JWT_SECRET` e `NOTTA_MASTER_KEY` VAZIOS: gere os seus (comandos no arquivo).
+- `NOTTA_JWT_SECRET`: o boot recusa menos de 32 caracteres, menos de 10 caracteres distintos e o antigo valor de exemplo.
+- Papel do banco: no boot o backend confere que o papel de `DATABASE_URL` NAO e superuser, NAO tem BYPASSRLS e NAO e dono (nem membro do dono) de `Clinica`/`Psicologo`. Se for, o boot falha com `DATABASE_URL insegura: ...` (sem mostrar a URL). Use `notta_app`.
 
 ## Cadastro, login e /eu
 Contrato completo: `.superpowers/sdd/fase-1/contrato.md`.
@@ -49,6 +52,8 @@ Contrato completo: `.superpowers/sdd/fase-1/contrato.md`.
 - `POST /auth/login` (publico): `{ token }` JWT HS256, 8 h, claims `sub` (psicologoId) e `clinicaId`. 401 identico para e-mail inexistente e senha errada (hash falso: mesmo tempo).
 - `GET /eu` (Bearer): dados do psicologo e da clinica.
 - `JwtAuthGuard` e GLOBAL: toda rota nova exige token. Rota publica precisa de `@Publico()` (hoje: `/saude`, `POST /clinicas`, `POST /auth/login`). O guard confere no banco que o psicologo ainda existe e le o papel fresco; use `@UsuarioAtual()` para pegar `{ psicologoId, clinicaId, papel }`.
+- 401 SO para token invalido/expirado ou psicologo inexistente. Banco/pool fora responde 503 `{"statusCode":503,"message":"Servico indisponivel"}` com `Retry-After: 2` (o front so desloga no 401).
+- Senhas: `bcrypt` NATIVO (roda no threadpool, nao trava o event loop), custo 12. Rota que calcula hash (login, cadastro de clinica, criacao de psicologo; a futura troca de senha tambem) leva `@TetoHash()`: no maximo 8 hashes ao mesmo tempo no processo; acima disso, 503 com `Retry-After: 1`.
 
 ## Equipe da clinica (so ADMIN)
 - `POST /psicologos` (Bearer, ADMIN): `{ nome, email, senha, abordagemPadrao }` -> 201 `{ psicologoId }`. Mesmas regras do cadastro (e-mail normalizado e unico global = 409, senha 8..72 bytes, bcrypt 12). A clinica vem SO do token; o novo nasce `PSICOLOGO`. Campo extra (`clinicaId`, `papel`) = 400.
@@ -57,14 +62,18 @@ Contrato completo: `.superpowers/sdd/fase-1/contrato.md`.
 
 ## Limite de tentativas
 - Login: 5/min por IP + e-mail e 20/min por IP. Cadastro de clinica: 5/h por IP. `POST /psicologos`: 20/h por psicologo do token (nao por IP). Conta sucesso e falha (e requisicao invalida). 429 com `Retry-After` em segundos.
+- Toda rota autenticada: 300/min por psicologo, somado entre todas as rotas (throttler `api`, guard global `LimiteApiGuard` depois do JWT). Rotas `@Publico()` ficam de fora.
+- IPv6: todo limite por IP conta o /64 inteiro como um IP (IPv4 nao muda).
 - Armazenamento EM MEMORIA: vale para UMA instancia. Com mais instancias, trocar por Redis. Reiniciar o backend zera os contadores.
-- Atras de proxy/load balancer: `NOTTA_TRUST_PROXY=<saltos>` para o IP real vir do `X-Forwarded-For`. Sem ela, o header e ignorado (todo mundo atras do proxy dividiria o mesmo limite).
-- Throttler novo: acrescentar no `SkipThrottle` de TODA rota com limite (`src/limite-tentativas/limite-tentativas.guard.ts`).
+- Atras de proxy/load balancer: `NOTTA_TRUST_PROXY=<saltos>` para o IP real vir do `X-Forwarded-For`. Sem ela, o header e ignorado (todo mundo atras do proxy dividiria o mesmo limite). Em producao ela e obrigatoria (o boot falha sem ela); sem proxy, use `NOTTA_TRUST_PROXY=0`.
+- Throttler novo: basta somar em `THROTTLERS` (`src/limite-tentativas/limite-tentativas.module.ts`); as rotas que nao o usam o pulam sozinhas (lista derivada em `limite()`).
 
 ## Seguranca HTTP
 - `helmet()` com os padroes (nosniff, HSTS, CSP, frame SAMEORIGIN...). `x-powered-by` desligado.
 - CORS desligado por padrao. `NOTTA_CORS_ORIGIN` liga para UMA origem exata (outras origens nao recebem `Access-Control-Allow-Origin`).
-- Corpo JSON ate 256 kb (acima = 413).
+- A API e so JSON: o app sobe com `OPCOES_APP` (`bodyParser: false`) e so o parser JSON e registrado. Todo teste que cria o app passa `OPCOES_APP`. Corpo que nao e JSON (form etc.) = 415.
+- Corpo JSON ate 256 kb (acima = 413 `Corpo muito grande`) e ate 32 niveis de `[`/`{` (acima = 400 `JSON invalido`).
+- Erro do parser (JSON malformado, descompressao, charset, tamanho) responde corpo fixo, sem log e sem stack.
 
 ## Chave mestra (NOTTA_MASTER_KEY)
 - Gere com `openssl rand -hex 32` (64 caracteres hex) e exporte antes de subir o backend.

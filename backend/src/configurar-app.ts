@@ -87,7 +87,14 @@ export function configurarApp(app: NestExpressApplication): void {
   );
 
   // Saltos de proxy confiaveis. Ausente = desligado. Nunca ecoar o valor.
+  // Em producao e obrigatoria: atras de proxy sem ela, todo mundo divide o IP do proxy
+  // (20 logins errados travam o login de todos). `0` = sem proxy, dito explicitamente.
   const proxy = process.env.NOTTA_TRUST_PROXY;
+  if (proxy === undefined && process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'NOTTA_TRUST_PROXY obrigatoria em producao: informe o numero de saltos de proxy confiaveis (0 = sem proxy)',
+    );
+  }
   if (proxy !== undefined) {
     if (!/^\d+$/.test(proxy) || !Number.isSafeInteger(Number(proxy))) {
       throw new Error(

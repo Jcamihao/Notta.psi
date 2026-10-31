@@ -307,4 +307,30 @@ describe('configurarApp', () => {
     expect(chamadasLivre).toBe(antes);
     await app.close();
   });
+
+  describe('NODE_ENV=production exige NOTTA_TRUST_PROXY', () => {
+    const env = process.env.NODE_ENV;
+    afterEach(() => {
+      process.env.NODE_ENV = env;
+    });
+
+    it('ausente derruba o boot pedindo o numero de saltos', async () => {
+      process.env.NODE_ENV = 'production';
+      delete process.env.NOTTA_TRUST_PROXY;
+      const mod = await Test.createTestingModule({
+        imports: [ModTeste],
+      }).compile();
+      const app = mod.createNestApplication<NestExpressApplication>(OPCOES_APP);
+      expect(() => configurarApp(app)).toThrow(/NOTTA_TRUST_PROXY.*saltos/);
+      expect(() => configurarApp(app)).toThrow(/0 = sem proxy/);
+    });
+
+    it.each(['0', '1'])('%s explicito sobe', async (valor) => {
+      process.env.NODE_ENV = 'production';
+      process.env.NOTTA_TRUST_PROXY = valor;
+      const app = await criar();
+      expect(express(app).get('trust proxy')).toBe(Number(valor));
+      await app.close();
+    });
+  });
 });
