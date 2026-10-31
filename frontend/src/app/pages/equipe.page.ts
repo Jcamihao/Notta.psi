@@ -11,6 +11,10 @@ import {
   preenchido,
   senhaBytes,
 } from '../core/formulario';
+import { ChevronDown, CircleAlert, CircleCheck, LucideAngularModule } from 'lucide-angular';
+import { AvatarComponent } from '../ui/avatar.component';
+import { ButtonComponent } from '../ui/button.component';
+import { PillComponent } from '../ui/pill.component';
 
 // Item de GET /psicologos (contrato.md, item 8).
 export interface MembroEquipe {
@@ -37,11 +41,18 @@ const DATA = new Intl.DateTimeFormat('pt-BR', {
 
 @Component({
   selector: 'app-equipe-page',
-  imports: [ReactiveFormsModule],
+  imports: [
+    ReactiveFormsModule,
+    LucideAngularModule,
+    AvatarComponent,
+    ButtonComponent,
+    PillComponent,
+  ],
   templateUrl: './equipe.page.html',
   styleUrl: './equipe.page.scss',
 })
 export class EquipePage {
+  readonly icones = { ChevronDown, CircleAlert, CircleCheck };
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
 

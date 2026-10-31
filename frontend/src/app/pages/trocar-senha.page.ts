@@ -12,6 +12,8 @@ import {
 } from '../core/formulario';
 import { SessaoStore } from '../core/sessao.store';
 import { UsuarioStore } from '../core/usuario.store';
+import { CircleAlert, LucideAngularModule } from 'lucide-angular';
+import { ButtonComponent } from '../ui/button.component';
 
 const OBRIGATORIO = {
   senhaAtual: 'Informe sua senha atual.',
@@ -23,11 +25,12 @@ const OBRIGATORIO = {
 // ca e o shell esconde a navegacao. Sem ela, e a troca voluntaria pelo link do cabecalho.
 @Component({
   selector: 'app-trocar-senha-page',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, LucideAngularModule, ButtonComponent],
   templateUrl: './trocar-senha.page.html',
   styleUrl: './trocar-senha.page.scss',
 })
 export class TrocarSenhaPage {
+  readonly icones = { CircleAlert };
   private readonly http = inject(HttpClient);
   private readonly sessao = inject(SessaoStore);
   private readonly router = inject(Router);

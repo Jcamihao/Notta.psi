@@ -178,7 +178,7 @@ com `Retry-After: 30`. Senha errada da 401.
 
 ### Tela de equipe (`/equipe`, so ADMIN)
 
-1. Entre como `ana@clinica.com`: o cabecalho mostra o link **Equipe**.
+1. Entre como `ana@clinica.com`: o menu lateral mostra o link **Equipe**.
 2. A tabela lista Ana (Administrador) e Bruno (Psicologo).
 3. Adicione alguem com e-mail novo: a pessoa aparece na lista e uma confirmacao lembra de
    combinar a senha inicial por canal seguro. O campo senha fica vazio.
@@ -192,17 +192,24 @@ com `Retry-After: 30`. Senha errada da 401.
 Obrigatoria (senha provisoria):
 
 1. Entre como `carla@clinica.com`: qualquer rota cai em `/trocar-senha`, com o aviso "Defina uma
-   senha só sua para continuar." O cabecalho mostra so o botao **Sair** (sem links).
+   senha só sua para continuar." O menu lateral mostra so o nome e o botao **Sair** (sem links).
 2. Senha atual errada: "Senha atual incorreta…" no campo senha atual; os tres campos ficam vazios.
 3. Nova senha comecando com `limite`: "Muitas tentativas. Tente de novo em 30 segundos."
 4. Confirmacao diferente, nova igual a atual ou mais de 72 bytes: o erro aparece no campo, sem
    chamar o servidor.
-5. Atual `senha-forte-1` e uma nova valida: volta para `/` com "Senha alterada…"; o cabecalho
-   volta ao normal. A nova senha passa a valer no login.
+5. Atual `senha-forte-1` e uma nova valida: volta para `/` com "Senha alterada…"; o menu
+   lateral volta ao normal. A nova senha passa a valer no login.
 
-Voluntaria: entre como `ana@` ou `bruno@` e use o link **Trocar senha** do cabecalho.
+Voluntaria: entre como `ana@` ou `bruno@` e use o link **Trocar senha** do menu lateral.
 
 Contas criadas em `/equipe` nascem com senha provisoria (como no back real).
+
+## Visual
+
+Fonte do visual: `docs/DESIGN-SYSTEM.md` (design system "intelly"). Tokens em
+`src/styles/tokens.scss`, componentes em `src/app/ui/`. A fonte DM Sans vem do pacote
+`@fontsource/dm-sans` (pesos 400/500/600, subset latin, entra pelo `styles` do `angular.json`) e os
+icones do `lucide-angular` (importados um a um): nenhuma requisicao sai de localhost.
 
 ## Sessao
 
@@ -210,7 +217,7 @@ Contas criadas em `/equipe` nascem com senha provisoria (como no back real).
 Cookie httpOnly fica como decisao futura. O `authInterceptor` anexa `Authorization: Bearer`
 so em URLs `/api/` e, em 401 (exceto `POST /api/auth/login`), limpa a sessao e vai para `/login`.
 `UsuarioStore` segue o token: ao entrar ou ao restaurar a sessao busca `GET /api/eu` (nome,
-papel, clinica) para o cabecalho; ao sair, limpa. `ehAdmin()` vem do papel; `pronto()` diz que o
+papel, clinica) para o menu lateral; ao sair, limpa. `ehAdmin()` vem do papel; `pronto()` diz que o
 `/eu` do token atual ja respondeu. O `adminGuard` (rota `/equipe`) espera `pronto()` antes de
 decidir: ADMIN entra, outro papel vai para `/`, sem sessao vai para `/login`. O servidor continua
 sendo a autoridade (403).
@@ -228,9 +235,11 @@ com ele, e o `UsuarioStore` busca o `/eu` de novo sozinho.
 src/
   app/
     core/      sessao.store, usuario.store, auth.interceptor, guards, formulario (validacao e erros)
-    layout/    shell.component (cabecalho + <router-outlet>), acesso.component (moldura de login/cadastro)
+    layout/    shell.component (menu lateral escuro; abaixo de 832px vira barra superior com botao Menu),
+               acesso.component (moldura de login/cadastro com o painel de sigilo)
+    ui/        componentes do design system: button, icon-button, pill, nav-item, avatar
     pages/     login, cadastro, equipe (so ADMIN), trocar-senha, inicio (placeholder)
     app.routes.ts   rotas com lazy loading (loadComponent)
-  styles/tokens.scss   tokens de design (CSS custom properties)
+  styles/tokens.scss   tokens do design system intelly (docs/DESIGN-SYSTEM.md), CSS custom properties
   styles.scss          estilos globais
 ```

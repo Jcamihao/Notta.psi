@@ -1,49 +1,41 @@
-// Tarefa curta e focada: uma coluna estreita, o mesmo cartao do form de equipe. No modo
-// obrigatorio o motivo aparece no tom escuro do painel de sigilo das telas de acesso: trocar a
-// senha provisoria e sobre sigilo, nao sobre erro.
+// Tarefa curta e focada: uma coluna estreita no cartao plano do formulario de equipe. No modo
+// obrigatorio o motivo aparece na superficie escura do painel de sigilo das telas de acesso:
+// trocar a senha provisoria e sobre sigilo, nao sobre erro.
 .senha {
   display: grid;
-  gap: var(--espaco-4);
-  max-width: 28rem;
-  margin: var(--espaco-5) auto 0;
+  gap: var(--space-7);
+  max-width: 30rem;
   h1 {
     margin: 0;
   }
 }
 .senha-lead {
   margin: 0;
-  color: var(--cor-texto-suave);
+  color: var(--text-secondary);
 }
 .senha-sigilo {
-  padding: var(--espaco-4) var(--espaco-5);
-  color: var(--cor-sigilo-suave);
-  background: var(--cor-sigilo);
-  border-radius: var(--raio);
-  font-size: var(--texto-sm);
-  line-height: 1.55;
+  padding: var(--space-7) var(--space-8);
+  color: var(--ink-300);
+  background: var(--bg-sidebar);
+  border-radius: var(--radius-card);
   p {
     margin: 0;
   }
 }
-.senha-sigilo-titulo {
-  margin-bottom: var(--espaco-1);
-  color: var(--cor-sigilo-texto);
-  font-size: var(--texto-md);
-  font-weight: 600;
+.senha-sigilo .senha-sigilo-titulo {
+  margin-bottom: var(--space-2);
+  color: var(--cream-100);
+  font-weight: var(--fw-medium);
 }
 .senha-form {
-  padding: var(--espaco-5);
-  background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio);
+  padding: var(--space-8);
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
 }
 
 @media (max-width: 30rem) {
-  .senha {
-    margin-top: 0;
-  }
   .senha-form,
   .senha-sigilo {
-    padding: var(--espaco-4);
+    padding: var(--space-6);
   }
 }

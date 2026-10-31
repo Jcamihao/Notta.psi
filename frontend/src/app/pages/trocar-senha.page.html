@@ -19,7 +19,11 @@
   <form class="formulario senha-form" [formGroup]="form" (ngSubmit)="trocar()" novalidate>
     <div class="aviso-regiao" aria-live="polite">
       @if (erroGeral()) {
-        <p class="aviso-erro" data-teste="erro-geral">{{ erroGeral() }}</p>
+        <p class="aviso-erro" data-teste="erro-geral">
+          <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
+            erroGeral()
+          }}
+        </p>
       }
     </div>
 
@@ -39,7 +43,11 @@
       @if (obrigatoria()) {
         <p id="ts-senhaAtual-dica" class="campo-dica">A senha provisória que você recebeu.</p>
       }
-      <p id="ts-senhaAtual-erro" class="campo-erro" aria-live="polite">{{ erro('senhaAtual') }}</p>
+      <p id="ts-senhaAtual-erro" class="campo-erro" aria-live="polite">
+        @if (erro('senhaAtual'); as m) {
+          <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+        }
+      </p>
     </div>
 
     <div class="campo">
@@ -55,7 +63,11 @@
         "
       />
       <p id="ts-novaSenha-dica" class="campo-dica">Pelo menos 8 caracteres.</p>
-      <p id="ts-novaSenha-erro" class="campo-erro" aria-live="polite">{{ erro('novaSenha') }}</p>
+      <p id="ts-novaSenha-erro" class="campo-erro" aria-live="polite">
+        @if (erro('novaSenha'); as m) {
+          <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+        }
+      </p>
     </div>
 
     <div class="campo">
@@ -68,10 +80,20 @@
         [attr.aria-invalid]="erro('confirmar') ? 'true' : null"
         [attr.aria-describedby]="erro('confirmar') ? 'ts-confirmar-erro' : null"
       />
-      <p id="ts-confirmar-erro" class="campo-erro" aria-live="polite">{{ erro('confirmar') }}</p>
+      <p id="ts-confirmar-erro" class="campo-erro" aria-live="polite">
+        @if (erro('confirmar'); as m) {
+          <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+        }
+      </p>
     </div>
 
-    <button type="submit" class="botao-primario" [disabled]="enviando()">
+    <button
+      app-button
+      type="submit"
+      full
+      [variant]="enviando() ? 'progress' : 'primary'"
+      [disabled]="enviando()"
+    >
       {{ enviando() ? 'Salvando…' : 'Salvar nova senha' }}
     </button>
   </form>

@@ -14,6 +14,8 @@ import {
 } from '../core/formulario';
 import { SessaoStore } from '../core/sessao.store';
 import { AcessoComponent } from '../layout/acesso.component';
+import { ChevronDown, CircleAlert, LucideAngularModule } from 'lucide-angular';
+import { ButtonComponent } from '../ui/button.component';
 
 const OBRIGATORIO = {
   clinica: 'Informe o nome da clínica.',
@@ -27,10 +29,11 @@ const texto = () => new FormControl('', { nonNullable: true, validators: [preenc
 
 @Component({
   selector: 'app-cadastro-page',
-  imports: [ReactiveFormsModule, RouterLink, AcessoComponent],
+  imports: [ReactiveFormsModule, RouterLink, AcessoComponent, LucideAngularModule, ButtonComponent],
   templateUrl: './cadastro.page.html',
 })
 export class CadastroPage {
+  readonly icones = { ChevronDown, CircleAlert };
   private readonly http = inject(HttpClient);
   private readonly sessao = inject(SessaoStore);
   private readonly router = inject(Router);

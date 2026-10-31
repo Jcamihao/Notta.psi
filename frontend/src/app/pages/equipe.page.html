@@ -31,14 +31,18 @@
         <tbody>
           @for (p of l; track p.psicologoId) {
             <tr>
-              <th scope="row">{{ p.nome }}</th>
+              <th scope="row">
+                <span class="pessoa"><app-avatar [name]="p.nome" [size]="28" />{{ p.nome }}</span>
+              </th>
               <td data-rotulo="E-mail" class="tabela-email">{{ p.email }}</td>
               <td data-rotulo="Papel">
-                <span class="papel" [class.papel-admin]="p.papel === 'ADMIN'">
+                <app-pill [tone]="p.papel === 'ADMIN' ? 'pink' : 'blue'">
                   {{ p.papel === 'ADMIN' ? 'Administrador' : 'Psicólogo' }}
-                </span>
+                </app-pill>
               </td>
-              <td data-rotulo="Abordagem">{{ rotuloAbordagem(p.abordagemPadrao) }}</td>
+              <td data-rotulo="Abordagem">
+                <app-pill tone="yellow">{{ rotuloAbordagem(p.abordagemPadrao) }}</app-pill>
+              </td>
               <td data-rotulo="Desde">
                 <time class="tabela-data" [attr.datetime]="p.criadoEm">{{ data(p.criadoEm) }}</time>
               </td>
@@ -53,7 +57,7 @@
     } @else if (erroLista()) {
       <div class="aviso-erro equipe-falha" role="alert">
         <p>Não foi possível carregar a equipe. Confira sua conexão.</p>
-        <button type="button" class="botao-discreto" (click)="carregar()">Tentar de novo</button>
+        <button app-button type="button" variant="soft" (click)="carregar()">Tentar de novo</button>
       </div>
     } @else {
       <p class="equipe-carregando" role="status">Carregando a equipe…</p>
@@ -69,10 +73,18 @@
     <form class="formulario" [formGroup]="form" (ngSubmit)="adicionar()" novalidate>
       <div class="aviso-regiao" aria-live="polite">
         @if (erroGeral()) {
-          <p class="aviso-erro" data-teste="erro-geral">{{ erroGeral() }}</p>
+          <p class="aviso-erro" data-teste="erro-geral">
+            <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
+              erroGeral()
+            }}
+          </p>
         }
         @if (confirmacao()) {
-          <p class="aviso-ok" data-teste="confirmacao">{{ confirmacao() }}</p>
+          <p class="aviso-ok" data-teste="confirmacao">
+            <lucide-icon [img]="icones.CircleCheck" [size]="18" [strokeWidth]="1.5" />{{
+              confirmacao()
+            }}
+          </p>
         }
       </div>
 
@@ -87,7 +99,11 @@
           [attr.aria-invalid]="erro('nome') ? 'true' : null"
           [attr.aria-describedby]="erro('nome') ? 'eq-nome-erro' : null"
         />
-        <p id="eq-nome-erro" class="campo-erro" aria-live="polite">{{ erro('nome') }}</p>
+        <p id="eq-nome-erro" class="campo-erro" aria-live="polite">
+          @if (erro('nome'); as m) {
+            <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+          }
+        </p>
       </div>
 
       <div class="campo">
@@ -103,7 +119,11 @@
           [attr.aria-invalid]="erro('email') ? 'true' : null"
           [attr.aria-describedby]="erro('email') ? 'eq-email-erro' : null"
         />
-        <p id="eq-email-erro" class="campo-erro" aria-live="polite">{{ erro('email') }}</p>
+        <p id="eq-email-erro" class="campo-erro" aria-live="polite">
+          @if (erro('email'); as m) {
+            <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+          }
+        </p>
       </div>
 
       <div class="campo">
@@ -120,29 +140,46 @@
           Pelo menos 8 caracteres. Combine a senha provisória com a pessoa por um canal seguro; ela
           escolherá a própria no primeiro acesso.
         </p>
-        <p id="eq-senha-erro" class="campo-erro" aria-live="polite">{{ erro('senha') }}</p>
+        <p id="eq-senha-erro" class="campo-erro" aria-live="polite">
+          @if (erro('senha'); as m) {
+            <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+          }
+        </p>
       </div>
 
       <div class="campo">
         <label for="eq-abordagem">Abordagem principal</label>
-        <select
-          id="eq-abordagem"
-          formControlName="abordagem"
-          [attr.aria-invalid]="erro('abordagem') ? 'true' : null"
-          [attr.aria-describedby]="
-            erro('abordagem') ? 'eq-abordagem-dica eq-abordagem-erro' : 'eq-abordagem-dica'
-          "
-        >
-          <option value="" disabled>Selecione</option>
-          @for (a of abordagens; track a[0]) {
-            <option [value]="a[0]">{{ a[1] }}</option>
-          }
-        </select>
+        <div class="campo-select">
+          <select
+            id="eq-abordagem"
+            formControlName="abordagem"
+            [attr.aria-invalid]="erro('abordagem') ? 'true' : null"
+            [attr.aria-describedby]="
+              erro('abordagem') ? 'eq-abordagem-dica eq-abordagem-erro' : 'eq-abordagem-dica'
+            "
+          >
+            <option value="" disabled>Selecione</option>
+            @for (a of abordagens; track a[0]) {
+              <option [value]="a[0]">{{ a[1] }}</option>
+            }
+          </select>
+          <lucide-icon [img]="icones.ChevronDown" [size]="16" [strokeWidth]="1.5" />
+        </div>
         <p id="eq-abordagem-dica" class="campo-dica">Orienta o tom dos rascunhos da IA.</p>
-        <p id="eq-abordagem-erro" class="campo-erro" aria-live="polite">{{ erro('abordagem') }}</p>
+        <p id="eq-abordagem-erro" class="campo-erro" aria-live="polite">
+          @if (erro('abordagem'); as m) {
+            <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+          }
+        </p>
       </div>
 
-      <button type="submit" class="botao-primario" [disabled]="enviando()">
+      <button
+        app-button
+        type="submit"
+        full
+        [variant]="enviando() ? 'progress' : 'primary'"
+        [disabled]="enviando()"
+      >
         {{ enviando() ? 'Adicionando…' : 'Adicionar psicólogo' }}
       </button>
     </form>

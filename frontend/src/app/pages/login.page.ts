@@ -12,15 +12,18 @@ import {
 } from '../core/formulario';
 import { SessaoStore } from '../core/sessao.store';
 import { AcessoComponent } from '../layout/acesso.component';
+import { CircleAlert, LucideAngularModule } from 'lucide-angular';
+import { ButtonComponent } from '../ui/button.component';
 
 const OBRIGATORIO = { email: 'Informe seu e-mail.', senha: 'Informe sua senha.' };
 
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule, RouterLink, AcessoComponent],
+  imports: [ReactiveFormsModule, RouterLink, AcessoComponent, LucideAngularModule, ButtonComponent],
   templateUrl: './login.page.html',
 })
 export class LoginPage {
+  readonly icones = { CircleAlert };
   private readonly http = inject(HttpClient);
   private readonly sessao = inject(SessaoStore);
   private readonly router = inject(Router);

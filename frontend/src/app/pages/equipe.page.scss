@@ -1,15 +1,18 @@
-// Tela de tarefa (modo Operate): tabela legivel e formulario ao lado, mesma identidade das telas
-// de acesso. Verde-petroleo so em acao, foco e no selo de Administrador.
+// Tela de tarefa (modo Operate): tabela legivel e formulario ao lado, cartoes planos creme-50
+// sem borda nem sombra. As colunas dependem da largura do conteudo (a sidebar ja ocupa 256px),
+// por isso container query em vez de media query.
+:host {
+  display: block;
+  container-type: inline-size;
+}
 .equipe {
   display: grid;
-  gap: var(--espaco-5) var(--espaco-6);
-  max-width: 72rem;
-  margin: 0 auto;
+  gap: var(--space-9) var(--space-8);
 }
 .equipe-lead {
   max-width: 62ch;
   margin: 0;
-  color: var(--cor-texto-suave);
+  color: var(--text-secondary);
 }
 
 // Rede de seguranca para dado patologico (e-mail enorme): rola so a lista, nunca a pagina.
@@ -18,14 +21,12 @@
 }
 .equipe-carregando {
   margin: 0;
-  color: var(--cor-texto-suave);
+  color: var(--text-secondary);
 }
 .equipe-falha {
-  display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--espaco-3);
   p {
     margin: 0;
   }
@@ -35,101 +36,84 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio);
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
   caption {
-    padding-bottom: var(--espaco-2);
+    padding: 0 0 var(--space-3) var(--space-1);
     caption-side: top;
     text-align: left;
-    color: var(--cor-texto-suave);
-    font-size: var(--texto-sm);
+    color: var(--text-secondary);
+    font-size: var(--fs-day);
   }
   th,
   td {
-    padding: var(--espaco-3);
+    padding: var(--space-5) var(--space-6);
     text-align: left;
-    vertical-align: baseline;
+    vertical-align: middle;
   }
   thead th {
-    color: var(--cor-texto-suave);
-    font-size: var(--texto-sm);
-    font-weight: 500;
-    border-bottom: 1px solid var(--cor-borda);
+    color: var(--text-secondary);
+    font-size: var(--fs-day);
+    font-weight: var(--fw-medium);
   }
   tbody th {
-    min-width: 7.5rem;
-    font-weight: 600;
+    min-width: 9rem;
+    font-weight: var(--fw-medium);
   }
-  tbody tr + tr > * {
-    border-top: 1px solid var(--cor-borda);
+  tbody tr > * {
+    border-top: 1px solid var(--cream-200);
   }
+}
+.pessoa {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
 }
 .tabela-email {
   min-width: 12rem;
   overflow-wrap: anywhere;
 }
 .tabela-data {
-  color: var(--cor-texto-suave);
+  color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .tabela-vazia {
-  color: var(--cor-texto-suave);
-}
-
-.papel {
-  justify-self: start;
-  color: var(--cor-texto-suave);
-  font-size: var(--texto-sm);
-}
-.papel-admin {
-  display: inline-block;
-  padding: 0.0625rem var(--espaco-2);
-  color: var(--cor-acao-forte);
-  background: var(--cor-acao-suave);
-  border-radius: var(--espaco-1);
-  font-weight: 600;
+  color: var(--text-secondary);
 }
 
 .equipe-novo {
   align-self: start;
-  padding: var(--espaco-5);
-  background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda);
-  border-radius: var(--raio);
+  max-width: 32rem;
+  padding: var(--space-8);
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
   h2 {
-    margin: 0 0 var(--espaco-1);
-    font-size: var(--texto-lg);
-    font-weight: 600;
-    line-height: 1.3;
+    margin-bottom: var(--space-2);
   }
 }
 .equipe-novo-lead {
-  margin: 0 0 var(--espaco-4);
-  color: var(--cor-texto-suave);
-  font-size: var(--texto-sm);
+  margin: 0 0 var(--space-7);
+  color: var(--text-secondary);
 }
 
-// Desktop: lista a esquerda, formulario fixo a direita enquanto a lista rola.
-@media (min-width: 75rem) {
+// Conteudo largo (tela de 1360px ou mais): lista a esquerda, formulario fixo a direita enquanto a lista rola.
+@container (min-width: 68rem) {
   .equipe {
-    grid-template-columns: minmax(0, 1fr) 21rem;
+    grid-template-columns: minmax(0, 1fr) 20rem;
   }
   .equipe-topo {
     grid-column: 1 / -1;
   }
   .equipe-novo {
     position: sticky;
-    top: var(--espaco-5);
+    top: 22px;
   }
 }
 
-// Celular: cada pessoa vira um bloco empilhado, sem rolagem horizontal.
-@media (max-width: 52rem) {
+// Conteudo estreito: cada pessoa vira um bloco empilhado, sem rolagem horizontal.
+@container (max-width: 40rem) {
   .tabela {
-    background: none;
-    border: 0;
     &,
     caption,
     tbody,
@@ -145,37 +129,36 @@
       overflow: hidden;
       clip-path: inset(50%);
     }
-    tbody {
-      background: var(--cor-superficie);
-      border: 1px solid var(--cor-borda);
-      border-radius: var(--raio);
-    }
     tbody tr {
-      padding: var(--espaco-3) var(--espaco-4);
+      padding: var(--space-6);
     }
-    tbody th {
-      padding: 0 0 var(--espaco-1);
-    }
-    tbody td {
-      min-width: 0;
-      display: grid;
-      grid-template-columns: 6rem minmax(0, 1fr);
-      gap: var(--espaco-2);
-      padding: var(--espaco-1) 0;
-    }
-    tbody td::before {
-      content: attr(data-rotulo);
-      color: var(--cor-texto-suave);
-      font-size: var(--texto-sm);
-    }
-    tbody tr + tr > * {
+    tbody tr > * {
       border-top: 0;
     }
     tbody tr + tr {
-      border-top: 1px solid var(--cor-borda);
+      border-top: 1px solid var(--cream-200);
+    }
+    tbody th {
+      padding: 0 0 var(--space-3);
+    }
+    tbody td {
+      display: grid;
+      grid-template-columns: 6rem minmax(0, 1fr);
+      gap: var(--space-3);
+      align-items: center;
+      min-width: 0;
+      padding: var(--space-1) 0;
+    }
+    tbody td::before {
+      content: attr(data-rotulo);
+      color: var(--text-secondary);
+      font-size: var(--fs-day);
+    }
+    app-pill {
+      justify-self: start;
     }
   }
   .equipe-novo {
-    padding: var(--espaco-4);
+    padding: var(--space-6);
   }
 }

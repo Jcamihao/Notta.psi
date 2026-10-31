@@ -59,7 +59,7 @@ describe('rotas', () => {
     const h = await RouterTestingHarness.create();
     await navegarComEu(h, '/');
     expect(url()).toBe('/');
-    expect(h.routeNativeElement?.textContent).toContain('Inicio');
+    expect(h.routeNativeElement?.textContent).toContain('Início');
     expect(h.routeNativeElement?.querySelector('header')).not.toBeNull();
   });
 
