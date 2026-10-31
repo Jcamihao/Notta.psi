@@ -5,6 +5,7 @@ import { AppModule } from '../src/app.module';
 import { configurarApp, OPCOES_APP } from '../src/configurar-app';
 import { LimiteTentativasGuard } from '../src/limite-tentativas/limite-tentativas.guard';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
+import { apagarClinicas as apagarClinicasComoOwner } from './acesso-owner';
 
 // Env de teste EXPLICITA (nao depende de .env). Valores fixos so de teste, nao sao segredo.
 // Se ja exportadas, valem as exportadas.
@@ -49,18 +50,10 @@ export function criarAppSemLimite(
   return criarApp({ ...opcoes, semLimite: true });
 }
 
-// Limpeza SEMPRE dentro de contexto (FORCE RLS vale para todo papel).
-export async function apagarClinicas(
-  app: NestExpressApplication,
-  ids: string[],
-) {
-  const tenant = app.get(TenantPrismaService);
-  for (const id of ids) {
-    await tenant.run(id, async (tx) => {
-      await tx.psicologo.deleteMany({ where: { clinicaId: id } });
-      await tx.clinica.deleteMany({ where: { id } });
-    });
-  }
+// Limpeza como notta_owner: o notta_app nao tem DELETE em Psicologo/Clinica (M-2).
+// `_app` fica so pela assinatura que as suites ja usam; nao e usado.
+export function apagarClinicas(_app: unknown, ids: string[]) {
+  return apagarClinicasComoOwner(ids);
 }
 
 export function corpoClinica(email: string, extra: object = {}) {

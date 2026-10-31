@@ -4,6 +4,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import bcrypt from 'bcrypt';
 import request from 'supertest';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
+import { comoOwner } from './acesso-owner';
 import {
   apagarClinicas,
   corpoClinica,
@@ -238,11 +239,9 @@ describe('GET /psicologos', () => {
   it('token valido de psicologo apagado = 401', async () => {
     const c = await novaClinica(email('apagado'));
     await get(c.token).expect(200);
-    await app
-      .get(TenantPrismaService)
-      .run(c.clinicaId, (tx) =>
-        tx.psicologo.deleteMany({ where: { clinicaId: c.clinicaId } }),
-      );
+    await comoOwner(c.clinicaId, (tx) =>
+      tx.psicologo.deleteMany({ where: { clinicaId: c.clinicaId } }),
+    );
     await get(c.token).expect(401);
     await post(c.token, corpoPsi(email('apagado-2'))).expect(401);
   });

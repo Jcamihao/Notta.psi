@@ -62,17 +62,30 @@ beforeAll(async () => {
     .send(corpoClinica(emailAdmin, { senha: SENHA }))
     .expect(201);
   clinicaId = (res.body as { clinicaId: string }).clinicaId;
-  // Endpoint de equipe e do item 8: PSICOLOGO criado direto no banco (notta_app, dentro de run).
-  const senhaHash = await bcrypt.hash(SENHA, 4);
-  await app.get(TenantPrismaService).run(clinicaId, (tx) =>
+  // PSICOLOGO direto no banco (notta_app). O banco so aceita colega com senha provisoria
+  // (M-2): cria provisorio e faz a troca legitima na propria linha (hash novo, +1 versao).
+  const tenant = app.get(TenantPrismaService);
+  const { id: psicologoId } = await tenant.run(clinicaId, (tx) =>
     tx.psicologo.create({
       data: {
         clinicaId,
         email: emailPsi,
         nome: 'Psi Teste',
-        senhaHash,
+        senhaHash: 'provisoria',
         abordagemPadrao: 'TCC',
         papel: 'PSICOLOGO',
+        senhaProvisoria: true,
+      },
+    }),
+  );
+  const senhaHash = await bcrypt.hash(SENHA, 4);
+  await tenant.runComoUsuario({ clinicaId, psicologoId }, (tx) =>
+    tx.psicologo.updateMany({
+      where: { id: psicologoId, clinicaId },
+      data: {
+        senhaHash,
+        senhaProvisoria: false,
+        tokenVersao: { increment: 1 },
       },
     }),
   );

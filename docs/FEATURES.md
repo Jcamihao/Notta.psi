@@ -86,9 +86,11 @@ Numeração separada para não quebrar as referências da Fase 1 em andamento. A
 
 ## Fase 1.5 — Endurecimento (revisão independente da Fase 1, 2026-10-31; antes da Fase 2)
 Relatório completo em `.superpowers/sdd/fase-1/review-fase-1.md`. 0 críticos, 5 importantes.
-- [x] 59. [B] Guard devolve 503 (não 401) em erro de infraestrutura e rotas autenticadas ganham limite por psicólogo (sob carga o pool esgota e o front desloga todo mundo)
+- [x] 59. [B] Guard devolve 503 (não 401) em erro de infraestrutura e rotas autenticadas ganham limite por psicólogo (sob carga o pool esgota e o front desloga todo mundo). Nota: a degradação ENTRE clínicas (um usuário em rajada atrasando as outras) só fechou na Fase 1.6/H3 (limite e teto de simultâneas contados antes do banco, com tarpit na recusa); antes disso o item cobria só o 503
 - [x] 60. [B] CPU do login: hash fora da thread principal (bcrypt nativo ou argon2), teto de logins simultâneos, IPv6 agrupado por /64
 - [x] 61. [B] Boot recusa segredos de exemplo e de baixa entropia, e recusa papel de runtime superuser ou com BYPASSRLS
 - [x] 62. [M] Senha inicial do colega: troca obrigatória no primeiro acesso (o ADMIN hoje consegue entrar como o colega; usa o item 57)
 - [x] 63. [B] Padrão `psicologo_proprio`: FK filha inclui `psicologoId` (hoje um colega pendura linha no paciente do outro) e colega não grava `papel`/`senhaHash` de ninguém
 - [x] 64. [B] AAD no AES-GCM (antes de existir dado cifrado; depois exige recifrar tudo)
+- [ ] 65. [M] Convite por e-mail de uso único para o colega (fecha o I-1 da 2ª revisão: o ADMIN nunca tem a credencial; depende do item 24)
+- [ ] 66. [F] Antes de abrir para clínicas: ajustar o texto do painel de sigilo ao que o código já garante (cifra em uso, IA) e mensagem de 503 ("muita demanda, tente de novo") no login

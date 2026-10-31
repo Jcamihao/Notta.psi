@@ -22,6 +22,8 @@ export NOTTA_JWT_SECRET=$(openssl rand -base64 48)   # >= 32 caracteres, 16+ dis
 export NODE_ENV=development     # sem isto o boot exige NOTTA_TRUST_PROXY (0 = sem proxy)
 npm run db:generate
 npm run db:migrate              # prisma migrate deploy, roda como notta_owner (DATABASE_URL_OWNER)
+# uma vez por banco, como SUPERUSER (lo_create nao se revoga em migration):
+psql -U postgres -d notta_psi -f prisma/bootstrap/endurecer-banco.sql   # docker: ja roda no 1o start (02-endurecer-banco.sh)
 npm run start:dev
 curl localhost:3000/saude       # {"status":"ok"}
 ```
@@ -29,7 +31,10 @@ curl localhost:3000/saude       # {"status":"ok"}
 ## Testes
 ```bash
 npm test                        # unitarios (sem banco)
-npm run test:e2e                # exige DATABASE_URL e DATABASE_URL_OWNER, falha alto sem elas
+npm run test:e2e                # exige DATABASE_URL e DATABASE_URL_OWNER, falha alto sem elas. Roda 2 grupos em sequencia:
+                                # (1) paralelo (jest-e2e.json) e (2) EM SERIE (jest-e2e-serial.json): as suites que
+                                # fazem DDL com FK para Psicologo (acesso*) e a de carga (carga-clinicas), isoladas
+                                # das demais (DDL entra na fila do lock e atrasa o resto; carga mede latencia)
 npm run lint && npm run format:check && npm run build
 ```
 
@@ -39,6 +44,9 @@ npm run lint && npm run format:check && npm run build
 - Acesso a dado de clinica so via `TenantPrismaService.run(clinicaId, tx => ...)` (unico lugar com `set_config`). Login usa `runLogin(email, tx => ...)` (policy `login_lookup`, so SELECT em Psicologo). Dentro de `fn`: sem I/O de rede e sem `run` aninhado.
 - Migration nova: escreva a mao (`npx prisma migrate diff --from-url "$DATABASE_URL_OWNER" --to-schema-datamodel prisma/schema.prisma --script`) e acrescente ENABLE/FORCE/policy. Migration de DADOS com FORCE precisa de laco por clinica com `set_config`.
 - Sem drift: `npx prisma migrate diff --from-url "$DATABASE_URL_OWNER" --to-schema-datamodel prisma/schema.prisma --exit-code` -> "No difference detected."
+
+## Barreiras no banco (Psicologo e Clinica)
+Migration `20261031210000_barreiras_psicologo_clinica` (detalhes em `docs/ACESSO.md`): INSERT em `Psicologo` so de colega provisorio ou do 1o ADMIN da clinica; sem DELETE em `Psicologo` e sem UPDATE/DELETE em `Clinica` para o `notta_app`; trigger `psicologo_barreira_update` (senha provisoria e `tokenVersao`). Codigo novo que escreva em `Psicologo` tem de caber nessas regras. Teste de banco: `test/acesso-psicologo.e2e-spec.ts`. `lo_create` fica de fora da migration (o owner nao consegue revogar): `prisma/bootstrap/endurecer-banco.sql`, como superuser, uma vez por banco; o teste confere.
 
 ## Variaveis
 Ver `.env.example` (PORT, DATABASE_URL, DATABASE_URL_OWNER, NOTTA_TRUST_PROXY, NOTTA_MASTER_KEY, NOTTA_JWT_SECRET, NOTTA_CORS_ORIGIN).

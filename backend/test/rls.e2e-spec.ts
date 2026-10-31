@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
+import { apagarClinicas } from './acesso-owner';
 
 // Integracao com Postgres real: sem as URLs falha alto, nunca pula.
 if (!process.env.DATABASE_URL_OWNER) {
@@ -39,6 +40,8 @@ function psicologo(clinicaId: string, email: string) {
     nome: 'Teste',
     senhaHash: 'x',
     abordagemPadrao: 'TCC' as const,
+    // Colega so nasce com senha provisoria (policy de INSERT, M-2).
+    senhaProvisoria: true,
   };
 }
 
@@ -65,13 +68,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Limpeza sempre DENTRO de contexto (owner tambem esta sujeito ao FORCE).
-  for (const id of [A, B]) {
-    await tenant.run(id, async (tx) => {
-      await tx.psicologo.deleteMany({ where: { clinicaId: id } });
-      await tx.clinica.deleteMany({ where: { id } });
-    });
-  }
+  // Limpeza como owner, sempre DENTRO de contexto (owner tambem esta sujeito ao FORCE).
+  await apagarClinicas([A, B]);
   await app.$disconnect();
   await owner.$disconnect();
 });
@@ -144,25 +142,25 @@ describe('RLS por clinica', () => {
     ).rejects.toThrow(/row-level security/);
   });
 
-  it('UPDATE e DELETE sob contexto A em linhas de B afetam 0 linhas', async () => {
-    const r = await tenant.run(A, async (tx) => ({
-      upd: await tx.psicologo.updateMany({
+  it('UPDATE sob contexto A em linhas de B afeta 0; DELETE e UPDATE de Clinica nem existem para o app', async () => {
+    const r = await tenant.run(A, (tx) =>
+      tx.psicologo.updateMany({
         where: { clinicaId: B },
         data: { nome: 'hack' },
       }),
-      updClinica: await tx.clinica.updateMany({
-        where: { id: B },
-        data: { nome: 'hack' },
-      }),
-      del: await tx.psicologo.deleteMany({ where: { clinicaId: B } }),
-      delClinica: await tx.clinica.deleteMany({ where: { id: B } }),
-    }));
-    expect(r).toEqual({
-      upd: { count: 0 },
-      updClinica: { count: 0 },
-      del: { count: 0 },
-      delClinica: { count: 0 },
-    });
+    );
+    expect(r).toEqual({ count: 0 });
+    // M-2: o notta_app nao tem DELETE em Psicologo nem UPDATE/DELETE em Clinica.
+    for (const op of [
+      (tx: Prisma.TransactionClient) =>
+        tx.psicologo.deleteMany({ where: { clinicaId: B } }),
+      (tx: Prisma.TransactionClient) =>
+        tx.clinica.updateMany({ where: { id: B }, data: { nome: 'hack' } }),
+      (tx: Prisma.TransactionClient) =>
+        tx.clinica.deleteMany({ where: { id: B } }),
+    ]) {
+      await expect(tenant.run(A, op)).rejects.toThrow(/permission denied/);
+    }
     const b = await tenant.run(B, (tx) => tx.psicologo.findMany());
     expect(b.map((p) => p.nome)).toEqual(['Teste']);
   });

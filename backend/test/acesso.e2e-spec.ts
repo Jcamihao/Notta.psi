@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { Papel, Prisma, PrismaClient } from '@prisma/client';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
+import { apagarClinicas, ddl } from './acesso-owner';
 
 // Mecanismo de acesso por psicologo (padrao das tabelas clinicas da Fase 2), Postgres real.
 // A policy vem do docs/ACESSO.md (o mesmo bloco que a Fase 2 copia): doc e teste nao divergem.
@@ -85,6 +86,8 @@ async function criarPsicologo(clinicaId: string, nome: string, papel: Papel) {
         email: `${nome}-${sufixo}@teste.local`,
         senhaHash: 'x',
         abordagemPadrao: 'TCC',
+        // Colega so nasce com senha provisoria (policy de INSERT, M-2).
+        senhaProvisoria: papel === 'PSICOLOGO',
       },
     }),
   );
@@ -92,16 +95,20 @@ async function criarPsicologo(clinicaId: string, nome: string, papel: Papel) {
 }
 
 beforeAll(async () => {
-  await owner.$executeRawUnsafe('DROP TABLE IF EXISTS _teste_acesso');
-  await owner.$executeRawUnsafe(`CREATE TABLE _teste_acesso (
+  await ddl(owner, 'DROP TABLE IF EXISTS _teste_acesso');
+  await ddl(
+    owner,
+    `CREATE TABLE _teste_acesso (
     id text PRIMARY KEY,
     "clinicaId" text NOT NULL,
     "psicologoId" text NOT NULL,
     texto text NOT NULL,
     FOREIGN KEY ("psicologoId", "clinicaId") REFERENCES "Psicologo"("id", "clinicaId")
-  )`);
-  for (const sql of sqlDoDoc()) await owner.$executeRawUnsafe(sql);
-  await owner.$executeRawUnsafe(
+  )`,
+  );
+  for (const sql of sqlDoDoc()) await ddl(owner, sql);
+  await ddl(
+    owner,
     'GRANT SELECT, INSERT, UPDATE, DELETE ON _teste_acesso TO notta_app',
   );
 
@@ -131,13 +138,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Tabela de teste nao pode sobrar no banco. DROP antes (FK aponta para Psicologo).
-  await owner.$executeRawUnsafe('DROP TABLE IF EXISTS _teste_acesso');
-  for (const id of [A, B]) {
-    await tenant.run(id, async (tx) => {
-      await tx.psicologo.deleteMany({ where: { clinicaId: id } });
-      await tx.clinica.deleteMany({ where: { id } });
-    });
-  }
+  await ddl(owner, 'DROP TABLE IF EXISTS _teste_acesso');
+  await apagarClinicas([A, B]);
   await app.$disconnect();
   await owner.$disconnect();
 });
@@ -270,30 +272,37 @@ describe('FK de tabela filha inclui o dono (docs/ACESSO.md, bloco sql-fk-filha)'
     ).length;
 
   beforeAll(async () => {
-    await owner.$executeRawUnsafe('DROP TABLE IF EXISTS _teste_filho');
-    await owner.$executeRawUnsafe('DROP TABLE IF EXISTS _teste_pai');
-    await owner.$executeRawUnsafe(`CREATE TABLE _teste_pai (
+    await ddl(owner, 'DROP TABLE IF EXISTS _teste_filho');
+    await ddl(owner, 'DROP TABLE IF EXISTS _teste_pai');
+    await ddl(
+      owner,
+      `CREATE TABLE _teste_pai (
       id text PRIMARY KEY,
       "clinicaId" text NOT NULL,
       "psicologoId" text NOT NULL,
       FOREIGN KEY ("psicologoId", "clinicaId") REFERENCES "Psicologo"("id", "clinicaId"),
       UNIQUE (id, "psicologoId", "clinicaId")
-    )`);
-    await owner.$executeRawUnsafe(`CREATE TABLE _teste_filho (
+    )`,
+    );
+    await ddl(
+      owner,
+      `CREATE TABLE _teste_filho (
       id text PRIMARY KEY,
       "pacienteId" text NOT NULL,
       "clinicaId" text NOT NULL,
       "psicologoId" text NOT NULL,
       FOREIGN KEY ("psicologoId", "clinicaId") REFERENCES "Psicologo"("id", "clinicaId")
-    )`);
+    )`,
+    );
     for (const sql of [
       ...sqlDoDoc('_teste_pai'),
       ...sqlDoDoc('_teste_filho'),
       ...fkFilhaDoDoc(),
     ]) {
-      await owner.$executeRawUnsafe(sql);
+      await ddl(owner, sql);
     }
-    await owner.$executeRawUnsafe(
+    await ddl(
+      owner,
       'GRANT SELECT, INSERT, UPDATE, DELETE ON _teste_pai, _teste_filho TO notta_app',
     );
     paiAdmin = await criarPai(adminA);
@@ -301,8 +310,8 @@ describe('FK de tabela filha inclui o dono (docs/ACESSO.md, bloco sql-fk-filha)'
   });
 
   afterAll(async () => {
-    await owner.$executeRawUnsafe('DROP TABLE IF EXISTS _teste_filho');
-    await owner.$executeRawUnsafe('DROP TABLE IF EXISTS _teste_pai');
+    await ddl(owner, 'DROP TABLE IF EXISTS _teste_filho');
+    await ddl(owner, 'DROP TABLE IF EXISTS _teste_pai');
   });
 
   it('colega da mesma clinica nao grava filha apontando para o pai de outro psicologo', async () => {

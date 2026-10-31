@@ -5,7 +5,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import bcrypt from 'bcrypt';
 import request from 'supertest';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
-import { mudarPapelComoOwner } from './acesso-owner';
+import { comoOwner, mudarPapelComoOwner } from './acesso-owner';
 import {
   apagarClinicas,
   corpoClinica,
@@ -18,7 +18,6 @@ const email = (n: string) => `${n}-${sufixo}@teste.local`;
 const SENHA = 'senha-forte-123';
 
 let app: NestExpressApplication;
-let tenant: TenantPrismaService;
 const criadas: string[] = [];
 
 type Cadastro = { clinicaId: string; psicologoId: string; email: string };
@@ -61,7 +60,6 @@ let b: Cadastro;
 
 beforeAll(async () => {
   app = await criarAppSemLimite();
-  tenant = app.get(TenantPrismaService);
   a = await cadastrar('a', {
     nomeClinica: 'Clinica A',
     abordagemPadrao: 'ACT',
@@ -217,7 +215,7 @@ describe('GET /eu e JwtAuthGuard', () => {
     const c = await cadastrar('apagado');
     const token = await tokenDe(c);
     await eu(token).expect(200);
-    await tenant.run(c.clinicaId, (tx) =>
+    await comoOwner(c.clinicaId, (tx) =>
       tx.psicologo.deleteMany({
         where: { id: c.psicologoId, clinicaId: c.clinicaId },
       }),
