@@ -19,6 +19,7 @@ const EU: Eu = {
   papel: 'ADMIN',
   abordagemPadrao: 'TCC',
   clinica: { id: 'c1', nome: 'Clinica Horizonte' },
+  senhaProvisoria: false,
 };
 
 describe('adminGuard', () => {

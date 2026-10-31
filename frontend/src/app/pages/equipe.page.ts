@@ -25,7 +25,7 @@ export interface MembroEquipe {
 const OBRIGATORIO = {
   nome: 'Informe o nome.',
   email: 'Informe o e-mail.',
-  senha: 'Defina uma senha inicial.',
+  senha: 'Defina uma senha provisória.',
   abordagem: 'Escolha a abordagem principal.',
 };
 
@@ -109,14 +109,14 @@ export class EquipePage {
           this.enviando.set(false);
           this.form.reset();
           this.confirmacao.set(
-            `${nome} agora faz parte da equipe. Combine a senha inicial com a pessoa por um canal seguro.`,
+            `${nome} agora faz parte da equipe. Combine a senha provisória com a pessoa por um canal seguro; ela escolherá a própria no primeiro acesso.`,
           );
           this.carregar();
         },
         error: (e: HttpErrorResponse) => {
           this.enviando.set(false);
           // A senha nunca fica na tela depois do envio. Limpa depois de mover o foco, senao o
-          // blur do campo senha acende "Defina uma senha inicial" antes da pessoa agir.
+          // blur do campo senha acende "Defina uma senha provisória" antes da pessoa agir.
           if (e.status === 409) {
             // markAsTouched: quem enviou com Enter no campo ainda nao saiu dele.
             this.form.controls.email.setErrors({ emUsoEquipe: true });

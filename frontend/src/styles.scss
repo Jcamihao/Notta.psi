@@ -136,6 +136,16 @@ a:hover {
   border-radius: var(--raio);
   font-size: var(--texto-sm);
 }
+// Confirmacao (acao concluida): verde-petroleo suave.
+.aviso-ok {
+  margin: 0 0 var(--espaco-4);
+  padding: var(--espaco-3) var(--espaco-4);
+  color: var(--cor-acao-forte);
+  background: var(--cor-acao-suave);
+  border: 1px solid currentColor;
+  border-radius: var(--raio);
+  font-size: var(--texto-sm);
+}
 
 // Botoes.
 .botao-primario {

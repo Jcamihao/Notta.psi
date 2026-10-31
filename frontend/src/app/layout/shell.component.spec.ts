@@ -107,3 +107,70 @@ describe('ShellComponent (ADMIN)', () => {
     expect(link()?.getAttribute('aria-current')).toBe('page');
   });
 });
+
+describe('ShellComponent (troca de senha)', () => {
+  let ctrl: HttpTestingController;
+  let fixture: ComponentFixture<ShellComponent>;
+
+  const montar = async (senhaProvisoria: boolean, papel = 'ADMIN') => {
+    sessionStorage.clear();
+    await TestBed.configureTestingModule({
+      imports: [ShellComponent],
+      providers: [
+        provideRouter([{ path: 'trocar-senha', children: [] }]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
+    }).compileComponents();
+    ctrl = TestBed.inject(HttpTestingController);
+    TestBed.inject(SessaoStore).entrar('t');
+    fixture = TestBed.createComponent(ShellComponent);
+    await fixture.whenStable();
+    ctrl.expectOne('/api/eu').flush({
+      psicologoId: 'p1',
+      nome: 'Ana Souza',
+      email: 'ana@clinica.com',
+      papel,
+      abordagemPadrao: 'TCC',
+      clinica: { id: 'c1', nome: 'Clinica Horizonte' },
+      senhaProvisoria,
+    });
+    await fixture.whenStable();
+  };
+  const el = () => fixture.nativeElement as HTMLElement;
+
+  afterEach(() => {
+    ctrl.verify();
+    sessionStorage.clear();
+  });
+
+  it('modo voluntario mostra o link Trocar senha', async () => {
+    await montar(false, 'PSICOLOGO');
+    expect(el().querySelector('header a[href="/trocar-senha"]')?.textContent?.trim()).toBe(
+      'Trocar senha',
+    );
+  });
+
+  it('modo obrigatorio esconde a navegacao: sobra so o botao Sair', async () => {
+    await montar(true);
+    const topo = el().querySelector('header')!;
+    expect(topo.querySelectorAll('a').length).toBe(0);
+    expect(topo.querySelector('nav')).toBeNull();
+    const botoes = Array.from(topo.querySelectorAll('button')).map((b) => b.textContent?.trim());
+    expect(botoes).toEqual(['Sair']);
+    expect(topo.textContent).toContain('Notta.psi');
+  });
+
+  it('depois da troca mostra uma confirmacao leve, que some na proxima navegacao', async () => {
+    await montar(false);
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/', { state: { senhaTrocada: true } });
+    await fixture.whenStable();
+    const aviso = () => el().querySelector('[data-teste="senha-trocada"]');
+    expect(aviso()?.textContent).toContain('Senha alterada');
+    expect(aviso()?.closest('[aria-live]')).not.toBeNull();
+    await router.navigateByUrl('/trocar-senha');
+    await fixture.whenStable();
+    expect(aviso()).toBeNull();
+  });
+});

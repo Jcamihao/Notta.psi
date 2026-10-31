@@ -1,5 +1,7 @@
 import { Component, inject } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
 import { UsuarioStore } from '../core/usuario.store';
 
 @Component({
@@ -8,11 +10,16 @@ import { UsuarioStore } from '../core/usuario.store';
   template: `
     <header class="shell-topo">
       <div class="shell-onde">
-        <a class="marca" routerLink="/">Notta<span class="marca-psi">.psi</span></a>
+        <!-- Senha provisoria: sem navegacao, so o botao Sair (o guard trava as rotas do mesmo jeito). -->
+        @if (obrigatoria()) {
+          <span class="marca">Notta<span class="marca-psi">.psi</span></span>
+        } @else {
+          <a class="marca" routerLink="/">Notta<span class="marca-psi">.psi</span></a>
+        }
         @if (usuario(); as u) {
           <span class="shell-clinica">{{ u.clinica.nome }}</span>
         }
-        @if (ehAdmin()) {
+        @if (ehAdmin() && !obrigatoria()) {
           <nav aria-label="Principal">
             <a
               class="shell-link"
@@ -27,11 +34,27 @@ import { UsuarioStore } from '../core/usuario.store';
       <div class="shell-quem">
         @if (usuario(); as u) {
           <span class="shell-nome">{{ u.nome }}</span>
+          @if (!obrigatoria()) {
+            <a
+              class="shell-link"
+              routerLink="/trocar-senha"
+              routerLinkActive="shell-link-ativo"
+              ariaCurrentWhenActive="page"
+              >Trocar senha</a
+            >
+          }
         }
         <button type="button" class="botao-discreto" (click)="sair()">Sair</button>
       </div>
     </header>
     <main class="shell-conteudo">
+      <div class="shell-aviso" aria-live="polite">
+        @if (senhaTrocada()) {
+          <p class="aviso-ok" data-teste="senha-trocada">
+            Senha alterada. Use a nova senha no próximo acesso.
+          </p>
+        }
+      </div>
       <router-outlet />
     </main>
   `,
@@ -58,6 +81,8 @@ import { UsuarioStore } from '../core/usuario.store';
       min-width: 0;
     }
     .shell-quem {
+      flex-wrap: wrap;
+      justify-content: flex-end;
       margin-left: auto;
     }
     .shell-clinica {
@@ -101,6 +126,10 @@ import { UsuarioStore } from '../core/usuario.store';
     .shell-conteudo {
       padding: var(--espaco-5);
     }
+    .shell-aviso {
+      max-width: 72rem;
+      margin: 0 auto;
+    }
   `,
 })
 export class ShellComponent {
@@ -109,6 +138,15 @@ export class ShellComponent {
 
   readonly usuario = this.usuarios.usuario;
   readonly ehAdmin = this.usuarios.ehAdmin;
+  readonly obrigatoria = this.usuarios.senhaProvisoria;
+  // Confirmacao leve da troca de senha: vem no state da navegacao e some na proxima.
+  readonly senhaTrocada = toSignal(
+    this.router.events.pipe(
+      filter((e) => e instanceof NavigationEnd),
+      map(() => this.router.lastSuccessfulNavigation?.extras.state?.['senhaTrocada'] === true),
+    ),
+    { initialValue: false },
+  );
 
   sair(): void {
     this.usuarios.sair();

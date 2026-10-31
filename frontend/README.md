@@ -40,10 +40,15 @@ const conta = (nome, papel, criadoEm) => ({
   abordagemPadrao: 'TCC',
   clinica: 'Clinica Horizonte',
   criadoEm,
+  provisoria: false,
 });
 const contas = new Map([
   ['ana@clinica.com', conta('Ana Souza', 'ADMIN', '2026-03-12T14:00:00.000Z')],
   ['bruno@clinica.com', conta('Bruno Lima', 'PSICOLOGO', '2026-10-01T14:00:00.000Z')],
+  [
+    'carla@clinica.com',
+    { ...conta('Carla Dias', 'PSICOLOGO', '2026-10-20T14:00:00.000Z'), provisoria: true },
+  ],
 ]);
 const tokens = new Map();
 const responder = (res, status, body, extra = {}) => {
@@ -51,6 +56,16 @@ const responder = (res, status, body, extra = {}) => {
   res.end(JSON.stringify(body));
 };
 const proibido = { statusCode: 403, message: 'Forbidden resource', error: 'Forbidden' };
+const trocaObrigatoria = {
+  statusCode: 403,
+  message: 'Troca de senha obrigatoria',
+  error: 'Forbidden',
+};
+const novoToken = (email) => {
+  const t = 'falso.' + Math.random().toString(36).slice(2);
+  tokens.set(t, email);
+  return t;
+};
 http
   .createServer((req, res) => {
     let raw = '';
@@ -81,13 +96,13 @@ http
       if (rota === 'POST /auth/login') {
         if (contas.get(email)?.senha !== b.senha)
           return responder(res, 401, { statusCode: 401, message: 'Credenciais invalidas' });
-        const t = 'falso.' + Math.random().toString(36).slice(2);
-        tokens.set(t, email);
-        return responder(res, 200, { token: t });
+        return responder(res, 200, { token: novoToken(email) });
       }
       const dono = tokens.get(String(req.headers.authorization).replace('Bearer ', ''));
       const eu = contas.get(dono);
       if (!eu) return responder(res, 401, { statusCode: 401, message: 'Unauthorized' });
+      if (eu.provisoria && rota !== 'GET /eu' && rota !== 'POST /auth/trocar-senha')
+        return responder(res, 403, trocaObrigatoria);
       if (rota === 'GET /eu')
         return responder(res, 200, {
           psicologoId: dono,
@@ -96,7 +111,27 @@ http
           papel: eu.papel,
           abordagemPadrao: eu.abordagemPadrao,
           clinica: { id: 'c1', nome: eu.clinica },
+          senhaProvisoria: eu.provisoria,
         });
+      if (rota === 'POST /auth/trocar-senha') {
+        const nova = String(b.novaSenha ?? '');
+        if (nova.startsWith('limite'))
+          return responder(
+            res,
+            429,
+            { statusCode: 429, message: 'Muitas tentativas. Tente mais tarde.' },
+            { 'Retry-After': '30' },
+          );
+        if (b.senhaAtual !== eu.senha)
+          return responder(res, 422, { statusCode: 422, message: 'Senha atual incorreta' });
+        const bytes = Buffer.byteLength(nova);
+        if (bytes < 8 || bytes > 72 || nova === b.senhaAtual)
+          return responder(res, 400, { statusCode: 400, message: ['novaSenha invalida'] });
+        eu.senha = nova;
+        eu.provisoria = false;
+        for (const [t, e] of tokens) if (e === dono) tokens.delete(t); // derruba os tokens antigos
+        return responder(res, 200, { token: novoToken(dono) });
+      }
       if (req.url === '/psicologos' && eu.papel !== 'ADMIN') return responder(res, 403, proibido);
       if (rota === 'GET /psicologos')
         return responder(
@@ -122,6 +157,7 @@ http
           senha: b.senha,
           abordagemPadrao: b.abordagemPadrao,
           clinica: eu.clinica,
+          provisoria: true,
         });
         return responder(res, 201, { psicologoId: email });
       }
@@ -136,8 +172,8 @@ node /tmp/notta-falso/falso.mjs   # terminal 1
 npm start                         # terminal 2, abra http://localhost:4200/cadastro
 ```
 
-Contas prontas (senha `senha-forte-1`): `ana@clinica.com` (ADMIN) e `bruno@clinica.com`
-(PSICOLOGO). Cadastrar com elas da 409. Qualquer e-mail comecando com `limite@` responde 429
+Contas prontas (senha `senha-forte-1`): `ana@clinica.com` (ADMIN), `bruno@clinica.com`
+(PSICOLOGO) e `carla@clinica.com` (PSICOLOGO com senha provisoria). Cadastrar com elas da 409. Qualquer e-mail comecando com `limite@` responde 429
 com `Retry-After: 30`. Senha errada da 401.
 
 ### Tela de equipe (`/equipe`, so ADMIN)
@@ -151,6 +187,23 @@ com `Retry-After: 30`. Senha errada da 401.
 6. E-mail comecando com `proibido@`: o servidor falso responde 403 e a tela volta para `/`.
 7. Saia e entre como `bruno@clinica.com`: sem link Equipe; abrir `/equipe` na mao volta para `/`.
 
+### Troca de senha (`/trocar-senha`)
+
+Obrigatoria (senha provisoria):
+
+1. Entre como `carla@clinica.com`: qualquer rota cai em `/trocar-senha`, com o aviso "Defina uma
+   senha só sua para continuar." O cabecalho mostra so o botao **Sair** (sem links).
+2. Senha atual errada: "Senha atual incorreta…" no campo senha atual; os tres campos ficam vazios.
+3. Nova senha comecando com `limite`: "Muitas tentativas. Tente de novo em 30 segundos."
+4. Confirmacao diferente, nova igual a atual ou mais de 72 bytes: o erro aparece no campo, sem
+   chamar o servidor.
+5. Atual `senha-forte-1` e uma nova valida: volta para `/` com "Senha alterada…"; o cabecalho
+   volta ao normal. A nova senha passa a valer no login.
+
+Voluntaria: entre como `ana@` ou `bruno@` e use o link **Trocar senha** do cabecalho.
+
+Contas criadas em `/equipe` nascem com senha provisoria (como no back real).
+
 ## Sessao
 
 `SessaoStore` guarda o JWT em `sessionStorage` (chave `notta.token`): some ao fechar a aba.
@@ -162,6 +215,13 @@ papel, clinica) para o cabecalho; ao sair, limpa. `ehAdmin()` vem do papel; `pro
 decidir: ADMIN entra, outro papel vai para `/`, sem sessao vai para `/login`. O servidor continua
 sendo a autoridade (403).
 
+Senha provisoria (itens 62 e 57): `UsuarioStore.senhaProvisoria()` vem do `/eu`. O
+`senhaProvisoriaGuard` (`canActivateChild` do shell) espera o `/eu` e manda qualquer rota do
+shell para `/trocar-senha` (ela mesma passa). Se o servidor responder 403 `"Troca de senha
+obrigatoria"` em qualquer chamada, o interceptor recarrega o `/eu` (`recarregar()`) e vai para
+`/trocar-senha`; ele so desloga em 401. Trocar a senha devolve um token novo: `sessao.entrar`
+com ele, e o `UsuarioStore` busca o `/eu` de novo sozinho.
+
 ## Estrutura
 
 ```
@@ -169,7 +229,7 @@ src/
   app/
     core/      sessao.store, usuario.store, auth.interceptor, guards, formulario (validacao e erros)
     layout/    shell.component (cabecalho + <router-outlet>), acesso.component (moldura de login/cadastro)
-    pages/     login, cadastro, equipe (so ADMIN), inicio (placeholder)
+    pages/     login, cadastro, equipe (so ADMIN), trocar-senha, inicio (placeholder)
     app.routes.ts   rotas com lazy loading (loadComponent)
   styles/tokens.scss   tokens de design (CSS custom properties)
   styles.scss          estilos globais

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/admin.guard';
 import { authGuard } from './core/auth.guard';
+import { senhaProvisoriaGuard } from './core/senha-provisoria.guard';
 import { visitanteGuard } from './core/visitante.guard';
 
 export const routes: Routes = [
@@ -17,6 +18,7 @@ export const routes: Routes = [
   {
     path: '',
     canActivate: [authGuard],
+    canActivateChild: [senhaProvisoriaGuard],
     loadComponent: () => import('./layout/shell.component').then((m) => m.ShellComponent),
     children: [
       {
@@ -27,6 +29,10 @@ export const routes: Routes = [
         path: 'equipe',
         canActivate: [adminGuard],
         loadComponent: () => import('./pages/equipe.page').then((m) => m.EquipePage),
+      },
+      {
+        path: 'trocar-senha',
+        loadComponent: () => import('./pages/trocar-senha.page').then((m) => m.TrocarSenhaPage),
       },
     ],
   },

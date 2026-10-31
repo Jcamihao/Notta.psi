@@ -4,12 +4,14 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { authInterceptor } from './auth.interceptor';
 import { SessaoStore } from './sessao.store';
+import { UsuarioStore } from './usuario.store';
 
 describe('authInterceptor', () => {
   let http: HttpClient;
   let ctrl: HttpTestingController;
   let sessao: SessaoStore;
   let navegar: jasmine.Spy;
+  let recarregar: jasmine.Spy;
 
   beforeEach(() => {
     sessionStorage.clear();
@@ -17,6 +19,7 @@ describe('authInterceptor', () => {
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
         provideHttpClientTesting(),
+        { provide: UsuarioStore, useValue: { recarregar: (recarregar = jasmine.createSpy()) } },
       ],
     });
     http = TestBed.inject(HttpClient);
@@ -71,6 +74,31 @@ describe('authInterceptor', () => {
     http.get('/api/x').subscribe({ error: () => undefined });
     ctrl.expectOne('/api/x').flush({}, { status: 500, statusText: 'Erro' });
     expect(sessao.autenticado()).toBeTrue();
+    expect(navegar).not.toHaveBeenCalled();
+  });
+
+  it('403 "Troca de senha obrigatoria" recarrega o /eu e vai para /trocar-senha', () => {
+    http.get('/api/pacientes').subscribe({ error: () => undefined });
+    ctrl
+      .expectOne('/api/pacientes')
+      .flush(
+        { statusCode: 403, message: 'Troca de senha obrigatoria', error: 'Forbidden' },
+        { status: 403, statusText: 'Forbidden' },
+      );
+    expect(recarregar).toHaveBeenCalled();
+    expect(navegar).toHaveBeenCalledWith('/trocar-senha');
+    expect(sessao.autenticado()).toBeTrue();
+  });
+
+  it('outro 403 nao redireciona nem recarrega', () => {
+    http.get('/api/psicologos').subscribe({ error: () => undefined });
+    ctrl
+      .expectOne('/api/psicologos')
+      .flush(
+        { statusCode: 403, message: 'Forbidden resource', error: 'Forbidden' },
+        { status: 403, statusText: 'Forbidden' },
+      );
+    expect(recarregar).not.toHaveBeenCalled();
     expect(navegar).not.toHaveBeenCalled();
   });
 });

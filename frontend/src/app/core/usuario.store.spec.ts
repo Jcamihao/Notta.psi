@@ -11,6 +11,7 @@ const EU: Eu = {
   papel: 'ADMIN',
   abordagemPadrao: 'TCC',
   clinica: { id: 'c1', nome: 'Clinica Horizonte' },
+  senhaProvisoria: false,
 };
 
 describe('UsuarioStore', () => {
@@ -114,5 +115,45 @@ describe('UsuarioStore', () => {
     TestBed.inject(SessaoStore).sair();
     TestBed.tick();
     expect(u.pronto()).toBeTrue();
+  });
+
+  it('senhaProvisoria segue o /eu (falso sem usuario)', () => {
+    configurar();
+    const u = TestBed.inject(UsuarioStore);
+    expect(u.senhaProvisoria()).toBeFalse();
+    TestBed.inject(SessaoStore).entrar('tok');
+    TestBed.tick();
+    ctrl.expectOne('/api/eu').flush({ ...EU, senhaProvisoria: true });
+    expect(u.senhaProvisoria()).toBeTrue();
+  });
+
+  it('recarregar busca o /eu de novo com o mesmo token, sem apagar o usuario no meio', () => {
+    configurar();
+    const u = TestBed.inject(UsuarioStore);
+    TestBed.inject(SessaoStore).entrar('tok');
+    TestBed.tick();
+    ctrl.expectOne('/api/eu').flush(EU);
+    u.recarregar();
+    TestBed.tick();
+    expect(u.pronto()).toBeFalse();
+    expect(u.usuario()?.nome).toBe('Ana Souza');
+    ctrl.expectOne('/api/eu').flush({ ...EU, senhaProvisoria: true });
+    expect(u.pronto()).toBeTrue();
+    expect(u.senhaProvisoria()).toBeTrue();
+  });
+
+  it('token novo (troca de senha) busca o /eu de novo', () => {
+    configurar();
+    const u = TestBed.inject(UsuarioStore);
+    const sessao = TestBed.inject(SessaoStore);
+    sessao.entrar('tok');
+    TestBed.tick();
+    ctrl.expectOne('/api/eu').flush({ ...EU, senhaProvisoria: true });
+    sessao.entrar('tok-novo');
+    TestBed.tick();
+    const r = ctrl.expectOne('/api/eu');
+    expect(r.request.method).toBe('GET');
+    r.flush(EU);
+    expect(u.senhaProvisoria()).toBeFalse();
   });
 });

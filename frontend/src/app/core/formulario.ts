@@ -24,7 +24,21 @@ const MENSAGENS: Record<string, string> = {
   senhaLonga: 'Senha longa demais: o limite é 72 bytes (acentos e emojis ocupam mais).',
   emUso: 'Este e-mail já tem cadastro. Entre com ele ou use outro.',
   emUsoEquipe: 'Este e-mail já está cadastrado no Notta.psi. Use outro e-mail.',
+  senhaAtualIncorreta: 'Senha atual incorreta. Confira e digite de novo.',
+  senhaIgual: 'A nova senha precisa ser diferente da atual.',
+  confirmacaoDiferente: 'As senhas não conferem. Digite a nova senha igual nos dois campos.',
 };
+
+// Compara com outro campo do mesmo form. So reavalia quando ESTE campo muda: quem usa chama
+// updateValueAndValidity() antes de enviar.
+export const erroSeIgual =
+  (outro: string, erro: string): ValidatorFn =>
+  (c) =>
+    c.value === c.parent?.get(outro)?.value ? { [erro]: true } : null;
+export const erroSeDiferente =
+  (outro: string, erro: string): ValidatorFn =>
+  (c) =>
+    c.value !== c.parent?.get(outro)?.value ? { [erro]: true } : null;
 
 // Erro so aparece depois do blur ou do envio (touched), nunca a cada tecla.
 export function mensagemCampo(c: AbstractControl, obrigatorio: string): string {

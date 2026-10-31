@@ -63,7 +63,7 @@
   <section class="equipe-novo" aria-labelledby="eq-titulo">
     <h2 id="eq-titulo">Adicionar psicólogo</h2>
     <p class="equipe-novo-lead">
-      A pessoa entra com o e-mail e a senha inicial que você definir aqui.
+      A pessoa entra com o e-mail e a senha provisória que você definir aqui.
     </p>
 
     <form class="formulario" [formGroup]="form" (ngSubmit)="adicionar()" novalidate>
@@ -107,7 +107,7 @@
       </div>
 
       <div class="campo">
-        <label for="eq-senha">Senha inicial</label>
+        <label for="eq-senha">Senha provisória</label>
         <input
           id="eq-senha"
           type="password"
@@ -117,7 +117,8 @@
           [attr.aria-describedby]="erro('senha') ? 'eq-senha-dica eq-senha-erro' : 'eq-senha-dica'"
         />
         <p id="eq-senha-dica" class="campo-dica">
-          Pelo menos 8 caracteres. Passe para a pessoa fora do Notta.psi.
+          Pelo menos 8 caracteres. Combine a senha provisória com a pessoa por um canal seguro; ela
+          escolherá a própria no primeiro acesso.
         </p>
         <p id="eq-senha-erro" class="campo-erro" aria-live="polite">{{ erro('senha') }}</p>
       </div>

@@ -1,0 +1,78 @@
+<div class="senha">
+  @if (obrigatoria()) {
+    <h1>Crie sua senha</h1>
+    <div class="senha-sigilo">
+      <p class="senha-sigilo-titulo">Defina uma senha só sua para continuar.</p>
+      <p>
+        A senha que você recebeu é provisória: quem criou seu acesso também a conhece. A nova, só
+        você vai saber.
+      </p>
+    </div>
+  } @else {
+    <h1>Trocar senha</h1>
+    <p class="senha-lead">
+      Depois da troca, a senha antiga deixa de valer e quem estiver conectado em outro aparelho
+      precisa entrar de novo.
+    </p>
+  }
+
+  <form class="formulario senha-form" [formGroup]="form" (ngSubmit)="trocar()" novalidate>
+    <div class="aviso-regiao" aria-live="polite">
+      @if (erroGeral()) {
+        <p class="aviso-erro" data-teste="erro-geral">{{ erroGeral() }}</p>
+      }
+    </div>
+
+    <div class="campo">
+      <label for="ts-senhaAtual">Senha atual</label>
+      <input
+        id="ts-senhaAtual"
+        type="password"
+        formControlName="senhaAtual"
+        autocomplete="current-password"
+        [attr.aria-invalid]="erro('senhaAtual') ? 'true' : null"
+        [attr.aria-describedby]="
+          (obrigatoria() ? 'ts-senhaAtual-dica ' : '') +
+            (erro('senhaAtual') ? 'ts-senhaAtual-erro' : '') || null
+        "
+      />
+      @if (obrigatoria()) {
+        <p id="ts-senhaAtual-dica" class="campo-dica">A senha provisória que você recebeu.</p>
+      }
+      <p id="ts-senhaAtual-erro" class="campo-erro" aria-live="polite">{{ erro('senhaAtual') }}</p>
+    </div>
+
+    <div class="campo">
+      <label for="ts-novaSenha">Nova senha</label>
+      <input
+        id="ts-novaSenha"
+        type="password"
+        formControlName="novaSenha"
+        autocomplete="new-password"
+        [attr.aria-invalid]="erro('novaSenha') ? 'true' : null"
+        [attr.aria-describedby]="
+          erro('novaSenha') ? 'ts-novaSenha-dica ts-novaSenha-erro' : 'ts-novaSenha-dica'
+        "
+      />
+      <p id="ts-novaSenha-dica" class="campo-dica">Pelo menos 8 caracteres.</p>
+      <p id="ts-novaSenha-erro" class="campo-erro" aria-live="polite">{{ erro('novaSenha') }}</p>
+    </div>
+
+    <div class="campo">
+      <label for="ts-confirmar">Confirme a nova senha</label>
+      <input
+        id="ts-confirmar"
+        type="password"
+        formControlName="confirmar"
+        autocomplete="new-password"
+        [attr.aria-invalid]="erro('confirmar') ? 'true' : null"
+        [attr.aria-describedby]="erro('confirmar') ? 'ts-confirmar-erro' : null"
+      />
+      <p id="ts-confirmar-erro" class="campo-erro" aria-live="polite">{{ erro('confirmar') }}</p>
+    </div>
+
+    <button type="submit" class="botao-primario" [disabled]="enviando()">
+      {{ enviando() ? 'Salvando…' : 'Salvar nova senha' }}
+    </button>
+  </form>
+</div>

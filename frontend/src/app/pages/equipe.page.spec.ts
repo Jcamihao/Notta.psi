@@ -154,7 +154,10 @@ describe('EquipePage', () => {
       const ok = el().querySelector('[data-teste="confirmacao"]')!;
       expect(ok.closest('[aria-live]')).not.toBeNull();
       expect(ok.textContent).toContain('Carla Dias');
-      expect(ok.textContent).toContain('Combine a senha inicial com a pessoa por um canal seguro.');
+      expect(ok.textContent).toContain(
+        'Combine a senha provisória com a pessoa por um canal seguro; ela escolherá a própria no primeiro acesso.',
+      );
+      expect(el().querySelector('#eq-senha-dica')?.textContent).toContain('provisória');
       expect(campo('eq-nome').getAttribute('aria-invalid')).toBeNull();
     });
 

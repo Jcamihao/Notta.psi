@@ -110,15 +110,6 @@
   color: var(--cor-texto-suave);
   font-size: var(--texto-sm);
 }
-.aviso-ok {
-  margin: 0 0 var(--espaco-4);
-  padding: var(--espaco-3) var(--espaco-4);
-  color: var(--cor-acao-forte);
-  background: var(--cor-acao-suave);
-  border: 1px solid currentColor;
-  border-radius: var(--raio);
-  font-size: var(--texto-sm);
-}
 
 // Desktop: lista a esquerda, formulario fixo a direita enquanto a lista rola.
 @media (min-width: 75rem) {
