@@ -1,6 +1,6 @@
 # Notta.psi — Lista de features (fonte única da ordem de construção)
 
-Aprovada pelo dono em 2026-10-30. Recomeço do zero. Fase 1 (itens 1-8) e item 41 feitos e verificados em 2026-10-30/31 (back 85 unit + 90 e2e, front 73, integração real no navegador, Postgres 16 do Docker).
+Aprovada pelo dono em 2026-10-30. Recomeço do zero. Fase 1 (itens 1-8), item 41 e Fase 1.5 (59-64, 57) feitos e verificados em 2026-10-30/31 e 11-01 (back 141 unit + 134 e2e, front 118, integração real no navegador 19/19; Postgres 16 do Docker na Fase 1, embutido 18 na 1.5 porque o Docker ficou desligado). Visual: design system em docs/DESIGN-SYSTEM.md aplicado.
 Spec e plano antigos em `docs/superpowers/` são só referência (decisões e riscos), não a ordem.
 
 Legenda: **[B]** só back · **[F]** só front · **[M]** misto (back e tela juntos, no mesmo módulo).
@@ -81,14 +81,14 @@ Numeração separada para não quebrar as referências da Fase 1 em andamento. A
 - [ ] 55. [processo] Teste de invasão externo e checklist OWASP ASVS — antes do lançamento
 
 ## Lacunas descobertas durante a Fase 1 (adicionadas em 2026-10-30)
-- [ ] 57. [M] Trocar a própria senha (o admin define a senha inicial do colega; o colega precisa poder trocá-la) — Fase 4, junto do item 24
+- [x] 57. [M] Trocar a própria senha (o admin define a senha inicial do colega; o colega precisa poder trocá-la) — Fase 4, junto do item 24
 - [ ] 58. [M] Desativar psicólogo da equipe (hoje não há como remover quem saiu da clínica) — Fase 2, antes de haver pacientes reais
 
 ## Fase 1.5 — Endurecimento (revisão independente da Fase 1, 2026-10-31; antes da Fase 2)
 Relatório completo em `.superpowers/sdd/fase-1/review-fase-1.md`. 0 críticos, 5 importantes.
-- [ ] 59. [B] Guard devolve 503 (não 401) em erro de infraestrutura e rotas autenticadas ganham limite por psicólogo (sob carga o pool esgota e o front desloga todo mundo)
-- [ ] 60. [B] CPU do login: hash fora da thread principal (bcrypt nativo ou argon2), teto de logins simultâneos, IPv6 agrupado por /64
-- [ ] 61. [B] Boot recusa segredos de exemplo e de baixa entropia, e recusa papel de runtime superuser ou com BYPASSRLS
-- [ ] 62. [M] Senha inicial do colega: troca obrigatória no primeiro acesso (o ADMIN hoje consegue entrar como o colega; usa o item 57)
-- [ ] 63. [B] Padrão `psicologo_proprio`: FK filha inclui `psicologoId` (hoje um colega pendura linha no paciente do outro) e colega não grava `papel`/`senhaHash` de ninguém
-- [ ] 64. [B] AAD no AES-GCM (antes de existir dado cifrado; depois exige recifrar tudo)
+- [x] 59. [B] Guard devolve 503 (não 401) em erro de infraestrutura e rotas autenticadas ganham limite por psicólogo (sob carga o pool esgota e o front desloga todo mundo)
+- [x] 60. [B] CPU do login: hash fora da thread principal (bcrypt nativo ou argon2), teto de logins simultâneos, IPv6 agrupado por /64
+- [x] 61. [B] Boot recusa segredos de exemplo e de baixa entropia, e recusa papel de runtime superuser ou com BYPASSRLS
+- [x] 62. [M] Senha inicial do colega: troca obrigatória no primeiro acesso (o ADMIN hoje consegue entrar como o colega; usa o item 57)
+- [x] 63. [B] Padrão `psicologo_proprio`: FK filha inclui `psicologoId` (hoje um colega pendura linha no paciente do outro) e colega não grava `papel`/`senhaHash` de ninguém
+- [x] 64. [B] AAD no AES-GCM (antes de existir dado cifrado; depois exige recifrar tudo)
