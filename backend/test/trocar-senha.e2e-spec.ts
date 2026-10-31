@@ -11,6 +11,7 @@ import {
   criarApp,
   criarAppSemLimite,
 } from './criar-app-sem-limite';
+import { portaoBcrypt } from './portao-bcrypt';
 
 // Item 62/57: senha provisoria criada pelo ADMIN, troca obrigatoria e voluntaria,
 // versao do token (`tv`). Postgres real.
@@ -274,20 +275,35 @@ describe('troca voluntaria e versao do token (tv)', () => {
 });
 
 describe('teto de hashes concorrentes (mesmo semaforo do login)', () => {
-  // Mesmo token: acima de 5 simultaneas o guard do psicologo recusa (429); das que chegam ao
-  // hash, o teto por IP (2) e o global (8) recusam com 503.
-  it('12 trocas simultaneas: hash acima do teto = 503 + Retry-After 1; o resto 422 ou 429', async () => {
+  // Deterministico (test/portao-bcrypt.ts): o compare da senha errada fica preso. Mesmo
+  // token, mesmo IP: o guard deixa passar no maximo 5 simultaneas do psicologo (as demais =
+  // 429) e, das que chegam ao hash, o teto por IP deixa 2 (as demais = 503). Quantas sao
+  // 429 e quantas 503 depende de a resposta de uma fechar antes de outra chegar ao guard;
+  // o que nao varia: exatamente 2 ficam presas (viram 422) e o resto e 429 ou 503, com ao
+  // menos 3 503 (as 5 do guard menos as 2 vagas).
+  it('12 trocas simultaneas: so 2 fazem hash (422); o resto 429 ou 503 (>= 3 com Retry-After 1)', async () => {
     const c = await novaClinica(email('teto'));
-    const respostas = await Promise.all(
-      Array.from({ length: 12 }, () =>
-        trocar(c.token, { senhaAtual: 'errada-errada', novaSenha: NOVA }),
-      ),
-    );
-    const status = respostas.map((r) => r.status);
-    expect(status.filter((s) => s === 503).length).toBeGreaterThan(0);
-    expect(status.every((s) => [503, 422, 429].includes(s))).toBe(true);
-    const r503 = respostas.find((r) => r.status === 503)!;
-    expect(r503.headers['retry-after']).toBe('1');
+    const portao = portaoBcrypt('errada-errada');
+    try {
+      const respostas = await portao.soltarDepoisDe(
+        Array.from({ length: 12 }, () =>
+          trocar(c.token, {
+            senhaAtual: 'errada-errada',
+            novaSenha: NOVA,
+          }).then((r) => r),
+        ),
+        10,
+      );
+      expect(portao.presas()).toBe(2);
+      const status = respostas.map((r) => r.status);
+      expect(status.filter((s) => s === 422)).toHaveLength(2);
+      expect(status.every((s) => [422, 429, 503].includes(s))).toBe(true);
+      const r503 = respostas.filter((r) => r.status === 503);
+      expect(r503.length).toBeGreaterThanOrEqual(3);
+      for (const r of r503) expect(r.headers['retry-after']).toBe('1');
+    } finally {
+      portao.restaurar();
+    }
   });
 });
 

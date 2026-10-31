@@ -10,6 +10,7 @@ import {
   criarApp,
   criarAppSemLimite,
 } from './criar-app-sem-limite';
+import { portaoBcrypt } from './portao-bcrypt';
 
 // Robustez sob carga: erro de infraestrutura NUNCA vira 401 (o front desloga no 401)
 // e toda rota autenticada tem limite por psicologo (throttler `api`, 300/min).
@@ -170,93 +171,128 @@ describe('throttler api: 300/min por psicologo em rota autenticada', () => {
   });
 });
 
-describe('CPU do login: bcrypt nativo + teto de hashes', () => {
-  it('12 logins simultaneos: /saude responde em < 500 ms; acima do teto = 503 + Retry-After 1', async () => {
-    const app = await criarAppSemLimite();
-    try {
-      await app.listen(0, '127.0.0.1');
-      const base = await app.getUrl();
-      const t0 = performance.now();
-      const logins = Array.from({ length: 12 }, async (_, i) => {
-        const r = await fetch(`${base}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: email(`cpu${i}`),
-            senha: 'errada-123',
-          }),
-        });
-        return {
-          status: r.status,
-          retry: r.headers.get('retry-after'),
-          corpo: (await r.json()) as unknown,
-        };
-      });
-      await new Promise((ok) => setTimeout(ok, 30));
-      const ts = performance.now();
-      const saude = await fetch(`${base}/saude`);
-      const msSaude = performance.now() - ts;
-      const r = await Promise.all(logins);
-      const msLogins = performance.now() - t0;
-      console.log(
-        `carga: /saude ${Math.round(msSaude)} ms; 12 logins ${Math.round(msLogins)} ms; status ${r.map((x) => x.status).join(',')}`,
-      );
-      expect(saude.status).toBe(200);
-      expect(msSaude).toBeLessThan(500);
-      const recusados = r.filter((x) => x.status === 503);
-      expect(recusados.length).toBeGreaterThan(0);
-      for (const x of recusados) {
-        expect(x.retry).toBe('1');
-        expect(x.corpo).toEqual({
-          statusCode: 503,
-          message: 'Servico indisponivel',
-        });
-      }
-      expect(r.every((x) => [401, 503].includes(x.status))).toBe(true);
-    } finally {
-      await app.close();
-    }
-  });
-});
-
-// M-3 da 2a revisao: um unico /64 (IP de origem) nao ocupa as 8 vagas globais de hash.
-describe('teto de hash por IP (/64)', () => {
+// Tetos de hash (global 8 e 2 por IP/ /64), deterministicos: o bcrypt.compare das senhas
+// `errada-123` fica preso num portao (test/portao-bcrypt.ts), entao quem passa pelos tetos
+// segura a vaga ate o teste abrir e quem e recusado responde na hora. Sem sleep e sem supor
+// quanto o bcrypt demora.
+describe('tetos de hash (login)', () => {
   const proxy = process.env.NOTTA_TRUST_PROXY;
-  beforeAll(() => {
-    process.env.NOTTA_TRUST_PROXY = '1'; // IP vem do X-Forwarded-For (um salto)
-  });
-  afterAll(() => {
+  afterEach(() => {
+    jest.restoreAllMocks();
     if (proxy === undefined) delete process.env.NOTTA_TRUST_PROXY;
     else process.env.NOTTA_TRUST_PROXY = proxy;
   });
 
-  it('rajada de 20 logins de um /64: so 2 por vez fazem hash; outro IP loga (200) durante a rajada', async () => {
+  async function subir(comProxy = false) {
+    if (comProxy) process.env.NOTTA_TRUST_PROXY = '1'; // IP vem do X-Forwarded-For
     const app = await criarAppSemLimite();
-    try {
-      await app.listen(0, '127.0.0.1');
-      const base = await app.getUrl();
-      const login = async (ip: string, em: string, senha: string) => {
-        const r = await fetch(`${base}/auth/login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Forwarded-For': ip,
-          },
-          body: JSON.stringify({ email: em, senha }),
-        });
-        await r.arrayBuffer();
-        return r.status;
+    await app.listen(0, '127.0.0.1');
+    const base = await app.getUrl();
+    const login = async (em: string, senha: string, ip?: string) => {
+      const r = await fetch(`${base}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(ip && { 'X-Forwarded-For': ip }),
+        },
+        body: JSON.stringify({ email: em, senha }),
+      });
+      return {
+        status: r.status,
+        retry: r.headers.get('retry-after'),
+        corpo: (await r.json()) as unknown,
       };
-      // IPv6 diferentes, mesmo /64 (os 4 primeiros grupos iguais).
-      const rajada = Array.from({ length: 20 }, (_, i) =>
-        login(`2001:db8:1:2:${i + 1}::1`, email(`rj${i}`), 'errada-123'),
+    };
+    return { app, base, login };
+  }
+
+  const FIXO_503 = { statusCode: 503, message: 'Servico indisponivel' };
+
+  it('12 logins do mesmo IP: so 2 fazem hash (teto por IP); os outros 10 = 503 + Retry-After 1', async () => {
+    const portao = portaoBcrypt('errada-123');
+    const { app, login } = await subir();
+    try {
+      const r = await portao.soltarDepoisDe(
+        Array.from({ length: 12 }, (_, i) =>
+          login(email(`ip${i}`), 'errada-123'),
+        ),
+        10,
       );
-      const outro = login('198.51.100.7', email('a'), SENHA);
-      const [status, doOutro] = await Promise.all([Promise.all(rajada), outro]);
-      expect(doOutro).toBe(200);
-      expect(status.filter((s) => s === 401).length).toBeLessThanOrEqual(2);
-      expect(status.filter((s) => s === 503).length).toBeGreaterThanOrEqual(18);
-      expect(status.every((s) => s === 401 || s === 503)).toBe(true);
+      expect(portao.presas()).toBe(2);
+      expect(r.filter((x) => x.status === 401)).toHaveLength(2);
+      const recusados = r.filter((x) => x.status === 503);
+      expect(recusados).toHaveLength(10);
+      for (const x of recusados) {
+        expect(x.retry).toBe('1');
+        expect(x.corpo).toEqual(FIXO_503);
+      }
+    } finally {
+      portao.restaurar();
+      await app.close();
+    }
+  });
+
+  it('12 logins de IPs diferentes: so 8 fazem hash (teto global); os outros 4 = 503', async () => {
+    const portao = portaoBcrypt('errada-123');
+    const { app, login } = await subir(true);
+    try {
+      const r = await portao.soltarDepoisDe(
+        Array.from({ length: 12 }, (_, i) =>
+          login(email(`gl${i}`), 'errada-123', `198.51.100.${i + 1}`),
+        ),
+        4,
+      );
+      expect(portao.presas()).toBe(8);
+      expect(r.filter((x) => x.status === 401)).toHaveLength(8);
+      const recusados = r.filter((x) => x.status === 503);
+      expect(recusados).toHaveLength(4);
+      for (const x of recusados) expect(x.retry).toBe('1');
+    } finally {
+      portao.restaurar();
+      await app.close();
+    }
+  });
+
+  // M-3 da 2a revisao: um unico /64 nao ocupa as 8 vagas globais.
+  it('20 logins de um /64 (IPv6 diferentes): so 2 fazem hash; outro IP loga (200) durante a rajada', async () => {
+    const portao = portaoBcrypt('errada-123');
+    const { app, login } = await subir(true);
+    try {
+      // 20 do mesmo /64 (4 primeiros grupos iguais) + 1 de outro IP com a senha certa.
+      const rajada = Array.from({ length: 20 }, (_, i) =>
+        login(email(`rj${i}`), 'errada-123', `2001:db8:1:2:${i + 1}::1`),
+      );
+      const outro = login(email('a'), SENHA, '198.51.100.7');
+      // As 18 recusadas e o login do outro IP terminam sem o portao.
+      const todas = await portao.soltarDepoisDe([...rajada, outro], 19);
+      expect(portao.presas()).toBe(2);
+      expect(todas[20].status).toBe(200);
+      const doBloco = todas.slice(0, 20);
+      expect(doBloco.filter((x) => x.status === 401)).toHaveLength(2);
+      expect(doBloco.filter((x) => x.status === 503)).toHaveLength(18);
+    } finally {
+      portao.restaurar();
+      await app.close();
+    }
+  });
+
+  it('com 12 logins em andamento o event loop segue livre: /saude em < 500 ms (bcrypt real, no threadpool)', async () => {
+    const { app, base, login } = await subir(true);
+    try {
+      const logins = Array.from({ length: 12 }, (_, i) =>
+        login(email(`cpu${i}`), 'errada-123', `203.0.113.${i + 1}`),
+      );
+      const ts = performance.now();
+      const saude = await fetch(`${base}/saude`);
+      const msSaude = performance.now() - ts;
+      const r = await Promise.all(logins);
+      console.log(
+        `carga: /saude ${Math.round(msSaude)} ms; status ${r.map((x) => x.status).join(',')}`,
+      );
+      expect(saude.status).toBe(200);
+      expect(msSaude).toBeLessThan(500);
+      // Nao supomos quantos passam (depende da velocidade): so que nada vira 500/401 de infra.
+      expect(r.every((x) => [401, 503].includes(x.status))).toBe(true);
     } finally {
       await app.close();
     }

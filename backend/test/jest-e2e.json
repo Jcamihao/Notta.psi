@@ -3,7 +3,10 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
-  "testPathIgnorePatterns": ["/node_modules/", "carga-clinicas"],
+  "testPathIgnorePatterns": [
+    "/node_modules/",
+    "/(acesso|acesso-psicologo|carga-clinicas)\\.e2e-spec\\.ts$"
+  ],
   "setupFiles": [
     "<rootDir>/permite-segredo-de-teste.ts",
     "<rootDir>/exigir-banco.ts"
