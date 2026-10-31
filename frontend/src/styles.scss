@@ -6,184 +6,191 @@
   box-sizing: border-box;
 }
 
+// 14px (--fs-nav) e o tamanho de leitura do app: o --fs-body (12px) do original e de grade de
+// agenda densa e fica para metadados. Formularios e paragrafos leem em 14px.
 body {
   margin: 0;
-  font-family: var(--fonte);
-  font-size: var(--texto-md);
-  line-height: 1.5;
-  color: var(--cor-texto);
-  background: var(--cor-fundo);
-  caret-color: var(--cor-acao);
+  font-family: var(--font-sans);
+  font-size: var(--fs-nav);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+  background: var(--bg-page);
+  caret-color: var(--ink-900);
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: var(--cor-acao-suave);
-  color: var(--cor-texto);
+  background: var(--pink-200);
+  color: var(--ink-900);
 }
 
 h1 {
-  margin: 0 0 var(--espaco-2);
-  font-size: var(--texto-xl);
-  font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  margin: 0 0 var(--space-3);
+  font-size: var(--fs-display);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-display);
   text-wrap: balance;
 }
 
+// Titulo de secao: o documento so define display (38px) e titulo de card (14px); 20px fica entre
+// os dois para a hierarquia h1 > h2 > rotulo ser visivel.
+h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.01em;
+}
+
 a {
-  color: var(--cor-acao);
-  font-weight: 500;
+  color: var(--text-primary);
+  font-weight: var(--fw-medium);
   text-underline-offset: 0.2em;
   text-decoration-thickness: 1px;
 }
 a:hover {
-  color: var(--cor-acao-forte);
   text-decoration-thickness: 2px;
 }
 
+// Foco sempre visivel: anel de 2px na tinta (16.5:1 sobre o creme). Na superficie escura o
+// anel vira rosa (10.8:1), ver o shell.
 :focus-visible {
-  outline: var(--foco-largura) solid var(--cor-foco);
-  outline-offset: var(--foco-offset);
+  outline: 2px solid var(--ink-900);
+  outline-offset: 2px;
 }
 
-// Marca: "Notta" no tom do texto, ".psi" na cor de acao.
+// Logo: "Notta.psi" em DM Sans 500, sem cor de destaque (o documento nao tem logo desenhado).
 .marca {
   margin: 0;
-  font-weight: 650;
-  font-size: var(--texto-lg);
-  letter-spacing: -0.02em;
-}
-.marca-psi {
-  color: var(--cor-acao);
+  font-size: var(--fs-logo);
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  letter-spacing: var(--ls-display);
+  color: inherit;
+  text-decoration: none;
 }
 
 // Telas de acesso (login e cadastro).
 .acesso-coluna > .marca {
-  margin-bottom: var(--espaco-6);
+  margin-bottom: var(--space-9);
 }
 .acesso-lead {
-  margin: 0 0 var(--espaco-5);
-  color: var(--cor-texto-suave);
+  margin: 0 0 var(--space-8);
+  color: var(--text-secondary);
 }
 .acesso-alternativa {
-  margin: var(--espaco-5) 0 0;
-  padding-top: var(--espaco-4);
-  border-top: 1px solid var(--cor-borda);
-  color: var(--cor-texto-suave);
-  font-size: var(--texto-sm);
+  margin: var(--space-8) 0 0;
+  color: var(--text-secondary);
 }
 
-// Formularios.
+// Formularios: campos pill de 40px com borda 1.5px #2B2B2B.
 .formulario {
   display: grid;
-  gap: var(--espaco-1);
+  gap: var(--space-1);
 }
 .campo {
   display: grid;
-  gap: var(--espaco-1);
+  gap: var(--space-2);
 }
 .campo label {
-  font-weight: 500;
-  font-size: var(--texto-sm);
+  font-size: var(--fs-day);
+  font-weight: var(--fw-medium);
 }
 .campo input,
 .campo select {
   width: 100%;
-  min-height: var(--altura-controle);
-  padding: 0 var(--espaco-3);
+  min-height: var(--size-control);
+  padding: 0 var(--space-6);
   font: inherit;
-  color: var(--cor-texto);
-  background: var(--cor-superficie);
-  border: 1px solid var(--cor-borda-forte);
-  border-radius: var(--raio);
-  transition:
-    border-color var(--transicao),
-    box-shadow var(--transicao);
+  color: var(--text-primary);
+  background: var(--white);
+  border: 1.5px solid var(--ink-700);
+  border-radius: var(--radius-pill);
 }
-.campo input:hover,
-.campo select:hover {
-  border-color: var(--cor-texto-suave);
+.campo select {
+  appearance: none;
+  padding-right: var(--space-9);
+  cursor: pointer;
 }
-.campo input:focus-visible,
-.campo select:focus-visible {
-  border-color: var(--cor-acao);
-  outline-offset: 1px;
+// Seta do select: icone Lucide sobreposto (o select nativo perde a seta com appearance none).
+.campo-select {
+  position: relative;
+  display: grid;
 }
+.campo-select lucide-icon {
+  position: absolute;
+  top: 50%;
+  right: var(--space-5);
+  translate: 0 -50%;
+  pointer-events: none;
+}
+// Erro sem cor (o sistema nao tem vermelho): borda dobrada para 3px, mensagem com icone.
 .campo [aria-invalid='true'] {
-  border-color: var(--cor-erro);
-  box-shadow: inset 0 0 0 1px var(--cor-erro);
+  box-shadow: inset 0 0 0 1.5px var(--ink-900);
 }
 .campo-dica {
   margin: 0;
-  color: var(--cor-texto-suave);
-  font-size: var(--texto-sm);
+  color: var(--text-secondary);
+  font-size: var(--fs-day);
 }
 // Espaco reservado: a mensagem aparece sem empurrar o formulario.
 .campo-erro {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
   min-height: 1.25rem;
-  margin: 0 0 var(--espaco-1);
-  color: var(--cor-erro);
-  font-size: var(--texto-sm);
+  margin: 0 0 var(--space-1);
+  padding-left: var(--space-6);
+  font-size: var(--fs-day);
+  font-weight: var(--fw-medium);
   line-height: 1.25rem;
 }
-.aviso-erro {
-  margin: 0 0 var(--espaco-4);
-  padding: var(--espaco-3) var(--espaco-4);
-  color: var(--cor-erro);
-  background: var(--cor-erro-fundo);
-  border: 1px solid currentColor;
-  border-radius: var(--raio);
-  font-size: var(--texto-sm);
+.formulario [app-button] {
+  margin-top: var(--space-3);
 }
-// Confirmacao (acao concluida): verde-petroleo suave.
-.aviso-ok {
-  margin: 0 0 var(--espaco-4);
-  padding: var(--espaco-3) var(--espaco-4);
-  color: var(--cor-acao-forte);
-  background: var(--cor-acao-suave);
-  border: 1px solid currentColor;
-  border-radius: var(--raio);
-  font-size: var(--texto-sm);
+.campo-erro lucide-icon {
+  flex: none;
+  margin-top: 2px;
 }
 
-// Botoes.
-.botao-primario {
-  min-height: var(--altura-controle);
-  margin-top: var(--espaco-2);
-  padding: 0 var(--espaco-5);
-  font: inherit;
-  font-weight: 600;
-  color: var(--cor-acao-texto);
-  background: var(--cor-acao);
-  border: 0;
-  border-radius: var(--raio);
-  cursor: pointer;
-  transition: background-color var(--transicao);
+// Avisos: cartao plano (sem borda nem sombra), icone + texto em tinta.
+.aviso-erro,
+.aviso-ok {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-card);
+  line-height: var(--lh-body);
 }
-.botao-primario:hover {
-  background: var(--cor-acao-forte);
+.aviso-erro lucide-icon,
+.aviso-ok lucide-icon {
+  flex: none;
+  margin-top: 1px;
 }
-.botao-primario:disabled {
-  background: var(--cor-acao-forte);
-  opacity: 0.75;
-  cursor: progress;
+.aviso-erro {
+  background: var(--pink-200);
 }
-.botao-discreto {
-  min-height: 2.25rem;
-  padding: 0 var(--espaco-4);
-  font: inherit;
-  font-size: var(--texto-sm);
-  font-weight: 500;
-  color: var(--cor-texto);
-  background: transparent;
-  border: 1px solid var(--cor-borda-forte);
-  border-radius: var(--raio);
-  cursor: pointer;
-  transition: background-color var(--transicao);
+.aviso-ok {
+  background: var(--blue-200);
 }
-.botao-discreto:hover {
-  background: var(--cor-fundo);
+
+// iOS amplia a pagina ao focar campo com menos de 16px.
+@media (pointer: coarse) {
+  .campo input,
+  .campo select {
+    font-size: 16px;
+  }
+}
+
+// Barra superior fixa do celular (shell): campo focado nao fica escondido atras dela.
+@media (max-width: 831.98px) {
+  html {
+    scroll-padding-top: 88px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
