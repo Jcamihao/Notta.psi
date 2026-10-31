@@ -5,8 +5,10 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_PASSWORD: postgres-dev
+    # So 127.0.0.1: '5436:5432' publicaria em todas as interfaces (0.0.0.0) e no Linux
+    # o Docker passa por cima do ufw. Com senhas publicas, a rede local inteira entraria.
     ports:
-      - '5436:5432'
+      - '127.0.0.1:5436:5432'
     volumes:
       - notta_pgdata:/var/lib/postgresql/data
       - ./docker/initdb:/docker-entrypoint-initdb.d:ro
