@@ -13,18 +13,28 @@ if (!process.env.DATABASE_URL_OWNER) {
   );
 }
 
-function sqlDoDoc() {
+// Comandos SQL do bloco `marcador` do docs/ACESSO.md.
+function blocoDoDoc(marcador: string) {
   const doc = readFileSync(join(__dirname, '../../docs/ACESSO.md'), 'utf8');
-  const bloco = /sql-psicologo-proprio:inicio -->\s*```sql([\s\S]*?)```/.exec(
-    doc,
-  );
-  if (!bloco) throw new Error('bloco sql-psicologo-proprio sumiu do ACESSO.md');
+  const bloco = new RegExp(
+    `${marcador}:inicio -->\\s*\`\`\`sql([\\s\\S]*?)\`\`\``,
+  ).exec(doc);
+  if (!bloco) throw new Error(`bloco ${marcador} sumiu do ACESSO.md`);
   return bloco[1]
-    .replaceAll('"MinhaTabela"', '_teste_acesso')
     .split(';')
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+const sqlDoDoc = (tabela = '_teste_acesso') =>
+  blocoDoDoc('sql-psicologo-proprio').map((s) =>
+    s.replaceAll('"MinhaTabela"', tabela),
+  );
+// FK filha -> pai do doc (Sessao -> Paciente) aplicada nas tabelas de teste.
+const fkFilhaDoDoc = () =>
+  blocoDoDoc('sql-fk-filha').map((s) =>
+    s.replaceAll('Sessao', '_teste_filho').replaceAll('Paciente', '_teste_pai'),
+  );
 
 function comLimite1(url: string) {
   const u = new URL(url);
@@ -221,5 +231,124 @@ describe('policy psicologo_proprio (docs/ACESSO.md)', () => {
       { v: string | null }[]
     >`SELECT current_setting('app.current_psicologo_id', true) AS v`;
     expect(g.v ?? '').toBe('');
+  });
+});
+
+describe('FK de tabela filha inclui o dono (docs/ACESSO.md, bloco sql-fk-filha)', () => {
+  let paiAdmin: string;
+  let paiPsi: string;
+
+  const criarPai = (u: U) =>
+    tenant.runComoUsuario(u, async (tx) => {
+      const id = randomUUID();
+      await tx.$executeRaw`INSERT INTO _teste_pai (id, "clinicaId", "psicologoId")
+        VALUES (${id}, ${u.clinicaId}, ${u.psicologoId})`;
+      return id;
+    });
+  // Filha gravada no contexto de `u`, com o proprio psicologoId (passa no WITH CHECK).
+  const criarFilha = (u: U, pacienteId: string) =>
+    tenant.runComoUsuario(
+      u,
+      (
+        tx,
+      ) => tx.$executeRaw`INSERT INTO _teste_filho (id, "pacienteId", "clinicaId", "psicologoId")
+        VALUES (${randomUUID()}, ${pacienteId}, ${u.clinicaId}, ${u.psicologoId})`,
+    );
+  const erroDe = async (p: Promise<unknown>) => {
+    try {
+      await p;
+    } catch (e) {
+      return (e as Error).message;
+    }
+    throw new Error('era para falhar');
+  };
+  const contar = async (u: U, tabela: '_teste_pai' | '_teste_filho') =>
+    (
+      await tenant.runComoUsuario(u, (tx) =>
+        tx.$queryRawUnsafe<{ id: string }[]>(`SELECT id FROM ${tabela}`),
+      )
+    ).length;
+
+  beforeAll(async () => {
+    await owner.$executeRawUnsafe('DROP TABLE IF EXISTS _teste_filho');
+    await owner.$executeRawUnsafe('DROP TABLE IF EXISTS _teste_pai');
+    await owner.$executeRawUnsafe(`CREATE TABLE _teste_pai (
+      id text PRIMARY KEY,
+      "clinicaId" text NOT NULL,
+      "psicologoId" text NOT NULL,
+      FOREIGN KEY ("psicologoId", "clinicaId") REFERENCES "Psicologo"("id", "clinicaId"),
+      UNIQUE (id, "psicologoId", "clinicaId")
+    )`);
+    await owner.$executeRawUnsafe(`CREATE TABLE _teste_filho (
+      id text PRIMARY KEY,
+      "pacienteId" text NOT NULL,
+      "clinicaId" text NOT NULL,
+      "psicologoId" text NOT NULL,
+      FOREIGN KEY ("psicologoId", "clinicaId") REFERENCES "Psicologo"("id", "clinicaId")
+    )`);
+    for (const sql of [
+      ...sqlDoDoc('_teste_pai'),
+      ...sqlDoDoc('_teste_filho'),
+      ...fkFilhaDoDoc(),
+    ]) {
+      await owner.$executeRawUnsafe(sql);
+    }
+    await owner.$executeRawUnsafe(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON _teste_pai, _teste_filho TO notta_app',
+    );
+    paiAdmin = await criarPai(adminA);
+    paiPsi = await criarPai(psiA);
+  });
+
+  afterAll(async () => {
+    await owner.$executeRawUnsafe('DROP TABLE IF EXISTS _teste_filho');
+    await owner.$executeRawUnsafe('DROP TABLE IF EXISTS _teste_pai');
+  });
+
+  it('colega da mesma clinica nao grava filha apontando para o pai de outro psicologo', async () => {
+    expect(await contar(psiA, '_teste_pai')).toBe(1); // ve so o proprio pai
+    const msg = await erroDe(criarFilha(psiA, paiAdmin));
+    expect(msg).toMatch(/foreign key/);
+    expect(await contar(adminA, '_teste_filho')).toBe(0);
+    expect(await contar(psiA, '_teste_filho')).toBe(0);
+  });
+
+  it('sem oraculo: pai alheio e pai inexistente dao o mesmo erro', async () => {
+    const inexistente = randomUUID();
+    const alheio = await erroDe(criarFilha(psiA, paiAdmin));
+    const nada = await erroDe(criarFilha(psiA, inexistente));
+    expect(alheio.replaceAll(paiAdmin, 'ID')).toBe(
+      nada.replaceAll(inexistente, 'ID'),
+    );
+  });
+
+  it('filha do proprio pai funciona', async () => {
+    expect(await criarFilha(psiA, paiPsi)).toBe(1);
+    expect(await contar(psiA, '_teste_filho')).toBe(1);
+  });
+
+  it('RESTRICT: apagar o proprio pai com filha falha e nao toca linhas de outro dono', async () => {
+    await criarFilha(adminA, paiAdmin);
+    const antes = {
+      paiPsi: await contar(psiA, '_teste_pai'),
+      filhaPsi: await contar(psiA, '_teste_filho'),
+    };
+    const msg = await erroDe(
+      tenant.runComoUsuario(
+        adminA,
+        (tx) => tx.$executeRaw`DELETE FROM _teste_pai WHERE id = ${paiAdmin}`,
+      ),
+    );
+    expect(msg).toMatch(/foreign key/);
+    expect(await contar(adminA, '_teste_pai')).toBe(1);
+    expect(await contar(adminA, '_teste_filho')).toBe(1);
+    expect({
+      paiPsi: await contar(psiA, '_teste_pai'),
+      filhaPsi: await contar(psiA, '_teste_filho'),
+    }).toEqual(antes);
+    const [fk] = await owner.$queryRaw<{ del: string }[]>`
+      SELECT confdeltype AS del FROM pg_constraint
+      WHERE conrelid = '_teste_filho'::regclass AND confrelid = '_teste_pai'::regclass`;
+    expect(fk.del).toBe('r');
   });
 });
