@@ -8,15 +8,19 @@ Decisao do dono (2026-10-30): **cada psicologo ve so os proprios pacientes e doc
 |---|---|---|---|
 | Cadastrar clinica (`POST /clinicas`), login, `/saude` | sim | sim | sim (rotas publicas) |
 | Ver os proprios dados (`GET /eu`) | sim | sim | nao (401) |
+| Trocar a PROPRIA senha (`POST /auth/trocar-senha`, item 57) | sim | sim | nao (401) |
+| Qualquer outra rota com senha PROVISORIA (colega recem-criado, item 62) | n/a | **nao (403 "Troca de senha obrigatoria")** | nao (401) |
 | Gerenciar equipe: criar e listar psicologos (`POST/GET /psicologos`, item 8) | sim | nao (403) | nao (401) |
 | Atender e ler os PROPRIOS pacientes/documentos (Fase 2) | sim | sim | nao (401) |
 | Ler paciente/documento de COLEGA | **nao** | **nao** | nao |
 
 - ADMIN = quem cadastrou a clinica. Ele gerencia a equipe e tambem atende como qualquer psicologo (clinica solo). O papel NAO abre prontuario alheio.
 - O papel e lido do banco a cada requisicao (nao vai no token): rebaixar alguem vale na hora.
-- 403 e sempre generico (`Forbidden resource`): nunca diz qual papel faltou.
+- 403 de papel e sempre generico (`Forbidden resource`): nunca diz qual papel faltou.
+- **Senha provisoria (item 62):** o colega criado pelo ADMIN (`POST /psicologos`) nasce com `senhaProvisoria = true`. Ate trocar a senha, TODA rota autenticada responde 403 `Troca de senha obrigatoria`, salvo `GET /eu` e `POST /auth/trocar-senha`. A troca incrementa `tokenVersao` (claim `tv` do JWT): os tokens antigos viram 401 e a senha que o ADMIN conhecia deixa de logar. Assim o ADMIN nao entra na conta do colega.
+- **Rota nova e bloqueada enquanto a senha for provisoria** ate ter `@PermiteSenhaProvisoria()` (falha fechada, `JwtAuthGuard`). So marque rota que o colega PRECISA antes de trocar a senha; nunca rota de dado clinico.
 - A tabela `Psicologo` usa policies por clinica para SELECT, INSERT e DELETE (`tenant_isolation_*`), nao `psicologo_proprio`: o ADMIN lista nome, e-mail, papel e abordagem dos colegas (nunca `senhaHash`). Isso nao abre prontuario: paciente/documento seguem o padrao abaixo.
-- UPDATE em `Psicologo` so na PROPRIA linha (policy `psicologo_update_proprio`: clinica E `id = app.current_psicologo_id`, entao use `runComoUsuario`) e so nas colunas `nome`, `abordagemPadrao` e `senhaHash`. `papel`, `email`, `clinicaId` e `id` sao imutaveis para o `notta_app` (permission denied). Coluna nova editavel pelo app: `GRANT UPDATE (coluna)` explicito na migration.
+- UPDATE em `Psicologo` so na PROPRIA linha (policy `psicologo_update_proprio`: clinica E `id = app.current_psicologo_id`, entao use `runComoUsuario`) e so nas colunas `nome`, `abordagemPadrao`, `senhaHash`, `senhaProvisoria` e `tokenVersao`. `papel`, `email`, `clinicaId` e `id` sao imutaveis para o `notta_app` (permission denied). Coluna nova editavel pelo app: `GRANT UPDATE (coluna)` explicito na migration.
 
 ## Como proteger uma rota por papel
 

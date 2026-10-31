@@ -49,19 +49,21 @@ Obrigatorias no boot hoje: `DATABASE_URL`, `NOTTA_MASTER_KEY` e `NOTTA_JWT_SECRE
 ## Cadastro, login e /eu
 Contrato completo: `.superpowers/sdd/fase-1/contrato.md`.
 - `POST /clinicas` (publico): cria a clinica e o primeiro psicologo com papel `ADMIN`, numa transacao so. E-mail normalizado (trim + lowercase), unico global (409). Senha 8..72 bytes, bcrypt custo 12.
-- `POST /auth/login` (publico): `{ token }` JWT HS256, 8 h, claims `sub` (psicologoId) e `clinicaId`. 401 identico para e-mail inexistente e senha errada (hash falso: mesmo tempo).
-- `GET /eu` (Bearer): dados do psicologo e da clinica.
-- `JwtAuthGuard` e GLOBAL: toda rota nova exige token. Rota publica precisa de `@Publico()` (hoje: `/saude`, `POST /clinicas`, `POST /auth/login`). O guard confere no banco que o psicologo ainda existe e le o papel fresco; use `@UsuarioAtual()` para pegar `{ psicologoId, clinicaId, papel }`.
-- 401 SO para token invalido/expirado ou psicologo inexistente. Banco/pool fora responde 503 `{"statusCode":503,"message":"Servico indisponivel"}` com `Retry-After: 2` (o front so desloga no 401).
-- Senhas: `bcrypt` NATIVO (roda no threadpool, nao trava o event loop), custo 12. Rota que calcula hash (login, cadastro de clinica, criacao de psicologo; a futura troca de senha tambem) leva `@TetoHash()`: no maximo 8 hashes ao mesmo tempo no processo; acima disso, 503 com `Retry-After: 1`.
+- `POST /auth/login` (publico): `{ token }` JWT HS256, 8 h, claims `sub` (psicologoId), `clinicaId` e `tv` (versao do token = `Psicologo.tokenVersao`). 401 identico para e-mail inexistente e senha errada (hash falso: mesmo tempo).
+- `GET /eu` (Bearer): dados do psicologo e da clinica, com `senhaProvisoria` (true = criado pelo ADMIN e ainda nao trocou).
+- `POST /auth/trocar-senha` (Bearer): `{ senhaAtual, novaSenha }` (novaSenha 8..72 bytes, diferente da atual) -> 200 `{ token }` novo. Senha atual errada = 422 `Senha atual incorreta` (nao 401: o front desloga em todo 401). Incrementa `tokenVersao`: TODOS os tokens anteriores da conta viram 401. Limite 10/h por psicologo; `@TetoHash()`.
+- Senha provisoria (item 62): o guard responde 403 `{"statusCode":403,"message":"Troca de senha obrigatoria","error":"Forbidden"}` em toda rota autenticada, salvo as marcadas com `@PermiteSenhaProvisoria()` (hoje `GET /eu` e `POST /auth/trocar-senha`). Rota nova nasce bloqueada (falha fechada).
+- `JwtAuthGuard` e GLOBAL: toda rota nova exige token. Rota publica precisa de `@Publico()` (hoje: `/saude`, `POST /clinicas`, `POST /auth/login`). O guard confere no banco que o psicologo ainda existe, que o `tv` do token e igual ao `tokenVersao` (diferente ou ausente = 401) e le papel e `senhaProvisoria` frescos; use `@UsuarioAtual()` para pegar `{ psicologoId, clinicaId, papel, senhaProvisoria }`.
+- 401 SO para token invalido/expirado ou psicologo inexistente. Banco/pool fora responde 503 `{"statusCode":503,"message":"Servico indisponivel"}` com `Retry-After: 2` (o front so desloga no 401). Pool/transacao esgotados DENTRO da rota (Prisma `P2024`/`P2028`) tambem: filtro global `BancoIndisponivelFilter`, mesmo corpo e `Retry-After: 2`, sem log nem detalhe.
+- Senhas: `bcrypt` NATIVO (roda no threadpool, nao trava o event loop), custo 12. Rota que calcula hash (login, cadastro de clinica, criacao de psicologo, troca de senha) leva `@TetoHash()`: no maximo 8 hashes ao mesmo tempo no processo; acima disso, 503 com `Retry-After: 1`.
 
 ## Equipe da clinica (so ADMIN)
-- `POST /psicologos` (Bearer, ADMIN): `{ nome, email, senha, abordagemPadrao }` -> 201 `{ psicologoId }`. Mesmas regras do cadastro (e-mail normalizado e unico global = 409, senha 8..72 bytes, bcrypt 12). A clinica vem SO do token; o novo nasce `PSICOLOGO`. Campo extra (`clinicaId`, `papel`) = 400.
+- `POST /psicologos` (Bearer, ADMIN): `{ nome, email, senha, abordagemPadrao }` -> 201 `{ psicologoId }`. Mesmas regras do cadastro (e-mail normalizado e unico global = 409, senha 8..72 bytes, bcrypt 12). A clinica vem SO do token; o novo nasce `PSICOLOGO` com `senhaProvisoria = true` (troca obrigatoria no 1o acesso: o ADMIN nao fica com acesso a conta do colega). Campo extra (`clinicaId`, `papel`) = 400.
 - `GET /psicologos` (Bearer, ADMIN): equipe da clinica do token, por `criadoEm` crescente, sem `senhaHash`.
 - PSICOLOGO = 403 generico. Regra de acesso completa: `docs/ACESSO.md`.
 
 ## Limite de tentativas
-- Login: 5/min por IP + e-mail e 20/min por IP. Cadastro de clinica: 5/h por IP. `POST /psicologos`: 20/h por psicologo do token (nao por IP). Conta sucesso e falha (e requisicao invalida). 429 com `Retry-After` em segundos.
+- Login: 5/min por IP + e-mail e 20/min por IP. Cadastro de clinica: 5/h por IP. `POST /psicologos`: 20/h por psicologo do token (nao por IP). `POST /auth/trocar-senha`: 10/h por psicologo do token. Conta sucesso e falha (e requisicao invalida). 429 com `Retry-After` em segundos.
 - Toda rota autenticada: 300/min por psicologo, somado entre todas as rotas (throttler `api`, guard global `LimiteApiGuard` depois do JWT). Rotas `@Publico()` ficam de fora.
 - IPv6: todo limite por IP conta o /64 inteiro como um IP (IPv4 nao muda).
 - Armazenamento EM MEMORIA: vale para UMA instancia. Com mais instancias, trocar por Redis. Reiniciar o backend zera os contadores.
