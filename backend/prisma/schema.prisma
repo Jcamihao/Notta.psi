@@ -38,6 +38,10 @@ model Psicologo {
   senhaHash       String
   abordagemPadrao Abordagem
   papel           Papel     @default(PSICOLOGO)
+  // Senha definida pelo ADMIN: o guard bloqueia tudo ate a troca (item 62).
+  senhaProvisoria Boolean   @default(false)
+  // Claim `tv` do JWT. Trocar a senha incrementa: tokens antigos viram 401.
+  tokenVersao     Int       @default(0)
   createdAt       DateTime  @default(now())
 
   // Alvo das FKs compostas (x, clinicaId) das fases futuras.

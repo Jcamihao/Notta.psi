@@ -4,7 +4,8 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 
 // Barreiras de banco em "Psicologo" e privilegios do notta_app (Postgres real).
-// UPDATE so na PROPRIA linha e so em nome/abordagemPadrao/senhaHash; sem TEMP.
+// UPDATE so na PROPRIA linha e so em nome/abordagemPadrao/senhaHash/senhaProvisoria/
+// tokenVersao; sem TEMP.
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
     'DATABASE_URL_OWNER ausente: teste de acesso exige o papel notta_owner (ver backend/README.md)',
@@ -114,6 +115,43 @@ describe('UPDATE em Psicologo: so a propria linha', () => {
     expect(r).toEqual({ count: 1 });
     expect(await nomeDe(psiA)).toBe('psi-a novo');
     await mudarNome(psiA, psiA, 'psi-a');
+  });
+
+  it('senhaProvisoria/tokenVersao (item 62): a PROPRIA linha atualiza; colega e ADMIN nao (0)', async () => {
+    const trocar = (quem: U, alvo: U) =>
+      tenant.runComoUsuario(quem, (tx) =>
+        tx.psicologo.updateMany({
+          where: { id: alvo.psicologoId, clinicaId: alvo.clinicaId },
+          data: { senhaProvisoria: true, tokenVersao: { increment: 1 } },
+        }),
+      );
+    const estado = (u: U) =>
+      tenant.run(u.clinicaId, (tx) =>
+        tx.psicologo.findFirstOrThrow({
+          where: { id: u.psicologoId },
+          select: { senhaProvisoria: true, tokenVersao: true },
+        }),
+      );
+    expect(await trocar(psiA, adminA)).toEqual({ count: 0 });
+    expect(await trocar(adminA, psiA)).toEqual({ count: 0 });
+    expect(await trocar(psiB, psiA)).toEqual({ count: 0 });
+    expect(await estado(adminA)).toEqual({
+      senhaProvisoria: false,
+      tokenVersao: 0,
+    });
+    expect(await trocar(psiA, psiA)).toEqual({ count: 1 });
+    expect(await estado(psiA)).toEqual({
+      senhaProvisoria: true,
+      tokenVersao: 1,
+    });
+    // sem psicologoId no contexto: 0
+    const soClinica = await tenant.run(A, (tx) =>
+      tx.psicologo.updateMany({
+        where: { id: psiA.psicologoId, clinicaId: A },
+        data: { tokenVersao: 0 },
+      }),
+    );
+    expect(soClinica).toEqual({ count: 0 });
   });
 
   it.each<[string, Prisma.PsicologoUpdateManyMutationInput]>([
