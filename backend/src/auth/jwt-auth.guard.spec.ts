@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
@@ -37,12 +41,14 @@ function contexto(token: string) {
   const req: { headers: Record<string, string>; user?: unknown } = {
     headers: { authorization: `Bearer ${token}` },
   };
+  const headers: Record<string, string> = {};
+  const res = { header: (k: string, v: string) => (headers[k] = v) };
   const ctx = {
     getHandler: () => contexto,
     getClass: () => JwtAuthGuard,
-    switchToHttp: () => ({ getRequest: () => req }),
+    switchToHttp: () => ({ getRequest: () => req, getResponse: () => res }),
   } as unknown as ExecutionContext;
-  return { ctx, req };
+  return { ctx, req, headers };
 }
 
 describe('JwtAuthGuard (camada do codigo)', () => {
@@ -66,6 +72,43 @@ describe('JwtAuthGuard (camada do codigo)', () => {
       UnauthorizedException,
     );
     expect(req.user).toBeUndefined();
+  });
+});
+
+describe('JwtAuthGuard: 401 x 503', () => {
+  // Banco/pool fora (ex.: P2028 sem conexao livre): NAO e problema do token.
+  const quebrado = new JwtAuthGuard(new Reflector(), jwt, {
+    run: () => Promise.reject(new Error('P2028 Unable to start a transaction')),
+  } as unknown as TenantPrismaService);
+
+  it('erro de infraestrutura com token valido: 503 fixo + Retry-After 2', async () => {
+    const { ctx, req, headers } = contexto(
+      await jwt.signAsync({ sub: psicologoA, clinicaId: A }),
+    );
+    const erro = await quebrado.canActivate(ctx).catch((e: unknown) => e);
+    expect(erro).toBeInstanceOf(ServiceUnavailableException);
+    expect((erro as ServiceUnavailableException).getResponse()).toEqual({
+      statusCode: 503,
+      message: 'Servico indisponivel',
+    });
+    expect(headers['Retry-After']).toBe('2');
+    expect(req.user).toBeUndefined();
+  });
+
+  it.each([
+    ['token lixo', 'lixo.lixo.lixo'],
+    ['outro segredo', 'x'],
+  ])('%s com banco fora continua 401 (nem chega no banco)', async (_n, t) => {
+    const token =
+      t === 'x'
+        ? await new JwtService({
+            secret: 'outro-segredo-'.repeat(4),
+          }).signAsync({ sub: psicologoA, clinicaId: A })
+        : t;
+    const { ctx } = contexto(token);
+    await expect(quebrado.canActivate(ctx)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
   });
 });
 

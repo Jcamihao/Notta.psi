@@ -13,17 +13,22 @@ process.env.NOTTA_JWT_SECRET ||= 'segredo-jwt-so-de-teste-e2e-'.repeat(2);
 
 // App completo (AppModule + configurarApp), igual ao main.ts.
 // `controllers`: controllers SO de teste, somados ao AppModule.
+// `tenant`: troca o TenantPrismaService (ex.: banco/pool forcado a falhar).
 export async function criarApp(
   opcoes: {
     semLimite?: boolean;
     logger?: LoggerService;
     controllers?: Type[];
+    tenant?: object;
   } = {},
 ) {
   let b = Test.createTestingModule({
     imports: [AppModule],
     controllers: opcoes.controllers,
   });
+  if (opcoes.tenant) {
+    b = b.overrideProvider(TenantPrismaService).useValue(opcoes.tenant);
+  }
   if (opcoes.semLimite) {
     b = b
       .overrideGuard(LimiteTentativasGuard)

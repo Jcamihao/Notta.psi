@@ -7,6 +7,8 @@ const MINUTO = 60_000;
 // Armazenamento EM MEMORIA (padrao do throttler): vale para 1 instancia do backend.
 // Com mais de uma instancia, trocar por storage Redis. IP real atras de proxy: NOTTA_TRUST_PROXY.
 // Os throttlers sao ligados por rota (LimiteLogin / LimiteCadastroClinica / LimiteEquipe), nao globais.
+// Excecao: `api`, aplicado pelo LimiteApiGuard GLOBAL a toda rota autenticada (as rotas com
+// limite proprio o pulam no guard de rota, entao ele nunca conta 2x).
 export const THROTTLERS = [
   { name: 'login-ip', ttl: MINUTO, limit: 20 },
   {
@@ -28,6 +30,8 @@ export const THROTTLERS = [
     getTracker: (req: Record<string, any>) =>
       (req.user as { psicologoId: string }).psicologoId,
   },
+  // Uso normal da API por psicologo (somado entre TODAS as rotas autenticadas).
+  { name: 'api', ttl: MINUTO, limit: 300 },
 ];
 
 @Module({

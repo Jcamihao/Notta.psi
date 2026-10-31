@@ -3,6 +3,7 @@ import {
   createParamDecorator,
   ExecutionContext,
   Injectable,
+  ServiceUnavailableException,
   SetMetadata,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -10,6 +11,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { Papel } from '@prisma/client';
 import { isUUID } from 'class-validator';
+import type { Response } from 'express';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 
 export type UsuarioAutenticado = {
@@ -49,10 +51,15 @@ export class JwtAuthGuard implements CanActivate {
     ]);
     if (publico) return true;
     const req = ctx.switchToHttp().getRequest<Req>();
-    // Qualquer falha = 401 generico, sem dizer o motivo.
-    const user = await this.autenticar(req.headers.authorization).catch(
-      () => null,
-    );
+    // 401 SO para token/payload invalido ou psicologo inexistente (autenticar devolve null).
+    // Erro de banco/pool NAO e culpa do token: 503, senao o front desloga todo mundo sob carga.
+    const user = await this.autenticar(req.headers.authorization).catch(() => {
+      ctx.switchToHttp().getResponse<Response>().header('Retry-After', '2');
+      throw new ServiceUnavailableException({
+        statusCode: 503,
+        message: 'Servico indisponivel',
+      });
+    });
     if (!user) throw new UnauthorizedException();
     req.user = user;
     return true;
@@ -63,8 +70,11 @@ export class JwtAuthGuard implements CanActivate {
   ): Promise<UsuarioAutenticado | null> {
     const [tipo, token] = header?.split(' ') ?? [];
     if (tipo !== 'Bearer' || !token) return null;
-    // Algoritmo (HS256) e segredo vem de opcoesJwt (verifyOptions).
-    const p = await this.jwt.verifyAsync<Record<string, unknown>>(token);
+    // Algoritmo (HS256) e segredo vem de opcoesJwt (verifyOptions). Qualquer erro aqui = 401.
+    const p = await this.jwt
+      .verifyAsync<Record<string, unknown>>(token)
+      .catch(() => null);
+    if (!p) return null;
     const { sub, clinicaId } = p;
     if (typeof p.exp !== 'number' || !uuid(sub) || !uuid(clinicaId)) {
       return null;
