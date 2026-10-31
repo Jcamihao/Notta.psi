@@ -116,6 +116,10 @@ describe('opcoesJwt', () => {
   it.each([
     ['ausente', undefined],
     ['curta', 'z'.repeat(31)],
+    // Valor publicado no .env.example antigo (esta no historico do git).
+    ['do .env.example', 'troque-isto-por-um-segredo-longo-e-aleatorio-fake'],
+    ['todos iguais', 'a'.repeat(64)],
+    ['9 caracteres distintos', 'abcdefghi'.repeat(8)],
   ])('NOTTA_JWT_SECRET %s lanca sem ecoar', (_n, valor) => {
     let msg = '';
     try {
@@ -125,5 +129,11 @@ describe('opcoesJwt', () => {
     }
     expect(msg).toMatch(/NOTTA_JWT_SECRET/);
     if (valor) expect(msg).not.toContain(valor);
+  });
+
+  it('aceita segredo com 10 caracteres distintos e >= 32', () => {
+    expect(() =>
+      opcoesJwt({ NOTTA_JWT_SECRET: 'abcdefghij'.repeat(4) }),
+    ).not.toThrow();
   });
 });

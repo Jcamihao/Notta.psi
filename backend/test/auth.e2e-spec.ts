@@ -331,6 +331,11 @@ describe('boot', () => {
     ['ausente', undefined],
     ['vazia', ''],
     ['curta (31)', 'x'.repeat(31)],
+    [
+      'valor do .env.example antigo',
+      'troque-isto-por-um-segredo-longo-e-aleatorio-fake',
+    ],
+    ['baixa entropia (64 iguais)', 'y'.repeat(64)],
   ])(
     'NOTTA_JWT_SECRET %s derruba o boot sem ecoar o valor',
     async (_n, valor) => {
@@ -348,8 +353,8 @@ describe('boot', () => {
     },
   );
 
-  it('NOTTA_JWT_SECRET com 32 caracteres sobe', async () => {
-    process.env.NOTTA_JWT_SECRET = 'y'.repeat(32);
+  it('NOTTA_JWT_SECRET com 32 caracteres (10+ distintos) sobe', async () => {
+    process.env.NOTTA_JWT_SECRET = 'abcdefghij'.repeat(3) + 'kl';
     const x = await criarApp();
     await x.close();
   });
