@@ -3,7 +3,11 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
-  "setupFiles": ["<rootDir>/exigir-banco.ts"],
+  "testPathIgnorePatterns": ["/node_modules/", "carga-clinicas"],
+  "setupFiles": [
+    "<rootDir>/permite-segredo-de-teste.ts",
+    "<rootDir>/exigir-banco.ts"
+  ],
   "testTimeout": 30000,
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"

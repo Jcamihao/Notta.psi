@@ -349,6 +349,17 @@ describe('boot', () => {
       'troque-isto-por-um-segredo-longo-e-aleatorio-fake',
     ],
     ['baixa entropia (64 iguais)', 'y'.repeat(64)],
+    [
+      'valor do .env.example antigo com espaco e sufixo',
+      ' troque-isto-por-um-segredo-longo-e-aleatorio-fake2',
+    ],
+    [
+      'valor do .env.example antigo em maiusculas',
+      'TROQUE-ISTO-POR-UM-SEGREDO-LONGO-E-ALEATORIO-FAKE',
+    ],
+    ['0123456789abcdef x2', '0123456789abcdef0123456789abcdef'],
+    ['de tutorial', 'my-super-secret-jwt-key-for-production'],
+    ['15 caracteres distintos', 'abcdefghijklmno'.repeat(4)],
   ])(
     'NOTTA_JWT_SECRET %s derruba o boot sem ecoar o valor',
     async (_n, valor) => {
@@ -366,8 +377,8 @@ describe('boot', () => {
     },
   );
 
-  it('NOTTA_JWT_SECRET com 32 caracteres (10+ distintos) sobe', async () => {
-    process.env.NOTTA_JWT_SECRET = 'abcdefghij'.repeat(3) + 'kl';
+  it('NOTTA_JWT_SECRET com 32 caracteres (16+ distintos) sobe', async () => {
+    process.env.NOTTA_JWT_SECRET = 'abcdefghijklmnop'.repeat(2);
     const x = await criarApp();
     await x.close();
   });

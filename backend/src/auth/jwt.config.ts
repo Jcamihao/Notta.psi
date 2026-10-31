@@ -1,7 +1,10 @@
+import { createSecretKey } from 'node:crypto';
 import { JwtModuleOptions } from '@nestjs/jwt';
-
-// Valores que ja foram publicados no repo (.env.example antigo): nunca valem.
-const PUBLICADOS = ['troque-isto-por-um-segredo-longo-e-aleatorio-fake'];
+import {
+  contemConhecido,
+  permiteSegredoDeTeste,
+  SEGREDOS_CONHECIDOS,
+} from '../comum/segredos-conhecidos';
 
 // HS256 fixado na assinatura E na verificacao (sem `algorithms`, o jsonwebtoken aceitaria
 // HS384/HS512 com o mesmo segredo). Validado no boot: falha fechada, sem ecoar o valor.
@@ -9,19 +12,28 @@ export function opcoesJwt(
   env: NodeJS.ProcessEnv = process.env,
 ): JwtModuleOptions {
   const segredo = env.NOTTA_JWT_SECRET;
-  // Baixa entropia: menos de 10 caracteres distintos (pega tambem "todos iguais").
+  const deTeste =
+    !!segredo &&
+    permiteSegredoDeTeste(env) &&
+    contemConhecido(segredo, SEGREDOS_CONHECIDOS.jwtDeTeste);
+  // Fraco: curto, menos de 16 caracteres distintos (pega tambem "todos iguais") ou valor
+  // conhecido (aparado, sem caixa, com prefixo/sufixo).
   if (
     !segredo ||
-    segredo.length < 32 ||
-    new Set(segredo).size < 10 ||
-    PUBLICADOS.includes(segredo)
+    (!deTeste &&
+      (segredo.trim().length < 32 ||
+        new Set(segredo.trim()).size < 16 ||
+        contemConhecido(segredo, SEGREDOS_CONHECIDOS.jwtPublicados) ||
+        contemConhecido(segredo, SEGREDOS_CONHECIDOS.jwtDeTeste)))
   ) {
     throw new Error(
-      'NOTTA_JWT_SECRET obrigatoria: minimo 32 caracteres aleatorios, nunca o valor de exemplo (gere com: openssl rand -base64 48)',
+      'NOTTA_JWT_SECRET obrigatoria: minimo 32 caracteres aleatorios (16+ distintos), nunca um valor de exemplo ou de teste (gere com: openssl rand -base64 48)',
     );
   }
   return {
-    secret: segredo,
+    // KeyObject: o jsonwebtoken pula o createPublicKey que tentaria (e falharia, caro) a cada
+    // verify com string; sob rajada isso era ~20% da CPU do processo.
+    secret: createSecretKey(Buffer.from(segredo)),
     signOptions: { algorithm: 'HS256', expiresIn: '8h' },
     verifyOptions: { algorithms: ['HS256'] },
   };

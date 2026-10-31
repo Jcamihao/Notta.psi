@@ -12,8 +12,8 @@ const PREFIXO_IPV6 = 64;
 // Com mais de uma instancia, trocar por storage Redis. IP real atras de proxy: NOTTA_TRUST_PROXY.
 // Os throttlers sao ligados por rota (LimiteLogin / LimiteCadastroClinica / LimiteEquipe /
 // LimiteTrocarSenha), nao globais.
-// Excecao: `api`, aplicado pelo LimiteApiGuard GLOBAL a toda rota autenticada (as rotas com
-// limite proprio o pulam no guard de rota, entao ele nunca conta 2x).
+// Excecao: `api`, contado pelo JwtAuthGuard GLOBAL em toda rota autenticada, antes do banco
+// (as rotas com limite proprio o pulam no guard de rota, entao ele nunca conta 2x).
 export const THROTTLERS = [
   { name: 'login-ip', ttl: MINUTO, limit: 20 },
   {

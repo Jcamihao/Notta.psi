@@ -10,9 +10,15 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
+import {
+  InjectThrottlerStorage,
+  ThrottlerException,
+  type ThrottlerStorage,
+} from '@nestjs/throttler';
 import { Papel } from '@prisma/client';
 import { isUUID } from 'class-validator';
 import type { Response } from 'express';
+import { THROTTLERS } from '../limite-tentativas/limite-tentativas.module';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 
 export type UsuarioAutenticado = {
@@ -40,6 +46,33 @@ export const PermiteSenhaProvisoria = () =>
 
 const uuid = (v: unknown): v is string => isUUID(v);
 
+type Token = { sub: string; clinicaId: string; tv: unknown };
+
+// Limites por psicologo contados ANTES do banco (I-2 da 2a revisao): uma requisicao barrada
+// nao gasta conexao do pool, senao um usuario sozinho degrada TODAS as clinicas.
+// 1) throttler `api` (300/min, chave `api:<sub>`, somado entre rotas);
+// 2) teto de requisicoes SIMULTANEAS por psicologo (sem fila: acima = 429 na hora).
+// O contador libera no 'close' da resposta: sucesso, erro ou desconexao do cliente.
+// Em memoria, por processo (1 instancia, como o throttler).
+// TARPIT: a recusa 429 so responde depois de RECUSA_ATRASO_MS. Medido: recusar na hora nao
+// basta, porque cada 429 convida o proximo pedido na mesma conexao e 500 conexoes em laco
+// saturam o event loop (cada iteracao ~80 ms; uma requisicao legitima precisa de varias
+// iteracoes e leva 1 s ou mais). Segurando a resposta, o atacante cai para ~1 req/s por
+// conexao e o custo some. O timer sai se o cliente desistir.
+const API = THROTTLERS.find((t) => t.name === 'api')!;
+export const TETO_SIMULTANEAS = 5;
+export const RECUSA_ATRASO_MS = 1000;
+
+// Espera RECUSA_ATRASO_MS ou o cliente desistir (close), o que vier primeiro.
+const segurar = (res: Response) =>
+  new Promise<void>((ok) => {
+    const t = setTimeout(ok, RECUSA_ATRASO_MS);
+    res.once('close', () => {
+      clearTimeout(t);
+      ok();
+    });
+  });
+
 export const UsuarioAtual = createParamDecorator(
   (_: unknown, ctx: ExecutionContext) =>
     ctx.switchToHttp().getRequest<Req>().user,
@@ -47,10 +80,13 @@ export const UsuarioAtual = createParamDecorator(
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
+  private readonly simultaneas = new Map<string, number>();
+
   constructor(
     private readonly reflector: Reflector,
     private readonly jwt: JwtService,
     private readonly tenant: TenantPrismaService,
+    @InjectThrottlerStorage() private readonly storage: ThrottlerStorage,
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
@@ -61,10 +97,14 @@ export class JwtAuthGuard implements CanActivate {
       ]);
     if (marcado(PUBLICO)) return true;
     const req = ctx.switchToHttp().getRequest<Req>();
-    // 401 SO para token/payload invalido ou psicologo inexistente (autenticar devolve null).
+    const res = ctx.switchToHttp().getResponse<Response>();
+    // 401 SO para token/payload invalido ou psicologo inexistente. Token invalido nao toca o banco.
+    const token = await this.verificar(req.headers.authorization);
+    if (!token) throw new UnauthorizedException();
+    await this.limitar(token.sub, res);
     // Erro de banco/pool NAO e culpa do token: 503, senao o front desloga todo mundo sob carga.
-    const user = await this.autenticar(req.headers.authorization).catch(() => {
-      ctx.switchToHttp().getResponse<Response>().header('Retry-After', '2');
+    const user = await this.buscar(token).catch(() => {
+      res.header('Retry-After', '2');
       throw new ServiceUnavailableException({
         statusCode: 503,
         message: 'Servico indisponivel',
@@ -78,9 +118,36 @@ export class JwtAuthGuard implements CanActivate {
     return true;
   }
 
-  private async autenticar(
-    header?: string,
-  ): Promise<UsuarioAutenticado | null> {
+  private async limitar(sub: string, res: Response): Promise<void> {
+    const { isBlocked, timeToBlockExpire } = await this.storage.increment(
+      `api:${sub}`,
+      API.ttl,
+      API.limit,
+      API.ttl,
+      API.name,
+    );
+    if (isBlocked) {
+      res.header('Retry-After', String(timeToBlockExpire));
+      await segurar(res);
+      throw new ThrottlerException('Muitas tentativas. Tente mais tarde.');
+    }
+    const simultaneas = this.simultaneas;
+    const n = simultaneas.get(sub) ?? 0;
+    if (n >= TETO_SIMULTANEAS) {
+      res.header('Retry-After', '1');
+      await segurar(res);
+      throw new ThrottlerException('Muitas requisicoes simultaneas');
+    }
+    simultaneas.set(sub, n + 1);
+    res.once('close', () => {
+      const resta = simultaneas.get(sub)! - 1;
+      if (resta > 0) simultaneas.set(sub, resta);
+      else simultaneas.delete(sub);
+    });
+  }
+
+  // So assinatura e formato do payload: sem banco.
+  private async verificar(header?: string): Promise<Token | null> {
     const [tipo, token] = header?.split(' ') ?? [];
     if (tipo !== 'Bearer' || !token) return null;
     // Algoritmo (HS256) e segredo vem de opcoesJwt (verifyOptions). Qualquer erro aqui = 401.
@@ -92,6 +159,14 @@ export class JwtAuthGuard implements CanActivate {
     if (typeof p.exp !== 'number' || !uuid(sub) || !uuid(clinicaId)) {
       return null;
     }
+    return { sub, clinicaId, tv };
+  }
+
+  private async buscar({
+    sub,
+    clinicaId,
+    tv,
+  }: Token): Promise<UsuarioAutenticado | null> {
     // Psicologo ainda existe? Papel e senhaProvisoria frescos. Filtro por clinicaId no codigo E RLS.
     const psicologo = await this.tenant.run(clinicaId, (tx) =>
       tx.psicologo.findFirst({

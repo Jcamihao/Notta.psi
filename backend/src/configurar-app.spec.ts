@@ -247,7 +247,7 @@ describe('configurarApp', () => {
     await app.close();
   });
 
-  it('erros do body-parser: corpo fixo e nenhum log (413, descompressao, charset)', async () => {
+  it('erros do body-parser: corpo fixo e nenhum log (413, descompressao)', async () => {
     const env = process.env.NODE_ENV;
     // Fora de "test" o express loga o stack de erro nao tratado: e o que nao pode acontecer.
     process.env.NODE_ENV = 'development';
@@ -282,18 +282,104 @@ describe('configurarApp', () => {
         .send(gzipSync(`{"a":"${'x'.repeat(400 * 1024)}"}`))
         .expect(413);
       expect(bomba.body).toEqual(CORPO_413_ESPERADO);
-      const charset = await request(http)
-        .post('/livre')
-        .set('Content-Type', 'application/json; charset=utf-16')
-        .send('{}')
-        .expect(400);
-      expect(charset.body).toEqual(fixo400);
       await app.close();
       expect(erro).not.toHaveBeenCalled();
     } finally {
       erro.mockRestore();
       process.env.NODE_ENV = env;
     }
+  });
+
+  describe('M-1: JSON so em utf-8 (outro charset = 415 fixo, antes de contar profundidade)', () => {
+    const CORPO_415 = {
+      statusCode: 415,
+      message: 'Use application/json com charset utf-8',
+      error: 'Unsupported Media Type',
+    };
+    // Corpo do review: o `∀` em UTF-16 tem o byte 0x22, que enganava o contador de profundidade.
+    const corpoReview = `{"email":"\u2200","senha":${'['.repeat(5000)}${']'.repeat(5000)}}`;
+    const bom = Buffer.from([0xff, 0xfe]);
+    const enviar = (
+      app: NestExpressApplication,
+      tipo: string,
+      corpo: Buffer | string,
+    ) =>
+      request(app.getHttpServer())
+        .post('/livre')
+        .set('Content-Type', tipo)
+        // sem serialize o superagent manda o Buffer como JSON
+        .serialize((b: Buffer) => b as unknown as string)
+        .send(corpo as string);
+
+    it.each([
+      [
+        'utf-16le',
+        'application/json; charset=utf-16le',
+        Buffer.from(corpoReview, 'utf16le'),
+      ],
+      [
+        'utf-16be',
+        'application/json; charset=utf-16be',
+        Buffer.from(corpoReview, 'utf16le').swap16(),
+      ],
+      [
+        'utf-16 com BOM',
+        'application/json; charset=utf-16',
+        Buffer.concat([bom, Buffer.from(corpoReview, 'utf16le')]),
+      ],
+      ['latin1', 'application/json; charset=latin1', Buffer.from('{"a":"x"}')],
+      [
+        'iso-8859-1 entre aspas',
+        'application/json; charset="iso-8859-1"',
+        Buffer.from('{}'),
+      ],
+      ['utf-8x', 'application/json; charset=utf-8x', Buffer.from('{}')],
+      [
+        'utf8 (o body-parser nao o aceita)',
+        'application/json; charset=utf8',
+        Buffer.from('{}'),
+      ],
+      [
+        'dois charset, o ruim por ultimo',
+        'application/json; charset=utf-8; charset=utf-16le',
+        Buffer.from('{}'),
+      ],
+      [
+        'tipo em maiusculas',
+        'APPLICATION/JSON; CHARSET=UTF-16LE',
+        Buffer.from('{}'),
+      ],
+    ])(
+      '%s -> 415 fixo, handler nao roda, nenhum log',
+      async (_n, tipo, corpo) => {
+        const env = process.env.NODE_ENV;
+        process.env.NODE_ENV = 'development'; // fora de "test" o express loga o stack
+        const erro = jest.spyOn(console, 'error').mockImplementation(() => {});
+        try {
+          const app = await criar();
+          const antes = chamadasLivre;
+          const res = await enviar(app, tipo, corpo).expect(415);
+          expect(res.body).toEqual(CORPO_415);
+          expect(chamadasLivre).toBe(antes);
+          await app.close();
+          expect(erro).not.toHaveBeenCalled();
+        } finally {
+          erro.mockRestore();
+          process.env.NODE_ENV = env;
+        }
+      },
+    );
+
+    it.each([
+      'application/json',
+      'application/json; charset=utf-8',
+      'application/json; charset=UTF-8',
+      'application/json; charset="utf-8"',
+    ])('%s passa', async (tipo) => {
+      const app = await criar();
+      await enviar(app, tipo, '{"a":1}').expect(201);
+      await app.close();
+    });
   });
 
   it('so JSON: form urlencoded nunca e processado (400 ou 415)', async () => {
@@ -308,25 +394,58 @@ describe('configurarApp', () => {
     await app.close();
   });
 
-  describe('NODE_ENV=production exige NOTTA_TRUST_PROXY', () => {
+  describe('M-5: NOTTA_TRUST_PROXY e exigida, salvo NODE_ENV=development ou test', () => {
     const env = process.env.NODE_ENV;
     afterEach(() => {
-      process.env.NODE_ENV = env;
+      if (env === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = env;
     });
+    const definir = (v: string | undefined) => {
+      if (v === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = v;
+    };
 
-    it('ausente derruba o boot pedindo o numero de saltos', async () => {
-      process.env.NODE_ENV = 'production';
-      delete process.env.NOTTA_TRUST_PROXY;
-      const mod = await Test.createTestingModule({
-        imports: [ModTeste],
-      }).compile();
-      const app = mod.createNestApplication<NestExpressApplication>(OPCOES_APP);
-      expect(() => configurarApp(app)).toThrow(/NOTTA_TRUST_PROXY.*saltos/);
-      expect(() => configurarApp(app)).toThrow(/0 = sem proxy/);
-    });
+    it.each([
+      ['production', 'production'],
+      ['Production', 'Production'],
+      [' production ', ' production '],
+      ['ausente', undefined],
+      ['vazio', ''],
+      ['staging', 'staging'],
+      ['devel', 'devel'],
+    ])(
+      'NODE_ENV %s sem a variavel derruba o boot pedindo o numero de saltos',
+      async (_n, valor) => {
+        definir(valor);
+        delete process.env.NOTTA_TRUST_PROXY;
+        const mod = await Test.createTestingModule({
+          imports: [ModTeste],
+        }).compile();
+        const app =
+          mod.createNestApplication<NestExpressApplication>(OPCOES_APP);
+        expect(() => configurarApp(app)).toThrow(/NOTTA_TRUST_PROXY.*saltos/);
+        expect(() => configurarApp(app)).toThrow(/0 = sem proxy/);
+      },
+    );
 
-    it.each(['0', '1'])('%s explicito sobe', async (valor) => {
-      process.env.NODE_ENV = 'production';
+    it.each(['development', 'test', ' Development ', 'TEST'])(
+      'NODE_ENV %j sobe sem a variavel',
+      async (valor) => {
+        definir(valor);
+        delete process.env.NOTTA_TRUST_PROXY;
+        const app = await criar();
+        expect(express(app).get('trust proxy')).toBeFalsy();
+        await app.close();
+      },
+    );
+
+    it.each([
+      ['production', '0'],
+      ['production', '1'],
+      [undefined, '0'],
+      ['Production', '2'],
+    ])('NODE_ENV %s com %s explicito sobe', async (amb, valor) => {
+      definir(amb);
       process.env.NOTTA_TRUST_PROXY = valor;
       const app = await criar();
       expect(express(app).get('trust proxy')).toBe(Number(valor));

@@ -5,6 +5,11 @@ import {
   hkdfSync,
   randomBytes,
 } from 'node:crypto';
+import {
+  normalizarSegredo,
+  permiteSegredoDeTeste,
+  SEGREDOS_CONHECIDOS,
+} from '../comum/segredos-conhecidos';
 
 // Formato: v1.<kid>.<iv>.<tag>.<ct>, cada parte em base64url.
 // kid = id da chave mestra atual (rotacao futura acrescenta outros kids).
@@ -83,10 +88,14 @@ export class CriptografiaService {
       );
     }
     const master = Buffer.from(hex, 'hex');
-    // Todos os bytes iguais cobre 64 zeros, o valor de exemplo antigo do .env.example.
-    if (master.every((b) => b === master[0])) {
+    // Fraca: menos de 16 bytes distintos (cobre bytes todos iguais, 64 zeros do exemplo antigo e
+    // `00..01`) ou chave que esta nas suites de teste (so passa com NOTTA_PERMITE_SEGREDO_DE_TESTE=1).
+    const deTeste = SEGREDOS_CONHECIDOS.masterDeTeste.some(
+      (k) => k === normalizarSegredo(hex),
+    );
+    if (deTeste ? !permiteSegredoDeTeste() : new Set(master).size < 16) {
       throw new Error(
-        'NOTTA_MASTER_KEY fraca (bytes todos iguais ou valor de exemplo): gere com openssl rand -hex 32',
+        'NOTTA_MASTER_KEY fraca (poucos bytes distintos, valor de exemplo ou de teste): gere com openssl rand -hex 32',
       );
     }
     this.master = master;

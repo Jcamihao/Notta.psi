@@ -45,31 +45,6 @@ const limite = (...ativos: string[]) =>
     UseGuards(LimiteTentativasGuard),
   );
 
-// GLOBAL (APP_GUARD em AuthModule, DEPOIS do JwtAuthGuard): throttler `api` em toda rota
-// autenticada, por psicologo e somado entre rotas (chave sem classe/handler). Ignora o
-// SkipThrottle de proposito: rota com limite proprio continua contando aqui.
-// Rota @Publico() (sem req.user) fica de fora.
-@Injectable()
-export class LimiteApiGuard extends LimiteTentativasGuard {
-  async canActivate(ctx: ExecutionContext): Promise<boolean> {
-    const req = ctx
-      .switchToHttp()
-      .getRequest<{ user?: { psicologoId: string } }>();
-    if (!req.user) return true;
-    const api = THROTTLERS.find((t) => t.name === 'api')!;
-    const psicologoId = req.user.psicologoId;
-    return this.handleRequest({
-      context: ctx,
-      limit: api.limit,
-      ttl: api.ttl,
-      blockDuration: api.ttl,
-      throttler: api,
-      getTracker: () => psicologoId,
-      generateKey: (_c, tracker, nome) => `${nome}:${tracker}`,
-    });
-  }
-}
-
 export const LimiteLogin = () => limite('login-ip', 'login-chave');
 export const LimiteCadastroClinica = () => limite('clinicas');
 // Guard de rota: roda DEPOIS dos guards globais (JWT), entao `req.user` ja existe.

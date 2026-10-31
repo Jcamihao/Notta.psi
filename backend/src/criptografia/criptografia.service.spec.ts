@@ -27,9 +27,13 @@ function adulterar(valor: string, i: number, pos: number): string {
 
 describe('CriptografiaService', () => {
   const original = process.env.NOTTA_MASTER_KEY;
+  const permite = process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE;
   afterEach(() => {
     if (original === undefined) delete process.env.NOTTA_MASTER_KEY;
     else process.env.NOTTA_MASTER_KEY = original;
+    if (permite === undefined)
+      delete process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE;
+    else process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE = permite;
   });
 
   describe('roundtrip', () => {
@@ -288,6 +292,11 @@ describe('CriptografiaService', () => {
       ['todos os bytes iguais (ff)', 'f'.repeat(64)],
       ['todos os bytes iguais (ab)', 'ab'.repeat(32)],
       ['todos os bytes iguais, maiusculo', 'AB'.repeat(32)],
+      ['31 bytes zero e 01 no fim', `${'00'.repeat(31)}01`],
+      [
+        '15 bytes distintos repetidos',
+        '000102030405060708090a0b0c0d0e'.repeat(2).padEnd(64, '0'),
+      ],
     ])('fraca: %s lanca sem ecoar o valor', (_, chave) => {
       let erro: Error | undefined;
       try {
@@ -299,6 +308,20 @@ describe('CriptografiaService', () => {
       expect(erro?.message).not.toContain(chave);
       expect(erro?.message).not.toContain(chave.slice(0, 8));
     });
+
+    it.each([
+      ['0123456789abcdef x4', MASTER],
+      ['e2e0 x16', 'e2e0'.repeat(16)],
+      ['maiusculo', MASTER.toUpperCase()],
+    ])(
+      'chave de teste das suites (%s) so passa com a variavel de teste',
+      (_, chave) => {
+        delete process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE;
+        expect(() => servico(chave)).toThrow(/NOTTA_MASTER_KEY/);
+        process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE = '1';
+        expect(() => servico(chave)).not.toThrow();
+      },
+    );
 
     it('aceita 64 hex minusculo e maiusculo', () => {
       expect(() => servico(MASTER)).not.toThrow();

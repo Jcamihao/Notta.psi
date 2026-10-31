@@ -18,7 +18,8 @@ cp .env.example .env            # e exporte as variaveis (o backend nao le .env 
 export DATABASE_URL=postgresql://notta_app:notta_app@localhost:5436/notta_psi
 export DATABASE_URL_OWNER=postgresql://notta_owner:notta_owner@localhost:5436/notta_psi
 export NOTTA_MASTER_KEY=<64 hex, ver "Chave mestra" abaixo>
-export NOTTA_JWT_SECRET=$(openssl rand -base64 48)   # >= 32 caracteres
+export NOTTA_JWT_SECRET=$(openssl rand -base64 48)   # >= 32 caracteres, 16+ distintos
+export NODE_ENV=development     # sem isto o boot exige NOTTA_TRUST_PROXY (0 = sem proxy)
 npm run db:generate
 npm run db:migrate              # prisma migrate deploy, roda como notta_owner (DATABASE_URL_OWNER)
 npm run start:dev
@@ -41,9 +42,9 @@ npm run lint && npm run format:check && npm run build
 
 ## Variaveis
 Ver `.env.example` (PORT, DATABASE_URL, DATABASE_URL_OWNER, NOTTA_TRUST_PROXY, NOTTA_MASTER_KEY, NOTTA_JWT_SECRET, NOTTA_CORS_ORIGIN).
-Obrigatorias no boot hoje: `DATABASE_URL`, `NOTTA_MASTER_KEY` e `NOTTA_JWT_SECRET`. Em producao (`NODE_ENV=production`) tambem `NOTTA_TRUST_PROXY` (`0` = sem proxy). Cada modulo novo valida a propria env.
+Obrigatorias no boot hoje: `DATABASE_URL`, `NOTTA_MASTER_KEY` e `NOTTA_JWT_SECRET`. `NOTTA_TRUST_PROXY` tambem e obrigatoria (`0` = sem proxy), EXCETO quando `NODE_ENV` (aparado, sem caixa) e `development` ou `test`: `Production`, ` production `, `staging` ou `NODE_ENV` ausente (comum em imagem Docker) exigem a variavel. No dev local use `NODE_ENV=development`. Cada modulo novo valida a propria env.
 - O `.env.example` traz `NOTTA_JWT_SECRET` e `NOTTA_MASTER_KEY` VAZIOS: gere os seus (comandos no arquivo).
-- `NOTTA_JWT_SECRET`: o boot recusa menos de 32 caracteres, menos de 10 caracteres distintos e o antigo valor de exemplo.
+- `NOTTA_JWT_SECRET`: o boot recusa (apara e ignora caixa) menos de 32 caracteres, menos de 16 caracteres distintos, e qualquer valor que CONTENHA um segredo conhecido (o antigo exemplo do repo, `0123456789abcdef...`, `my-super-secret-jwt-key-for-production` e os segredos das suites de teste, com prefixo ou sufixo). Lista em `src/comum/segredos-conhecidos.ts`. As suites de teste usam os segredos de teste so porque `test/permite-segredo-de-teste.ts` define `NOTTA_PERMITE_SEGREDO_DE_TESTE=1`; nunca defina essa variavel fora de teste.
 - Papel do banco: no boot o backend confere que o papel de `DATABASE_URL` NAO e superuser, NAO tem BYPASSRLS e NAO e dono (nem membro do dono) de `Clinica`/`Psicologo`. Se for, o boot falha com `DATABASE_URL insegura: ...` (sem mostrar a URL). Use `notta_app`.
 
 ## Cadastro, login e /eu
@@ -55,7 +56,7 @@ Contrato completo: `.superpowers/sdd/fase-1/contrato.md`.
 - Senha provisoria (item 62): o guard responde 403 `{"statusCode":403,"message":"Troca de senha obrigatoria","error":"Forbidden"}` em toda rota autenticada, salvo as marcadas com `@PermiteSenhaProvisoria()` (hoje `GET /eu` e `POST /auth/trocar-senha`). Rota nova nasce bloqueada (falha fechada).
 - `JwtAuthGuard` e GLOBAL: toda rota nova exige token. Rota publica precisa de `@Publico()` (hoje: `/saude`, `POST /clinicas`, `POST /auth/login`). O guard confere no banco que o psicologo ainda existe, que o `tv` do token e igual ao `tokenVersao` (diferente ou ausente = 401) e le papel e `senhaProvisoria` frescos; use `@UsuarioAtual()` para pegar `{ psicologoId, clinicaId, papel, senhaProvisoria }`.
 - 401 SO para token invalido/expirado ou psicologo inexistente. Banco/pool fora responde 503 `{"statusCode":503,"message":"Servico indisponivel"}` com `Retry-After: 2` (o front so desloga no 401). Pool/transacao esgotados DENTRO da rota (Prisma `P2024`/`P2028`) tambem: filtro global `BancoIndisponivelFilter`, mesmo corpo e `Retry-After: 2`, sem log nem detalhe.
-- Senhas: `bcrypt` NATIVO (roda no threadpool, nao trava o event loop), custo 12. Rota que calcula hash (login, cadastro de clinica, criacao de psicologo, troca de senha) leva `@TetoHash()`: no maximo 8 hashes ao mesmo tempo no processo; acima disso, 503 com `Retry-After: 1`.
+- Senhas: `bcrypt` NATIVO (roda no threadpool, nao trava o event loop), custo 12. Rota que calcula hash (login, cadastro de clinica, criacao de psicologo, troca de senha) leva `@TetoHash()`: no maximo 8 hashes ao mesmo tempo no processo E no maximo 2 por tracker de IP (o /64 inteiro no IPv6), para um IP so nao segurar todas as vagas; acima disso, 503 com `Retry-After: 1`. Limite conhecido: uma botnet distribuida (muitos IPs, 2 vagas cada) ainda ocupa as 8 vagas e derruba o login de todos; isso se resolve na borda (WAF ou limite por conexao no proxy), nao no app.
 
 ## Equipe da clinica (so ADMIN)
 - `POST /psicologos` (Bearer, ADMIN): `{ nome, email, senha, abordagemPadrao }` -> 201 `{ psicologoId }`. Mesmas regras do cadastro (e-mail normalizado e unico global = 409, senha 8..72 bytes, bcrypt 12). A clinica vem SO do token; o novo nasce `PSICOLOGO` com `senhaProvisoria = true` (troca obrigatoria no 1o acesso: o ADMIN nao fica com acesso a conta do colega). Campo extra (`clinicaId`, `papel`) = 400.
@@ -64,17 +65,17 @@ Contrato completo: `.superpowers/sdd/fase-1/contrato.md`.
 
 ## Limite de tentativas
 - Login: 5/min por IP + e-mail e 20/min por IP. Cadastro de clinica: 5/h por IP. `POST /psicologos`: 20/h por psicologo do token (nao por IP). `POST /auth/trocar-senha`: 10/h por psicologo do token. Conta sucesso e falha (e requisicao invalida). 429 com `Retry-After` em segundos.
-- Toda rota autenticada: 300/min por psicologo, somado entre todas as rotas (throttler `api`, guard global `LimiteApiGuard` depois do JWT). Rotas `@Publico()` ficam de fora.
+- Toda rota autenticada: 300/min por psicologo, somado entre todas as rotas (throttler `api`), mais no maximo 5 requisicoes SIMULTANEAS por psicologo. Os dois sao contados no `JwtAuthGuard`, depois da assinatura do token e ANTES de qualquer acesso ao banco: requisicao barrada nao gasta conexao do pool, entao um usuario nao degrada as outras clinicas. A resposta 429 desses dois casos so sai depois de 1 s (tarpit, `RECUSA_ATRASO_MS`): recusar na hora faz o atacante repetir o pedido sem parar e saturar o event loop (medido: 500 conexoes em laco deixavam a vitima com 1 a 3 s por requisicao mesmo com 429 barato). Rotas `@Publico()` ficam de fora.
 - IPv6: todo limite por IP conta o /64 inteiro como um IP (IPv4 nao muda).
 - Armazenamento EM MEMORIA: vale para UMA instancia. Com mais instancias, trocar por Redis. Reiniciar o backend zera os contadores.
-- Atras de proxy/load balancer: `NOTTA_TRUST_PROXY=<saltos>` para o IP real vir do `X-Forwarded-For`. Sem ela, o header e ignorado (todo mundo atras do proxy dividiria o mesmo limite). Em producao ela e obrigatoria (o boot falha sem ela); sem proxy, use `NOTTA_TRUST_PROXY=0`.
+- Atras de proxy/load balancer: `NOTTA_TRUST_PROXY=<saltos>` para o IP real vir do `X-Forwarded-For`. Sem ela, o header e ignorado (todo mundo atras do proxy dividiria o mesmo limite). Ela e obrigatoria (o boot falha sem ela) salvo `NODE_ENV=development` ou `test`; sem proxy, use `NOTTA_TRUST_PROXY=0`.
 - Throttler novo: basta somar em `THROTTLERS` (`src/limite-tentativas/limite-tentativas.module.ts`); as rotas que nao o usam o pulam sozinhas (lista derivada em `limite()`).
 
 ## Seguranca HTTP
 - `helmet()` com os padroes (nosniff, HSTS, CSP, frame SAMEORIGIN...). `x-powered-by` desligado.
 - CORS desligado por padrao. `NOTTA_CORS_ORIGIN` liga para UMA origem exata (outras origens nao recebem `Access-Control-Allow-Origin`).
 - A API e so JSON: o app sobe com `OPCOES_APP` (`bodyParser: false`) e so o parser JSON e registrado. Todo teste que cria o app passa `OPCOES_APP`. Corpo que nao e JSON (form etc.) = 415.
-- Corpo JSON ate 256 kb (acima = 413 `Corpo muito grande`) e ate 32 niveis de `[`/`{` (acima = 400 `JSON invalido`).
+- Corpo JSON ate 256 kb (acima = 413 `Corpo muito grande`), ate 32 niveis de `[`/`{` (acima = 400 `JSON invalido`) e charset utf-8 apenas (ausente vale; `utf-16*`, `latin1`, `utf8` etc. = 415 com corpo fixo, antes de contar profundidade).
 - Erro do parser (JSON malformado, descompressao, charset, tamanho) responde corpo fixo, sem log e sem stack.
 
 ## Chave mestra (NOTTA_MASTER_KEY)
@@ -82,6 +83,6 @@ Contrato completo: `.superpowers/sdd/fase-1/contrato.md`.
 - O conteudo clinico e cifrado com AES-256-GCM usando uma chave por clinica derivada dela (HKDF-SHA256).
 - **Perder a chave = todo conteudo cifrado ilegivel para sempre.** Guarde backup fora do banco (cofre de senhas/secret manager), nunca no repo.
 - Trocar a chave sem rotacao (feature futura) tambem deixa o conteudo antigo ilegivel.
-- O boot recusa chave com todos os bytes iguais (inclui os 64 zeros do exemplo antigo).
+- O boot recusa chave com menos de 16 bytes distintos (inclui os 64 zeros do exemplo antigo e `00..01`) e as chaves das suites de teste (estas so passam com `NOTTA_PERMITE_SEGREDO_DE_TESTE=1`, definida apenas pelos helpers de teste).
 - AAD obrigatorio: `cifrar(clinicaId, texto, aad)` e `decifrar(clinicaId, valor, aad)` com `aad = aadDe(tabela, coluna, id, psicologoId)` (`tabela|coluna|id|psicologoId`). O GCM autentica `v1.k1|<aad>`: cifrado copiado para outra linha, coluna ou dono falha com `falha ao decifrar`. Gravar com o id final da linha (gere o uuid antes do INSERT).
 - Vetores independentes (Python) no `criptografia.service.spec.ts`: HKDF (chave por clinica) e um cifrado AES-GCM com AAD.

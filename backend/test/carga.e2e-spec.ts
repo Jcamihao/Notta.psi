@@ -117,8 +117,9 @@ describe('throttler api: 300/min por psicologo em rota autenticada', () => {
   it('301a do mesmo psicologo = 429 + Retry-After; outro psicologo e /saude seguem', async () => {
     const app = await criarApp();
     try {
-      for (let lote = 0; lote < 6; lote++) {
-        expect(await rajada(app, tokens[0], 50)).toEqual({ 200: 50 });
+      // Lotes de 4 (abaixo do teto de simultaneas) = 300 requisicoes.
+      for (let lote = 0; lote < 75; lote++) {
+        expect(await rajada(app, tokens[0], 4)).toEqual({ 200: 4 });
       }
       const http = app.getHttpServer();
       const res = await request(http)
@@ -212,6 +213,50 @@ describe('CPU do login: bcrypt nativo + teto de hashes', () => {
         });
       }
       expect(r.every((x) => [401, 503].includes(x.status))).toBe(true);
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+// M-3 da 2a revisao: um unico /64 (IP de origem) nao ocupa as 8 vagas globais de hash.
+describe('teto de hash por IP (/64)', () => {
+  const proxy = process.env.NOTTA_TRUST_PROXY;
+  beforeAll(() => {
+    process.env.NOTTA_TRUST_PROXY = '1'; // IP vem do X-Forwarded-For (um salto)
+  });
+  afterAll(() => {
+    if (proxy === undefined) delete process.env.NOTTA_TRUST_PROXY;
+    else process.env.NOTTA_TRUST_PROXY = proxy;
+  });
+
+  it('rajada de 20 logins de um /64: so 2 por vez fazem hash; outro IP loga (200) durante a rajada', async () => {
+    const app = await criarAppSemLimite();
+    try {
+      await app.listen(0, '127.0.0.1');
+      const base = await app.getUrl();
+      const login = async (ip: string, em: string, senha: string) => {
+        const r = await fetch(`${base}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Forwarded-For': ip,
+          },
+          body: JSON.stringify({ email: em, senha }),
+        });
+        await r.arrayBuffer();
+        return r.status;
+      };
+      // IPv6 diferentes, mesmo /64 (os 4 primeiros grupos iguais).
+      const rajada = Array.from({ length: 20 }, (_, i) =>
+        login(`2001:db8:1:2:${i + 1}::1`, email(`rj${i}`), 'errada-123'),
+      );
+      const outro = login('198.51.100.7', email('a'), SENHA);
+      const [status, doOutro] = await Promise.all([Promise.all(rajada), outro]);
+      expect(doOutro).toBe(200);
+      expect(status.filter((s) => s === 401).length).toBeLessThanOrEqual(2);
+      expect(status.filter((s) => s === 503).length).toBeGreaterThanOrEqual(18);
+      expect(status.every((s) => s === 401 || s === 503)).toBe(true);
     } finally {
       await app.close();
     }

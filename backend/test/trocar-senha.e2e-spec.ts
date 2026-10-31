@@ -274,7 +274,9 @@ describe('troca voluntaria e versao do token (tv)', () => {
 });
 
 describe('teto de hashes concorrentes (mesmo semaforo do login)', () => {
-  it('12 trocas simultaneas: acima de 8 em andamento = 503 + Retry-After 1, o resto 422', async () => {
+  // Mesmo token: acima de 5 simultaneas o guard do psicologo recusa (429); das que chegam ao
+  // hash, o teto por IP (2) e o global (8) recusam com 503.
+  it('12 trocas simultaneas: hash acima do teto = 503 + Retry-After 1; o resto 422 ou 429', async () => {
     const c = await novaClinica(email('teto'));
     const respostas = await Promise.all(
       Array.from({ length: 12 }, () =>
@@ -283,7 +285,7 @@ describe('teto de hashes concorrentes (mesmo semaforo do login)', () => {
     );
     const status = respostas.map((r) => r.status);
     expect(status.filter((s) => s === 503).length).toBeGreaterThan(0);
-    expect(status.every((s) => s === 503 || s === 422)).toBe(true);
+    expect(status.every((s) => [503, 422, 429].includes(s))).toBe(true);
     const r503 = respostas.find((r) => r.status === 503)!;
     expect(r503.headers['retry-after']).toBe('1');
   });
