@@ -17,7 +17,7 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 - [x] 8. [M] Adicionar psicólogos à clínica
 
 ## Fase 2 — Núcleo clínico
-- [ ] 9. [M] Cadastro de paciente
+- [x] 9. [M] Cadastro de paciente
 - [ ] 10. [M] Consentimento: registrar, revogar, re-conceder
 - [ ] 11. [B] Trilha de auditoria (antes dos documentos)
 - [ ] 12. [M] Documento clínico: nota bruta, evolução e anamnese
