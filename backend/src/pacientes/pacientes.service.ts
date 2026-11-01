@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import type { Paciente, Prisma } from '@prisma/client';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
+import { AuditoriaService } from '../auditoria/auditoria.service';
 import {
   aadDe,
   CriptografiaService,
@@ -45,14 +46,16 @@ export class PacientesService {
   constructor(
     private readonly tenant: TenantPrismaService,
     private readonly cripto: CriptografiaService,
+    private readonly auditoria: AuditoriaService,
   ) {}
 
   async criar(user: UsuarioAutenticado, dto: CriarPacienteDto) {
     // id no app, antes do INSERT: ele entra no AAD.
     const id = randomUUID();
     const cifrados = this.cifrar(user, id, dto);
-    const linha = await this.tenant.runComoUsuario(user, (tx) =>
-      tx.paciente.create({
+    // Auditoria na MESMA transacao: se a trilha falhar, o paciente nao fica criado.
+    const linha = await this.tenant.runComoUsuario(user, async (tx) => {
+      const criado = await tx.paciente.create({
         data: {
           id,
           clinicaId: user.clinicaId,
@@ -60,19 +63,23 @@ export class PacientesService {
           nomeCifrado: cifrados.nomeCifrado!,
           ...cifrados,
         },
-      }),
-    );
+      });
+      await this.auditoria.registrar(tx, user, 'CRIOU', 'Paciente', id);
+      return criado;
+    });
     return this.paraResposta(linha);
   }
 
   async listar(user: UsuarioAutenticado) {
-    const linhas = await this.tenant.runComoUsuario(user, (tx) =>
-      tx.paciente.findMany({
+    const linhas = await this.tenant.runComoUsuario(user, async (tx) => {
+      const achadas = await tx.paciente.findMany({
         where: { clinicaId: user.clinicaId, psicologoId: user.psicologoId },
         orderBy: { criadoEm: 'asc' },
         take: TETO_LISTA,
-      }),
-    );
+      });
+      await this.auditoria.registrar(tx, user, 'LISTOU', 'Paciente');
+      return achadas;
+    });
     return linhas
       .map((l) => this.paraResposta(l))
       .sort((a, b) =>
@@ -81,9 +88,13 @@ export class PacientesService {
   }
 
   async obter(user: UsuarioAutenticado, id: string) {
-    const linha = await this.tenant.runComoUsuario(user, (tx) =>
-      this.buscar(tx, user, id),
-    );
+    const linha = await this.tenant.runComoUsuario(user, async (tx) => {
+      const achado = await this.buscar(tx, user, id);
+      // 404 nao grava: nao existe leitura a registrar.
+      if (achado)
+        await this.auditoria.registrar(tx, user, 'LEU', 'Paciente', id);
+      return achado;
+    });
     if (!linha) throw new NotFoundException(NAO_ENCONTRADO);
     return this.paraResposta(linha);
   }
@@ -102,7 +113,9 @@ export class PacientesService {
         where: { id, clinicaId: user.clinicaId, psicologoId: user.psicologoId },
         data: cifrados,
       });
-      return r.count === 1 ? this.buscar(tx, user, id) : null;
+      if (r.count !== 1) return null;
+      await this.auditoria.registrar(tx, user, 'EDITOU', 'Paciente', id);
+      return this.buscar(tx, user, id);
     });
     if (!linha) throw new NotFoundException(NAO_ENCONTRADO);
     return this.paraResposta(linha);

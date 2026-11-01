@@ -68,11 +68,13 @@ function montar() {
       (_u: object, fn: (t: typeof tx) => Promise<unknown>) => fn(tx),
     ),
   };
+  const registrar = jest.fn<Promise<void>, unknown[]>(() => Promise.resolve());
   const service = new PacientesService(
     tenant as unknown as TenantPrismaService,
     cripto,
+    { registrar },
   );
-  return { tx, tenant, service, cripto, linhas };
+  return { tx, tenant, service, cripto, linhas, registrar };
 }
 
 describe('PacientesService.criar', () => {
@@ -221,5 +223,44 @@ describe('PacientesService.atualizar', () => {
     await expect(
       service.atualizar(user, randomUUID(), { nome: 'X' }),
     ).rejects.toEqual(new NotFoundException('Paciente nao encontrado'));
+  });
+});
+
+describe('PacientesService: trilha de auditoria', () => {
+  it('cada operacao registra a acao certa com a mesma tx; so o id, nunca valor de campo', async () => {
+    const { tx, service, registrar } = montar();
+    const { id } = await service.criar(user, { nome: 'Ana Secreta' });
+    await service.listar(user);
+    await service.obter(user, id);
+    await service.atualizar(user, id, { nome: 'Outro Nome' });
+    expect(registrar.mock.calls).toEqual([
+      [tx, user, 'CRIOU', 'Paciente', id],
+      [tx, user, 'LISTOU', 'Paciente'],
+      [tx, user, 'LEU', 'Paciente', id],
+      [tx, user, 'EDITOU', 'Paciente', id],
+    ]);
+    expect(JSON.stringify(registrar.mock.calls)).not.toContain('Secreta');
+  });
+
+  it('404 e 400 nao registram', async () => {
+    const { service, registrar } = montar();
+    await expect(service.obter(user, randomUUID())).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    await expect(
+      service.atualizar(user, randomUUID(), { nome: 'X' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      service.atualizar(user, randomUUID(), {}),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(registrar).not.toHaveBeenCalled();
+  });
+
+  it('falha da auditoria derruba a operacao (a tx desfaz)', async () => {
+    const { service, registrar } = montar();
+    registrar.mockRejectedValueOnce(new Error('trilha caiu'));
+    await expect(service.criar(user, { nome: 'Ana' })).rejects.toThrow(
+      'trilha caiu',
+    );
   });
 });

@@ -44,6 +44,7 @@ model Psicologo {
   tokenVersao     Int        @default(0)
   createdAt       DateTime   @default(now())
   pacientes       Paciente[]
+  auditorias      Auditoria[]
 
   // Alvo das FKs compostas (x, clinicaId) das fases futuras.
   @@unique([id, clinicaId])
@@ -69,4 +70,21 @@ model Paciente {
   // Alvo das FKs compostas das filhas (sessao, documento...): inclui o dono.
   @@unique([id, psicologoId, clinicaId])
   @@index([clinicaId, psicologoId])
+}
+
+// Trilha de auditoria (item 11): QUEM fez O QUE em QUE recurso e QUANDO. Somente-acrescentar
+// (notta_app so SELECT/INSERT + trigger). NUNCA grava conteudo, nome nem IP. `recursoId` sem FK:
+// a trilha sobrevive ao recurso. Valores de acao/recurso: src/auditoria/auditoria.service.ts.
+model Auditoria {
+  id          String    @id @default(uuid())
+  clinicaId   String
+  psicologoId String
+  psicologo   Psicologo @relation(fields: [psicologoId, clinicaId], references: [id, clinicaId])
+  acao        String
+  recurso     String
+  recursoId   String?
+  criadoEm    DateTime  @default(now())
+
+  @@index([clinicaId, psicologoId, criadoEm])
+  @@index([clinicaId, recurso, recursoId])
 }

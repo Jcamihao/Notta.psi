@@ -82,9 +82,22 @@ Vale para paciente, sessao, documento, anotacao e qualquer tabela com dado de um
 | Tabela | Policy | Cifrado em repouso (AAD = `Paciente\|<coluna>\|id\|psicologoId`) | Grants do `notta_app` |
 |---|---|---|---|
 | `Paciente` (item 9, migration `20261031230000_paciente`) | so `psicologo_proprio` (ENABLE + FORCE) | `nomeCifrado`, `nascimentoCifrado`, `telefoneCifrado`, `emailCifrado` (AES-256-GCM, chave por clinica; `id` gerado no app antes do INSERT porque entra no AAD) | SELECT, INSERT; UPDATE so dessas 4 colunas e `atualizadoEm`; sem DELETE (exclusao e o item 26) e sem UPDATE de `id`, `clinicaId`, `psicologoId` |
+| `Auditoria` (item 11, migration `20261101120000_auditoria`) | `auditoria_insert` (WITH CHECK: clinica E psicologo do contexto) e `auditoria_select_proprio` (so as PROPRIAS linhas), ENABLE + FORCE; mais `auditoria_dono_update`/`auditoria_dono_delete` so `TO notta_owner` (ver abaixo) | nada: sem conteudo clinico | **SELECT e INSERT apenas** (sem UPDATE, DELETE, TRUNCATE) |
 
 - Rotas `/pacientes` (qualquer usuario autenticado, senha provisoria = 403): o `PacientesService` e o unico lugar que cifra e decifra. Falha de decifra (ex.: texto cifrado copiado para outra linha) = 500 generico, sem o texto no log. Sem CPF nem endereco (decisao do dono); o item 50 cobre o que vier depois.
 - Limpeza em teste: o `notta_app` nao apaga `Paciente`; `apagarClinicas` (`test/acesso-owner.ts`) apaga como `notta_owner`, um psicologo por vez (a policy exige o dono no contexto) e so depois o `Psicologo`.
+
+## Trilha de auditoria (item 11)
+
+Registra **quem** (`psicologoId`), **o que** (`acao`: `CRIOU`, `LEU`, `LISTOU`, `EDITOU`), **em que recurso** (`recurso` = `Paciente`, `recursoId`) e **quando** (`criadoEm`), por tempo indefinido. Decisao do dono (2026-11-01).
+
+- **O que NAO registra:** nome, e-mail, telefone, nascimento, valor de campo, texto clinico, IP, user-agent. So ids e constantes. `LISTOU` nao tem `recursoId`. 404, 400 e 401 nao gravam (nao houve acesso). `recursoId` nao tem FK: a trilha sobrevive ao recurso.
+- **Como grava:** `AuditoriaService.registrar(tx, user, acao, recurso, recursoId?)` (`backend/src/auditoria/`), SEMPRE na mesma transacao (`runComoUsuario`) da acao. Se a trilha falhar, a acao inteira desfaz e a rota responde 500 (falha fechada). Sem fila. Rota clinica nova: chame `registrar` dentro do mesmo `runComoUsuario` e acrescente a constante em `ACOES`/`RECURSOS`.
+- **Somente-acrescentar (3 camadas):** (1) o `notta_app` so tem `SELECT` e `INSERT`; (2) RLS FORCE: INSERT so com clinica e psicologo do contexto, SELECT so das proprias linhas (colega e ADMIN veem zero do alheio; leitura pela clinica e item futuro, nao ha rota); (3) trigger `auditoria_somente_acrescentar` levanta excecao em UPDATE, DELETE e TRUNCATE, ate para o `notta_owner`.
+- **Policies do dono (`auditoria_dono_update`/`_delete`, so `TO notta_owner`, so da clinica do contexto):** existem so para o trigger poder disparar. Sem policy o FORCE RLS faria o UPDATE/DELETE do dono afetar 0 linhas em silencio. A barreira e o trigger.
+- **Desvio unico (limpeza das suites):** o trigger deixa passar `DELETE` quando quem executa e o DONO da tabela E a transacao tem `set_config('app.limpeza_de_teste', '1', true)`. Uso: `apagarClinicas` em `test/acesso-owner.ts` (a FK `Auditoria -> Psicologo` e RESTRICT, entao apagar o psicologo exige apagar a trilha antes). O `notta_app` nunca usa: nao e dono e nao tem DELETE (teste prova com o desvio ligado). UPDATE e TRUNCATE nao tem desvio. Em producao nao ha rotina que ligue o desvio; apagar trilha so a mao, como dono, de proposito.
+- **Consequencia da FK RESTRICT:** psicologo com trilha nao pode ser apagado (nem pelo dono) sem antes apagar a trilha com o desvio. O item de exclusao/LGPD (26) precisa decidir isso.
+- Testes: `test/auditoria-rls.e2e-spec.ts` (banco) e `test/auditoria.e2e-spec.ts` (HTTP + atomicidade).
 
 ## Checklist de revisao (Fase 2, cada tabela nova)
 

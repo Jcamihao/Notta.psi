@@ -46,7 +46,7 @@ export async function mudarPapelComoOwner(
   if (r.count !== 1) throw new Error('papel nao mudou');
 }
 
-// Limpeza das suites: o notta_app nao tem DELETE em Psicologo, Clinica nem Paciente.
+// Limpeza das suites: o notta_app nao tem DELETE em Psicologo, Clinica, Paciente nem Auditoria.
 export async function apagarClinicas(ids: string[]) {
   for (const id of ids) {
     // Paciente (FK RESTRICT, sem DELETE para o app): o owner apaga sob a policy, que exige o
@@ -57,7 +57,13 @@ export async function apagarClinicas(ids: string[]) {
     for (const { id: psicologoId } of psicologos) {
       await comoOwner(
         id,
-        (tx) => tx.paciente.deleteMany({ where: { psicologoId } }),
+        async (tx) => {
+          await tx.paciente.deleteMany({ where: { psicologoId } });
+          // Auditoria e somente-acrescentar: so o DONO apaga, e so com este desvio EXPLICITO
+          // na transacao (trigger auditoria_somente_acrescentar). O notta_app nao tem como.
+          await tx.$executeRaw`SELECT set_config('app.limpeza_de_teste', '1', true)`;
+          await tx.auditoria.deleteMany({ where: { psicologoId } });
+        },
         { psicologoId },
       );
     }
