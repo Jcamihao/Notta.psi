@@ -6,7 +6,7 @@ export type ButtonVariant = 'primary' | 'disabled' | 'progress' | 'soft';
 // disabled, form e foco do navegador. "progress" (rosa) e o estado de envio em andamento.
 // "disabled" usa tinta sobre #A9A49B (7.4:1): o branco do original da 2.5:1.
 @Component({
-  selector: 'button[app-button]',
+  selector: 'button[app-button], a[app-button]',
   template: '<ng-content />',
   host: { '[attr.data-variant]': 'variant()', '[class.full]': 'full()' },
   styles: `
@@ -25,6 +25,7 @@ export type ButtonVariant = 'primary' | 'disabled' | 'progress' | 'soft';
       border: 0;
       border-radius: var(--radius-pill);
       cursor: pointer;
+      text-decoration: none;
       transition: background-color 150ms ease;
     }
     :host(:hover) {

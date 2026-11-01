@@ -1,0 +1,56 @@
+:host {
+  display: block;
+}
+.paciente {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+}
+.paciente-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--fs-day);
+}
+.paciente h1 {
+  margin-bottom: var(--space-3);
+}
+.paciente-carregando {
+  margin: 0;
+  color: var(--text-secondary);
+}
+.paciente-falha {
+  flex-wrap: wrap;
+  align-items: center;
+  max-width: 32rem;
+  p {
+    margin: 0;
+  }
+}
+.paciente-cartao {
+  width: 100%;
+  max-width: 32rem;
+  padding: var(--space-8);
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
+  @media (max-width: 40rem) {
+    padding: var(--space-6);
+  }
+}
+.paciente-lead {
+  margin: 0 0 var(--space-7);
+  color: var(--text-secondary);
+}
+.campo-data {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  input {
+    flex: 1 1 12rem;
+  }
+}
+.formulario .campo-data [app-button] {
+  margin-top: 0;
+}

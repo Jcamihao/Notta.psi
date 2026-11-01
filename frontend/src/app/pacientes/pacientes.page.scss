@@ -1,0 +1,152 @@
+// Mesmo padrao da tela Equipe: tabela legivel em cartao plano; abaixo de 40rem de conteudo cada
+// paciente vira um bloco empilhado (container query: a sidebar ja ocupa parte da largura).
+:host {
+  display: block;
+  container-type: inline-size;
+}
+.pacientes {
+  display: grid;
+  gap: var(--space-6);
+}
+.pacientes-topo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+.pacientes-lead {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--text-secondary);
+}
+.aviso-regiao .aviso-ok,
+.aviso-regiao .aviso-erro {
+  margin: 0;
+}
+.pacientes-lista {
+  overflow-x: auto;
+}
+.pacientes-carregando {
+  margin: 0;
+  color: var(--text-secondary);
+}
+.pacientes-falha {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  p {
+    margin: 0;
+  }
+}
+.vazio {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-4);
+  max-width: 32rem;
+  padding: var(--space-8);
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
+  p {
+    margin: 0;
+    color: var(--text-secondary);
+  }
+}
+
+.tabela {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
+  caption {
+    padding: 0 0 var(--space-3) var(--space-1);
+    caption-side: top;
+    text-align: left;
+    color: var(--text-secondary);
+    font-size: var(--fs-day);
+  }
+  th,
+  td {
+    padding: var(--space-5) var(--space-6);
+    text-align: left;
+    vertical-align: middle;
+  }
+  thead th {
+    color: var(--text-secondary);
+    font-size: var(--fs-day);
+    font-weight: var(--fw-medium);
+  }
+  tbody th {
+    min-width: 9rem;
+    font-weight: var(--fw-medium);
+  }
+  tbody tr > * {
+    border-top: 1px solid var(--cream-200);
+  }
+}
+.pessoa {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.tabela-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tabela-email {
+  min-width: 12rem;
+  overflow-wrap: anywhere;
+}
+.sem-dado {
+  color: var(--text-secondary);
+}
+
+@container (max-width: 40rem) {
+  .tabela {
+    &,
+    caption,
+    tbody,
+    tr,
+    th,
+    td {
+      display: block;
+    }
+    thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    tbody tr {
+      padding: var(--space-6);
+    }
+    tbody tr > * {
+      border-top: 0;
+    }
+    tbody tr + tr {
+      border-top: 1px solid var(--cream-200);
+    }
+    tbody th {
+      padding: 0 0 var(--space-3);
+    }
+    tbody td {
+      display: grid;
+      grid-template-columns: 6.5rem minmax(0, 1fr);
+      gap: var(--space-3);
+      align-items: center;
+      min-width: 0;
+      padding: var(--space-1) 0;
+      white-space: normal;
+    }
+    tbody td::before {
+      content: attr(data-rotulo);
+      color: var(--text-secondary);
+      font-size: var(--fs-day);
+    }
+  }
+  .vazio {
+    padding: var(--space-6);
+  }
+}

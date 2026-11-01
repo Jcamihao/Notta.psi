@@ -20,7 +20,23 @@ class Host {
   off = signal(false);
 }
 
+@Component({
+  imports: [ButtonComponent],
+  template: `<a app-button href="/x">Ir</a>`,
+})
+class HostLink {}
+
 describe('ButtonComponent', () => {
+  it('serve tambem para link: pill preta, texto branco, sem sublinhado', async () => {
+    const f = TestBed.createComponent(HostLink);
+    await f.whenStable();
+    const a = f.nativeElement.querySelector('a') as HTMLAnchorElement;
+    const s = getComputedStyle(a);
+    expect(s.backgroundColor).toBe('rgb(20, 20, 20)');
+    expect(s.color).toBe('rgb(255, 255, 255)');
+    expect(s.textDecorationLine).toBe('none');
+  });
+
   const montar = async () => {
     const f = TestBed.createComponent(Host);
     await f.whenStable();

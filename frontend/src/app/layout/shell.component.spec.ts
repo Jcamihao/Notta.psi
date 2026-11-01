@@ -62,6 +62,11 @@ describe('ShellComponent', () => {
     expect(navegar).toHaveBeenCalledWith('/login');
   });
 
+  it('PSICOLOGO ve o link Pacientes', () => {
+    const link = el().querySelector('header a[href="/pacientes"]');
+    expect(link?.textContent?.trim()).toBe('Pacientes');
+  });
+
   it('PSICOLOGO nao ve o link Equipe', () => {
     expect(el().querySelector('a[href="/equipe"]')).toBeNull();
   });
@@ -114,6 +119,9 @@ describe('ShellComponent (ADMIN)', () => {
     await fixture.whenStable();
     const link = () =>
       (fixture.nativeElement as HTMLElement).querySelector('header a[href="/equipe"]');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('header a[href="/pacientes"]'),
+    ).not.toBeNull();
     expect(link()?.textContent?.trim()).toBe('Equipe');
     expect(link()?.getAttribute('aria-current')).toBeNull();
     await TestBed.inject(Router).navigateByUrl('/equipe');

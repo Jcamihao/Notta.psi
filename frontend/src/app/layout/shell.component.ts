@@ -8,6 +8,7 @@ import {
   LogOut,
   LucideAngularModule,
   Menu,
+  UserRound,
   Users,
   X,
 } from 'lucide-angular';
@@ -65,6 +66,15 @@ import { NavItemComponent } from '../ui/nav-item.component';
               [icon]="icones.House"
             >
               Início
+            </a>
+            <a
+              app-nav-item
+              routerLink="/pacientes"
+              routerLinkActive
+              ariaCurrentWhenActive="page"
+              [icon]="icones.UserRound"
+            >
+              Pacientes
             </a>
             @if (ehAdmin()) {
               <a
@@ -240,7 +250,7 @@ export class ShellComponent {
   private readonly router = inject(Router);
   private readonly alternar = viewChild('alternar', { read: ElementRef });
 
-  readonly icones = { CircleCheck, House, KeyRound, LogOut, Menu, Users, X };
+  readonly icones = { CircleCheck, House, KeyRound, LogOut, Menu, UserRound, Users, X };
   readonly usuario = this.usuarios.usuario;
   readonly ehAdmin = this.usuarios.ehAdmin;
   readonly obrigatoria = this.usuarios.senhaProvisoria;

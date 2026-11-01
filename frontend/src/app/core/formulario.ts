@@ -18,10 +18,46 @@ export const senhaBytes =
     return n < min ? { senhaCurta: true } : null;
   };
 
+// Campos opcionais do paciente (contrato do item 9). Vazio e valido; o servidor e a autoridade.
+const vazio = (c: AbstractControl) => !String(c.value ?? '').trim();
+
+export const nomeCurto: ValidatorFn = (c) =>
+  String(c.value ?? '').trim().length > 120 ? { nomeLongo: true } : null;
+
+export const hojeLocal = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+// Valor do <input type="date">: 'YYYY-MM-DD' (comparacao de texto serve nesse formato).
+export const nascimentoValido: ValidatorFn = (c) => {
+  if (vazio(c)) return null;
+  const v = String(c.value);
+  if (v < '1900-01-01') return { nascimentoAntigo: true };
+  return v > hojeLocal() ? { nascimentoFuturo: true } : null;
+};
+
+export const telefoneValido: ValidatorFn = (c) => {
+  if (vazio(c)) return null;
+  const v = String(c.value).trim();
+  return /^[0-9 +\-()]{8,20}$/.test(v) ? null : { telefone: true };
+};
+
+export const emailOpcional: ValidatorFn = (c) => {
+  if (vazio(c)) return null;
+  if (String(c.value).trim().length > 254) return { emailLongo: true };
+  return emailValido(c);
+};
+
 const MENSAGENS: Record<string, string> = {
   email: 'Digite um e-mail válido, como nome@clinica.com.',
   senhaCurta: 'A senha precisa de pelo menos 8 caracteres.',
   senhaLonga: 'Senha longa demais: o limite é 72 bytes (acentos e emojis ocupam mais).',
+  nomeLongo: 'O nome pode ter até 120 caracteres.',
+  nascimentoFuturo: 'A data de nascimento não pode ser no futuro.',
+  nascimentoAntigo: 'Informe uma data de nascimento a partir de 1900.',
+  telefone: 'Use de 8 a 20 caracteres: só números, espaço, +, - e parênteses.',
+  emailLongo: 'O e-mail pode ter até 254 caracteres.',
   emUso: 'Este e-mail já tem cadastro. Entre com ele ou use outro.',
   emUsoEquipe: 'Este e-mail já está cadastrado no Notta.psi. Use outro e-mail.',
   senhaAtualIncorreta: 'Senha atual incorreta. Confira e digite de novo.',

@@ -31,6 +31,20 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/equipe.page').then((m) => m.EquipePage),
       },
       {
+        path: 'pacientes',
+        loadComponent: () => import('./pacientes/pacientes.page').then((m) => m.PacientesPage),
+      },
+      {
+        path: 'pacientes/novo',
+        loadComponent: () =>
+          import('./pacientes/paciente-form.page').then((m) => m.PacienteFormPage),
+      },
+      {
+        path: 'pacientes/:id',
+        loadComponent: () =>
+          import('./pacientes/paciente-form.page').then((m) => m.PacienteFormPage),
+      },
+      {
         path: 'trocar-senha',
         loadComponent: () => import('./pages/trocar-senha.page').then((m) => m.TrocarSenhaPage),
       },
