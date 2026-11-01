@@ -46,9 +46,21 @@ export async function mudarPapelComoOwner(
   if (r.count !== 1) throw new Error('papel nao mudou');
 }
 
-// Limpeza das suites: o notta_app nao tem DELETE em Psicologo nem em Clinica.
+// Limpeza das suites: o notta_app nao tem DELETE em Psicologo, Clinica nem Paciente.
 export async function apagarClinicas(ids: string[]) {
   for (const id of ids) {
+    // Paciente (FK RESTRICT, sem DELETE para o app): o owner apaga sob a policy, que exige o
+    // psicologo no contexto, entao um psicologo por vez.
+    const psicologos = await comoOwner(id, (tx) =>
+      tx.psicologo.findMany({ where: { clinicaId: id }, select: { id: true } }),
+    );
+    for (const { id: psicologoId } of psicologos) {
+      await comoOwner(
+        id,
+        (tx) => tx.paciente.deleteMany({ where: { psicologoId } }),
+        { psicologoId },
+      );
+    }
     await comoOwner(id, async (tx) => {
       await tx.psicologo.deleteMany({ where: { clinicaId: id } });
       await tx.clinica.deleteMany({ where: { id } });

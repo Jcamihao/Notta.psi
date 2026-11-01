@@ -1,0 +1,49 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import { UsuarioAtual, type UsuarioAutenticado } from '../auth/jwt-auth.guard';
+import { CriarPacienteDto, EditarPacienteDto } from './pacientes.dto';
+import { PacientesService } from './pacientes.service';
+
+// Qualquer usuario autenticado (ADMIN tambem atende). Sem @PermiteSenhaProvisoria: dado clinico.
+// O isolamento e do banco (psicologo_proprio) E do where do service, ambos pelo token.
+@Controller('pacientes')
+export class PacientesController {
+  constructor(private readonly pacientes: PacientesService) {}
+
+  @Post()
+  criar(
+    @UsuarioAtual() user: UsuarioAutenticado,
+    @Body() dto: CriarPacienteDto,
+  ) {
+    return this.pacientes.criar(user, dto);
+  }
+
+  @Get()
+  listar(@UsuarioAtual() user: UsuarioAutenticado) {
+    return this.pacientes.listar(user);
+  }
+
+  @Get(':id')
+  obter(
+    @UsuarioAtual() user: UsuarioAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.pacientes.obter(user, id);
+  }
+
+  @Patch(':id')
+  atualizar(
+    @UsuarioAtual() user: UsuarioAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: EditarPacienteDto,
+  ) {
+    return this.pacientes.atualizar(user, id, dto);
+  }
+}

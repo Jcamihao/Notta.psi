@@ -30,22 +30,43 @@ model Clinica {
 }
 
 model Psicologo {
-  id              String    @id @default(uuid())
+  id              String     @id @default(uuid())
   clinicaId       String
-  clinica         Clinica   @relation(fields: [clinicaId], references: [id])
+  clinica         Clinica    @relation(fields: [clinicaId], references: [id])
   nome            String
-  email           String    @unique
+  email           String     @unique
   senhaHash       String
   abordagemPadrao Abordagem
-  papel           Papel     @default(PSICOLOGO)
+  papel           Papel      @default(PSICOLOGO)
   // Senha definida pelo ADMIN: o guard bloqueia tudo ate a troca (item 62).
-  senhaProvisoria Boolean   @default(false)
+  senhaProvisoria Boolean    @default(false)
   // Claim `tv` do JWT. Trocar a senha incrementa: tokens antigos viram 401.
-  tokenVersao     Int       @default(0)
-  createdAt       DateTime  @default(now())
+  tokenVersao     Int        @default(0)
+  createdAt       DateTime   @default(now())
+  pacientes       Paciente[]
 
   // Alvo das FKs compostas (x, clinicaId) das fases futuras.
   @@unique([id, clinicaId])
   // RLS filtra toda consulta por clinicaId.
   @@index([clinicaId])
+}
+
+// Paciente: dado clinico com dono (psicologo). RLS psicologo_proprio (docs/ACESSO.md).
+// Identificadores cifrados (AES-256-GCM, AAD = Paciente|<coluna>|id|psicologoId): o id e
+// gerado no app antes do INSERT porque entra no AAD.
+model Paciente {
+  id                String    @id
+  clinicaId         String
+  psicologoId       String
+  psicologo         Psicologo @relation(fields: [psicologoId, clinicaId], references: [id, clinicaId])
+  nomeCifrado       String
+  nascimentoCifrado String?
+  telefoneCifrado   String?
+  emailCifrado      String?
+  criadoEm          DateTime  @default(now())
+  atualizadoEm      DateTime  @updatedAt
+
+  // Alvo das FKs compostas das filhas (sessao, documento...): inclui o dono.
+  @@unique([id, psicologoId, clinicaId])
+  @@index([clinicaId, psicologoId])
 }

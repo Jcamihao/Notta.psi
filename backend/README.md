@@ -71,6 +71,14 @@ Contrato completo: `.superpowers/sdd/fase-1/contrato.md`.
 - `GET /psicologos` (Bearer, ADMIN): equipe da clinica do token, por `criadoEm` crescente, sem `senhaHash`.
 - PSICOLOGO = 403 generico. Regra de acesso completa: `docs/ACESSO.md`.
 
+## Pacientes (qualquer usuario autenticado)
+Tabela `Paciente`, RLS `psicologo_proprio` (cada psicologo ve so os proprios, ADMIN tambem), nome, nascimento, telefone e e-mail CIFRADOS (AES-256-GCM, AAD com tabela, coluna, id e psicologo). Detalhes em `docs/ACESSO.md`. Resposta nunca traz colunas `*Cifrado`; nome/telefone/e-mail/nascimento nunca vao para log.
+- `POST /pacientes` `{ nome (1..120), nascimento? 'YYYY-MM-DD' (real, >= 1900-01-01, nao futura), telefone? (8..20, so digitos, espaco, +, -, parenteses), email? (<= 254) }` -> 201 `{ id, nome, nascimento|null, telefone|null, email|null, criadoEm }`.
+- `GET /pacientes` -> 200 array dos PROPRIOS, ordenado por nome (pt-BR, sem caixa/acento), teto de 500.
+- `GET /pacientes/:id` -> 200 igual ao POST. Inexistente, de colega ou de outra clinica = o MESMO 404 `Paciente nao encontrado`. `:id` que nao e uuid = 400.
+- `PATCH /pacientes/:id` corpo parcial dos mesmos campos; `null` limpa nascimento/telefone/e-mail; `nome` nao aceita null; corpo vazio = 400; 404 igual ao GET.
+- Campo extra (`clinicaId`, `psicologoId`, `id`) = 400; sem token = 401; senha provisoria = 403 `Troca de senha obrigatoria`. Sem DELETE (item 26).
+
 ## Limite de tentativas
 - Login: 5/min por IP + e-mail e 20/min por IP. Cadastro de clinica: 5/h por IP. `POST /psicologos`: 20/h por psicologo do token (nao por IP). `POST /auth/trocar-senha`: 10/h por psicologo do token. Conta sucesso e falha (e requisicao invalida). 429 com `Retry-After` em segundos.
 - Toda rota autenticada: 300/min por psicologo, somado entre todas as rotas (throttler `api`), mais no maximo 5 requisicoes SIMULTANEAS por psicologo. Os dois sao contados no `JwtAuthGuard`, depois da assinatura do token e ANTES de qualquer acesso ao banco: requisicao barrada nao gasta conexao do pool, entao um usuario nao degrada as outras clinicas. A resposta 429 desses dois casos so sai depois de 1 s (tarpit, `RECUSA_ATRASO_MS`): recusar na hora faz o atacante repetir o pedido sem parar e saturar o event loop (medido: 500 conexoes em laco deixavam a vitima com 1 a 3 s por requisicao mesmo com 429 barato). Rotas `@Publico()` ficam de fora.

@@ -77,6 +77,15 @@ Vale para paciente, sessao, documento, anotacao e qualquer tabela com dado de um
 4. **Sempre** `tenant.runComoUsuario(user, (tx) => ...)`. `run(clinicaId, ...)` sem `psicologoId` devolve ZERO linhas nessas tabelas (falha fechada, nao erro).
 5. Migration de DADOS nessas tabelas: com FORCE, sem contexto atualiza 0 linhas. Faca laco por clinica e psicologo com `set_config`.
 
+## Tabelas clinicas que ja existem
+
+| Tabela | Policy | Cifrado em repouso (AAD = `Paciente\|<coluna>\|id\|psicologoId`) | Grants do `notta_app` |
+|---|---|---|---|
+| `Paciente` (item 9, migration `20261031230000_paciente`) | so `psicologo_proprio` (ENABLE + FORCE) | `nomeCifrado`, `nascimentoCifrado`, `telefoneCifrado`, `emailCifrado` (AES-256-GCM, chave por clinica; `id` gerado no app antes do INSERT porque entra no AAD) | SELECT, INSERT; UPDATE so dessas 4 colunas e `atualizadoEm`; sem DELETE (exclusao e o item 26) e sem UPDATE de `id`, `clinicaId`, `psicologoId` |
+
+- Rotas `/pacientes` (qualquer usuario autenticado, senha provisoria = 403): o `PacientesService` e o unico lugar que cifra e decifra. Falha de decifra (ex.: texto cifrado copiado para outra linha) = 500 generico, sem o texto no log. Sem CPF nem endereco (decisao do dono); o item 50 cobre o que vier depois.
+- Limpeza em teste: o `notta_app` nao apaga `Paciente`; `apagarClinicas` (`test/acesso-owner.ts`) apaga como `notta_owner`, um psicologo por vez (a policy exige o dono no contexto) e so depois o `Psicologo`.
+
 ## Checklist de revisao (Fase 2, cada tabela nova)
 
 - [ ] Tem `clinicaId` e `psicologoId` NOT NULL, FK composta `(psicologoId, clinicaId) -> Psicologo(id, clinicaId)`.
