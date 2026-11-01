@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import { EstadoConsentimento } from './consentimento.service';
 
 // Corpo das respostas de /pacientes (contrato.md, item 9).
 export interface Paciente {
@@ -9,6 +10,8 @@ export interface Paciente {
   telefone: string | null;
   email: string | null;
   criadoEm: string;
+  // Vem em GET /pacientes e /pacientes/:id; POST e PATCH nao trazem (ausente = NENHUM ate recarregar).
+  consentimento?: EstadoConsentimento;
 }
 
 export interface NovoPaciente {

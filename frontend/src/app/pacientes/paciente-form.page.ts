@@ -15,6 +15,7 @@ import {
   telefoneValido,
 } from '../core/formulario';
 import { ButtonComponent } from '../ui/button.component';
+import { ConsentimentoCardComponent } from './consentimento-card.component';
 import { AvisoPacientes } from './pacientes.page';
 import { Paciente, PacientesService } from './pacientes.service';
 
@@ -28,7 +29,13 @@ const OBRIGATORIO = {
 // Criar (/pacientes/novo) e ver/editar (/pacientes/:id) usam a mesma tela: o id da rota decide.
 @Component({
   selector: 'app-paciente-form-page',
-  imports: [ReactiveFormsModule, LucideAngularModule, RouterLink, ButtonComponent],
+  imports: [
+    ReactiveFormsModule,
+    LucideAngularModule,
+    RouterLink,
+    ButtonComponent,
+    ConsentimentoCardComponent,
+  ],
   templateUrl: './paciente-form.page.html',
   styleUrl: './paciente-form.page.scss',
 })

@@ -14,6 +14,7 @@ const LISTA: Paciente[] = [
     telefone: '+55 11 99999-0000',
     email: 'ana@exemplo.com',
     criadoEm: '2026-10-01T10:00:00.000Z',
+    consentimento: 'CONCEDIDO',
   },
   {
     id: 'b2',
@@ -22,6 +23,25 @@ const LISTA: Paciente[] = [
     telefone: null,
     email: null,
     criadoEm: '2026-10-02T10:00:00.000Z',
+    consentimento: 'NENHUM',
+  },
+  {
+    id: 'c3',
+    nome: 'Carla Dias',
+    nascimento: null,
+    telefone: null,
+    email: null,
+    criadoEm: '2026-10-03T10:00:00.000Z',
+    consentimento: 'REVOGADO',
+  },
+  // Sem o campo (corpo de POST/PATCH): trata como NENHUM.
+  {
+    id: 'd4',
+    nome: 'Davi Reis',
+    nascimento: null,
+    telefone: null,
+    email: null,
+    criadoEm: '2026-10-04T10:00:00.000Z',
   },
 ];
 
@@ -52,7 +72,7 @@ describe('PacientesPage', () => {
     expect(el().textContent).toContain('Carregando os pacientes…');
     await listar(LISTA);
     const linhas = Array.from(el().querySelectorAll('tbody tr'));
-    expect(linhas.length).toBe(2);
+    expect(linhas.length).toBe(4);
     const [ana, bruno] = linhas;
     const link = ana.querySelector('th a') as HTMLAnchorElement;
     expect(link.textContent?.trim()).toBe('Ana Lima');
@@ -61,9 +81,24 @@ describe('PacientesPage', () => {
     expect(ana.textContent).toContain('+55 11 99999-0000');
     expect(ana.textContent).toContain('ana@exemplo.com');
     expect(bruno.textContent?.match(/Não informado/g)?.length).toBe(3);
-    expect(el().querySelector('table caption')?.textContent).toContain('2 cadastrados');
+    expect(el().querySelector('table caption')?.textContent).toContain('4 cadastrados');
     expect(el().textContent).not.toContain('Carregando');
     expect(el().querySelector('a[href="/pacientes/novo"]')).not.toBeNull();
+  });
+
+  it('coluna Consentimento: pill com texto para cada estado e NENHUM quando o campo falta', async () => {
+    await listar(LISTA);
+    expect(el().querySelector('thead')?.textContent).toContain('Consentimento');
+    const pills = Array.from(el().querySelectorAll('tbody tr')).map((tr) => {
+      const p = tr.querySelector('td[data-rotulo="Consentimento"] app-pill')!;
+      return [p.textContent?.trim(), p.getAttribute('data-tone'), p.classList.contains('dashed')];
+    });
+    expect(pills).toEqual([
+      ['Concedido', 'blue', false],
+      ['Não registrado', 'yellow', true],
+      ['Revogado', 'pink', false],
+      ['Não registrado', 'yellow', true],
+    ]);
   });
 
   it('lista vazia mostra estado vazio com botao Novo paciente', async () => {
@@ -91,7 +126,7 @@ describe('PacientesPage', () => {
     ).click();
     await fixture.whenStable();
     await listar(LISTA);
-    expect(el().querySelectorAll('tbody tr').length).toBe(2);
+    expect(el().querySelectorAll('tbody tr').length).toBe(4);
     expect(el().querySelector('[role="alert"]')).toBeNull();
   });
 

@@ -5,6 +5,8 @@ import { CircleAlert, CircleCheck, LucideAngularModule } from 'lucide-angular';
 import { filter, map } from 'rxjs';
 import { AvatarComponent } from '../ui/avatar.component';
 import { ButtonComponent } from '../ui/button.component';
+import { PillComponent } from '../ui/pill.component';
+import { ROTULO_CONSENTIMENTO, TOM_CONSENTIMENTO } from './consentimento.service';
 import { Paciente, PacientesService } from './pacientes.service';
 
 // Recado que a tela anterior deixa no state da navegacao (so um codigo fixo, nunca dado de
@@ -20,7 +22,7 @@ export function dataBr(iso: string): string {
 
 @Component({
   selector: 'app-pacientes-page',
-  imports: [LucideAngularModule, RouterLink, AvatarComponent, ButtonComponent],
+  imports: [LucideAngularModule, RouterLink, AvatarComponent, ButtonComponent, PillComponent],
   templateUrl: './pacientes.page.html',
   styleUrl: './pacientes.page.scss',
 })
@@ -30,6 +32,8 @@ export class PacientesPage {
   private readonly router = inject(Router);
 
   readonly dataBr = dataBr;
+  readonly rotulo = ROTULO_CONSENTIMENTO;
+  readonly tom = TOM_CONSENTIMENTO;
   readonly lista = signal<Paciente[] | null>(null);
   readonly erroLista = signal(false);
   readonly aviso = toSignal(

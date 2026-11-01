@@ -76,6 +76,10 @@ describe('PacienteFormPage', () => {
       expect(botao().textContent?.trim()).toBe('Cadastrar paciente');
     });
 
+    it('nao mostra o cartao de consentimento (paciente ainda nao existe)', () => {
+      expect(el().querySelector('app-consentimento-card')).toBeNull();
+    });
+
     it('so o nome basta: POST so com nome (trim), depois vai para a lista com aviso', async () => {
       digitar('nome', '  Maria da Silva ');
       await enviar();
@@ -248,6 +252,11 @@ describe('PacienteFormPage', () => {
       expect(r.request.method).toBe('GET');
       r.flush(p);
       await fixture.whenStable();
+      // O cartao de consentimento so nasce depois do paciente: nunca 2 GET ao mesmo tempo.
+      ctrl
+        .expectOne(`/api/pacientes/${ID}/consentimento`)
+        .flush({ estado: 'NENHUM', desde: null, historico: [] });
+      await fixture.whenStable();
     };
 
     it('mostra carregando, depois o formulario preenchido', async () => {
@@ -259,6 +268,17 @@ describe('PacienteFormPage', () => {
       expect(campo('telefone').value).toBe('+55 (11) 99999-0000');
       expect(campo('email').value).toBe('maria@exemplo.com');
       expect(botao().textContent?.trim()).toBe('Salvar alterações');
+    });
+
+    it('cartao de consentimento: aparece so no detalhe, apos o paciente, e salvar nao o recarrega', async () => {
+      expect(el().querySelector('app-consentimento-card')).toBeNull();
+      ctrl.expectNone(`/api/pacientes/${ID}/consentimento`);
+      await carregar();
+      expect(el().querySelector('app-consentimento-card h2')?.textContent).toBe('Consentimento');
+      await enviar();
+      ctrl.expectOne(`/api/pacientes/${ID}`).flush(P);
+      await fixture.whenStable();
+      ctrl.expectNone(`/api/pacientes/${ID}/consentimento`);
     });
 
     it('salvar: PATCH com os 4 campos e confirmacao', async () => {

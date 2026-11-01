@@ -1,0 +1,110 @@
+<section class="consentimento" aria-labelledby="cs-titulo">
+  <h2 id="cs-titulo">Consentimento</h2>
+
+  @if (dados(); as d) {
+    <div class="consentimento-estado" #estadoRef tabindex="-1" data-teste="estado">
+      <app-pill [tone]="tom[d.estado]" [dashed]="d.estado === 'NENHUM'">
+        {{ rotulo[d.estado] }}
+      </app-pill>
+      @if (d.desde; as desde) {
+        <span class="consentimento-desde">
+          desde <time [attr.datetime]="desde">{{ dataHora(desde) }}</time>
+        </span>
+      }
+    </div>
+
+    <p class="consentimento-aviso">
+      Nesta versão o registro é feito por você. O termo assinado pelo paciente chega em uma próxima
+      etapa.
+    </p>
+
+    <div class="aviso-regiao" aria-live="polite">
+      @if (erro()) {
+        <p class="aviso-erro" data-teste="erro">
+          <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{ erro() }}
+        </p>
+      }
+      @if (aviso()) {
+        <p class="aviso-ok" data-teste="aviso">
+          <lucide-icon [img]="icones.CircleCheck" [size]="18" [strokeWidth]="1.5" />{{ aviso() }}
+        </p>
+      }
+    </div>
+
+    @if (confirmando()) {
+      <div
+        class="consentimento-confirma"
+        role="group"
+        aria-labelledby="cs-confirma-titulo"
+        aria-describedby="cs-confirma-texto"
+        data-teste="confirmacao"
+        (keydown.escape)="cancelar()"
+      >
+        <p id="cs-confirma-titulo" class="consentimento-confirma-titulo">
+          Revogar o consentimento?
+        </p>
+        <p id="cs-confirma-texto">
+          Novos documentos deste paciente ficam bloqueados. Os documentos antigos continuam
+          guardados.
+        </p>
+        <div class="consentimento-acoes">
+          <button
+            app-button
+            type="button"
+            [variant]="enviando() ? 'progress' : 'primary'"
+            [disabled]="enviando()"
+            (click)="registrar('REVOGADO')"
+          >
+            {{ enviando() ? 'Revogando…' : 'Confirmar revogação' }}
+          </button>
+          <button
+            #cancelarRef
+            app-button
+            type="button"
+            variant="soft"
+            [disabled]="enviando()"
+            (click)="cancelar()"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    } @else if (d.estado === 'CONCEDIDO') {
+      <button #revogarRef app-button type="button" variant="soft" (click)="pedirRevogacao()">
+        Revogar consentimento
+      </button>
+    } @else {
+      <button
+        app-button
+        type="button"
+        [variant]="enviando() ? 'progress' : 'primary'"
+        [disabled]="enviando()"
+        (click)="registrar('CONCEDIDO')"
+      >
+        {{ enviando() ? 'Registrando…' : 'Registrar consentimento' }}
+      </button>
+    }
+
+    @if (d.historico.length) {
+      <h3 id="cs-historico">Histórico</h3>
+      <ol class="consentimento-historico" aria-labelledby="cs-historico">
+        @for (h of d.historico; track h.seq) {
+          <li>
+            <span class="consentimento-evento">{{
+              h.evento === 'CONCEDIDO' ? 'Concedido' : 'Revogado'
+            }}</span>
+            <time [attr.datetime]="h.em">{{ dataHora(h.em) }}</time>
+            <span class="consentimento-termo">Termo {{ h.termoVersao }}</span>
+          </li>
+        }
+      </ol>
+    }
+  } @else if (erroCarga()) {
+    <div class="aviso-erro consentimento-falha" role="alert">
+      <p>Não foi possível carregar o consentimento. Confira sua conexão.</p>
+      <button app-button type="button" variant="soft" (click)="carregar()">Tentar de novo</button>
+    </div>
+  } @else {
+    <p class="consentimento-carregando" role="status">Carregando o consentimento…</p>
+  }
+</section>
