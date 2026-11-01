@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { ConsentimentoService } from '../consentimento/consentimento.service';
 import { CriptografiaService } from '../criptografia/criptografia.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { PacientesService } from './pacientes.service';
@@ -69,12 +70,28 @@ function montar() {
     ),
   };
   const registrar = jest.fn<Promise<void>, unknown[]>(() => Promise.resolve());
+  const estadosDe = jest.fn<Promise<Map<string, 'CONCEDIDO'>>, unknown[]>(() =>
+    Promise.resolve(new Map()),
+  );
+  const estadoDe = jest.fn<Promise<'NENHUM' | 'CONCEDIDO'>, unknown[]>(() =>
+    Promise.resolve('NENHUM'),
+  );
   const service = new PacientesService(
     tenant as unknown as TenantPrismaService,
     cripto,
     { registrar },
+    { estadosDe, estadoDe } as unknown as ConsentimentoService,
   );
-  return { tx, tenant, service, cripto, linhas, registrar };
+  return {
+    tx,
+    tenant,
+    service,
+    cripto,
+    linhas,
+    registrar,
+    estadosDe,
+    estadoDe,
+  };
 }
 
 describe('PacientesService.criar', () => {
@@ -143,6 +160,35 @@ describe('PacientesService.listar', () => {
       'Édson',
       'Zélia',
     ]);
+  });
+});
+
+describe('PacientesService: consentimento na lista e no detalhe', () => {
+  it('lista: UMA consulta de estados para todos os ids; sem registro = NENHUM', async () => {
+    const { service, estadosDe } = montar();
+    const a = await service.criar(user, { nome: 'Ana' });
+    const b = await service.criar(user, { nome: 'Bia' });
+    estadosDe.mockResolvedValueOnce(new Map([[a.id, 'CONCEDIDO']]));
+    const lista = await service.listar(user);
+    expect(estadosDe).toHaveBeenCalledTimes(1);
+    expect(estadosDe.mock.calls[0][2]).toEqual([a.id, b.id]);
+    expect(lista.map((p) => [p.nome, p.consentimento])).toEqual([
+      ['Ana', 'CONCEDIDO'],
+      ['Bia', 'NENHUM'],
+    ]);
+  });
+
+  it('detalhe traz o estado; 404 nao consulta consentimento', async () => {
+    const { service, estadoDe } = montar();
+    const { id } = await service.criar(user, { nome: 'Ana' });
+    estadoDe.mockResolvedValueOnce('CONCEDIDO');
+    await expect(service.obter(user, id)).resolves.toMatchObject({
+      consentimento: 'CONCEDIDO',
+    });
+    await expect(service.obter(user, randomUUID())).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(estadoDe).toHaveBeenCalledTimes(1);
   });
 });
 

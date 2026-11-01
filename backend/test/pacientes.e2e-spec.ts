@@ -327,13 +327,16 @@ describe('GET /pacientes e /pacientes/:id', () => {
     await patch(a, 'nao-e-uuid', { nome: 'X' }).expect(400);
   });
 
-  it('GET por id devolve o mesmo corpo do POST', async () => {
+  it('GET por id devolve o corpo do POST mais o consentimento (NENHUM)', async () => {
     const p = await criar(a, {
       nome: 'Leitura',
       nascimento: '2000-02-29',
       email: 'l@x.com',
     });
-    expect((await get(a, `/${p.id}`).expect(200)).body).toEqual(p);
+    expect((await get(a, `/${p.id}`).expect(200)).body).toEqual({
+      ...p,
+      consentimento: 'NENHUM',
+    });
   });
 });
 

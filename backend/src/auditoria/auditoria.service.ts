@@ -3,8 +3,15 @@ import type { Prisma } from '@prisma/client';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
 
 // Valores fixos (a coluna e text, a validacao e aqui). Recurso novo = entrada nova + teste.
-export const ACOES = ['CRIOU', 'LEU', 'LISTOU', 'EDITOU'] as const;
-export const RECURSOS = ['Paciente'] as const;
+export const ACOES = [
+  'CRIOU',
+  'LEU',
+  'LISTOU',
+  'EDITOU',
+  'CONCEDEU',
+  'REVOGOU',
+] as const;
+export const RECURSOS = ['Paciente', 'Consentimento'] as const;
 export type AcaoAuditoria = (typeof ACOES)[number];
 export type RecursoAuditado = (typeof RECURSOS)[number];
 

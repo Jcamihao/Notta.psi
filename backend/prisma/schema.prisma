@@ -30,19 +30,19 @@ model Clinica {
 }
 
 model Psicologo {
-  id              String     @id @default(uuid())
+  id              String      @id @default(uuid())
   clinicaId       String
-  clinica         Clinica    @relation(fields: [clinicaId], references: [id])
+  clinica         Clinica     @relation(fields: [clinicaId], references: [id])
   nome            String
-  email           String     @unique
+  email           String      @unique
   senhaHash       String
   abordagemPadrao Abordagem
-  papel           Papel      @default(PSICOLOGO)
+  papel           Papel       @default(PSICOLOGO)
   // Senha definida pelo ADMIN: o guard bloqueia tudo ate a troca (item 62).
-  senhaProvisoria Boolean    @default(false)
+  senhaProvisoria Boolean     @default(false)
   // Claim `tv` do JWT. Trocar a senha incrementa: tokens antigos viram 401.
-  tokenVersao     Int        @default(0)
-  createdAt       DateTime   @default(now())
+  tokenVersao     Int         @default(0)
+  createdAt       DateTime    @default(now())
   pacientes       Paciente[]
   auditorias      Auditoria[]
 
@@ -56,16 +56,17 @@ model Psicologo {
 // Identificadores cifrados (AES-256-GCM, AAD = Paciente|<coluna>|id|psicologoId): o id e
 // gerado no app antes do INSERT porque entra no AAD.
 model Paciente {
-  id                String    @id
+  id                String          @id
   clinicaId         String
   psicologoId       String
-  psicologo         Psicologo @relation(fields: [psicologoId, clinicaId], references: [id, clinicaId])
+  psicologo         Psicologo       @relation(fields: [psicologoId, clinicaId], references: [id, clinicaId])
   nomeCifrado       String
   nascimentoCifrado String?
   telefoneCifrado   String?
   emailCifrado      String?
-  criadoEm          DateTime  @default(now())
-  atualizadoEm      DateTime  @updatedAt
+  criadoEm          DateTime        @default(now())
+  atualizadoEm      DateTime        @updatedAt
+  consentimentos    Consentimento[]
 
   // Alvo das FKs compostas das filhas (sessao, documento...): inclui o dono.
   @@unique([id, psicologoId, clinicaId])
@@ -87,4 +88,26 @@ model Auditoria {
 
   @@index([clinicaId, psicologoId, criadoEm])
   @@index([clinicaId, recurso, recursoId])
+}
+
+// Consentimento do paciente (item 10): cada evento (CONCEDIDO, REVOGADO) e uma linha NOVA; nada
+// e sobrescrito. Estado atual = evento da maior `seq`. Somente-acrescentar (notta_app so
+// SELECT/INSERT + trigger). `evento` tem CHECK no banco. Termo = snapshot (src/consentimento).
+model Consentimento {
+  id          String   @id @default(uuid())
+  clinicaId   String
+  psicologoId String
+  pacienteId  String
+  paciente    Paciente @relation(fields: [pacienteId, psicologoId, clinicaId], references: [id, psicologoId, clinicaId], onDelete: Restrict)
+  seq         Int
+  evento      String
+  termoVersao String
+  termoTexto  String
+  criadoEm    DateTime @default(now())
+
+  // Duas gravacoes concorrentes no mesmo paciente colidem aqui (409), sem lock. Inclui o dono
+  // (a FK ja garante 1 dono por paciente): sem ele, o erro de unique (que ignora RLS) viraria
+  // oraculo de existencia de paciente alheio.
+  @@unique([pacienteId, psicologoId, seq])
+  @@index([clinicaId, psicologoId])
 }

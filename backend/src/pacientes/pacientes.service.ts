@@ -9,6 +9,7 @@ import {
 import type { Paciente, Prisma } from '@prisma/client';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { ConsentimentoService } from '../consentimento/consentimento.service';
 import {
   aadDe,
   CriptografiaService,
@@ -47,6 +48,7 @@ export class PacientesService {
     private readonly tenant: TenantPrismaService,
     private readonly cripto: CriptografiaService,
     private readonly auditoria: AuditoriaService,
+    private readonly consentimento: ConsentimentoService,
   ) {}
 
   async criar(user: UsuarioAutenticado, dto: CriarPacienteDto) {
@@ -71,32 +73,50 @@ export class PacientesService {
   }
 
   async listar(user: UsuarioAutenticado) {
-    const linhas = await this.tenant.runComoUsuario(user, async (tx) => {
-      const achadas = await tx.paciente.findMany({
-        where: { clinicaId: user.clinicaId, psicologoId: user.psicologoId },
-        orderBy: { criadoEm: 'asc' },
-        take: TETO_LISTA,
-      });
-      await this.auditoria.registrar(tx, user, 'LISTOU', 'Paciente');
-      return achadas;
-    });
+    const { linhas, estados } = await this.tenant.runComoUsuario(
+      user,
+      async (tx) => {
+        const achadas = await tx.paciente.findMany({
+          where: { clinicaId: user.clinicaId, psicologoId: user.psicologoId },
+          orderBy: { criadoEm: 'asc' },
+          take: TETO_LISTA,
+        });
+        await this.auditoria.registrar(tx, user, 'LISTOU', 'Paciente');
+        // UMA consulta para todos os pacientes (sem N+1).
+        const estados = await this.consentimento.estadosDe(
+          tx,
+          user,
+          achadas.map((a) => a.id),
+        );
+        return { linhas: achadas, estados };
+      },
+    );
     return linhas
-      .map((l) => this.paraResposta(l))
+      .map((l) => ({
+        ...this.paraResposta(l),
+        consentimento: estados.get(l.id) ?? 'NENHUM',
+      }))
       .sort((a, b) =>
         a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }),
       );
   }
 
   async obter(user: UsuarioAutenticado, id: string) {
-    const linha = await this.tenant.runComoUsuario(user, async (tx) => {
-      const achado = await this.buscar(tx, user, id);
-      // 404 nao grava: nao existe leitura a registrar.
-      if (achado)
+    const { linha, estado } = await this.tenant.runComoUsuario(
+      user,
+      async (tx) => {
+        const achado = await this.buscar(tx, user, id);
+        // 404 nao grava: nao existe leitura a registrar.
+        if (!achado) return { linha: null, estado: null };
         await this.auditoria.registrar(tx, user, 'LEU', 'Paciente', id);
-      return achado;
-    });
+        return {
+          linha: achado,
+          estado: await this.consentimento.estadoDe(tx, user, id),
+        };
+      },
+    );
     if (!linha) throw new NotFoundException(NAO_ENCONTRADO);
-    return this.paraResposta(linha);
+    return { ...this.paraResposta(linha), consentimento: estado };
   }
 
   async atualizar(
