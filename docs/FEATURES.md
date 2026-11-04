@@ -20,7 +20,7 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 - [x] 9. [M] Cadastro de paciente
 - [x] 10. [M] Consentimento: registrar, revogar, re-conceder
 - [x] 11. [B] Trilha de auditoria (antes dos documentos)
-- [ ] 12. [M] Documento clínico: nota bruta, evolução e anamnese
+- [x] 12. [M] Documento clínico: nota bruta, evolução e anamnese
 - [ ] 13. [F] Aviso na digitação sobre detalhes que identificam
 - [ ] 14. [M] Editar e retomar rascunho
 - [ ] 15. [M] Aprovação humana
