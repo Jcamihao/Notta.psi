@@ -3,6 +3,9 @@
     <lucide-icon [img]="icones.ArrowLeft" [size]="16" [strokeWidth]="1.5" />Voltar ao paciente
   </a>
   <h1>Novo documento</h1>
+  @if (nomePaciente(); as n) {
+    <p class="documento-paciente" data-teste="paciente">Paciente: {{ n }}</p>
+  }
 
   <section class="documento-cartao" aria-label="Dados do documento">
     <p class="documento-lead">
@@ -83,6 +86,7 @@
         >
           {{ caracteres() }} de {{ limite }} caracteres
         </p>
+        <app-aviso-identificacao [tipos]="dadosAchados()" (dispensado)="focarTexto()" />
         <p id="dc-conteudo-erro" class="campo-erro" aria-live="polite">
           @if (erro('conteudo'); as m) {
             <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}

@@ -4,6 +4,7 @@ import {
   provideHttpClientTesting,
   TestRequest,
 } from '@angular/common/http/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { hojeLocal } from '../core/formulario';
@@ -11,6 +12,15 @@ import { DocumentoNovoPage } from './documento-novo.page';
 
 const PID = '11111111-1111-4111-8111-111111111111';
 const URL = `/api/pacientes/${PID}/documentos`;
+const URL_PACIENTE = `/api/pacientes/${PID}`;
+const PACIENTE = {
+  id: PID,
+  nome: 'Maria da Silva',
+  nascimento: null,
+  telefone: null,
+  email: null,
+  criadoEm: '2026-11-01T10:00:00.000Z',
+};
 const SEGREDO = 'Paciente relatou insonia e conflito com o pai.';
 
 describe('DocumentoNovoPage', () => {
@@ -31,6 +41,8 @@ describe('DocumentoNovoPage', () => {
     ctrl = TestBed.inject(HttpTestingController);
     navegar = spyOn(TestBed.inject(Router), 'navigateByUrl').and.resolveTo(true);
     fixture = TestBed.createComponent(DocumentoNovoPage);
+    await fixture.whenStable();
+    ctrl.expectOne(URL_PACIENTE).flush(PACIENTE);
     await fixture.whenStable();
   });
   afterEach(() => ctrl.verify());
@@ -61,7 +73,7 @@ describe('DocumentoNovoPage', () => {
     preencher('conteudo', conteudo);
   };
 
-  it('nao chama a API ao abrir; titulo, labels e opcoes dos tres tipos', () => {
+  it('ao abrir so busca o paciente (nome para o detector); nao chama a lista de documentos; titulo, labels e opcoes dos tres tipos', () => {
     ctrl.expectNone(URL);
     expect(el().querySelector('h1')?.textContent).toBe('Novo documento');
     expect(el().querySelector('label[for="dc-tipo"]')?.textContent).toBe('Tipo');
@@ -249,5 +261,107 @@ describe('DocumentoNovoPage', () => {
     await fixture.whenStable();
     expect([localStorage.length, sessionStorage.length]).toEqual(antes);
     for (const e of espioes) expect(e).not.toHaveBeenCalled();
+  });
+
+  describe('aviso de dado que identifica (item 13)', () => {
+    const aviso = () =>
+      el().querySelector('[data-teste="aviso-identificacao"]')?.textContent?.replace(/\s+/g, ' ');
+    const digitar = async (texto: string) => {
+      preencher('conteudo', texto);
+      await fixture.whenStable();
+    };
+
+    it('mostra o nome do paciente carregado', () => {
+      expect(el().querySelector('[data-teste="paciente"]')?.textContent).toBe(
+        'Paciente: Maria da Silva',
+      );
+    });
+
+    it('texto limpo nao avisa', async () => {
+      await digitar(SEGREDO);
+      expect(aviso()).toBeUndefined();
+    });
+
+    it('CPF, e-mail e nome do paciente avisam so o tipo, nunca o trecho', async () => {
+      await digitar('Maria contou. CPF 529.982.247-25, escreve de maria@exemplo.com');
+      const a = aviso()!;
+      expect(a).toContain('(CPF, e-mail, nome do paciente)');
+      expect(a).not.toContain('529');
+      expect(a).not.toContain('exemplo.com');
+      expect(a).toContain('Considere remover.');
+    });
+
+    it('nao bloqueia: com aviso na tela o rascunho salva normalmente', async () => {
+      valido('EVOLUCAO', 'CPF 529.982.247-25');
+      await fixture.whenStable();
+      expect(aviso()).toContain('CPF');
+      await enviar();
+      const r = ctrl.expectOne(URL);
+      expect(r.request.body.conteudo).toBe('CPF 529.982.247-25');
+      r.flush({}, { status: 201, statusText: 'Created' });
+      await fixture.whenStable();
+    });
+
+    it('dispensar esconde o aviso e devolve o foco ao texto', async () => {
+      await digitar('fone (11) 91234-5678');
+      (
+        el().querySelector('[data-teste="aviso-identificacao"] button') as HTMLButtonElement
+      ).click();
+      await fixture.whenStable();
+      expect(aviso()).toBeUndefined();
+      expect(document.activeElement).toBe(campo('conteudo'));
+    });
+
+    it('apagar o dado faz o aviso sumir', async () => {
+      await digitar('fone (11) 91234-5678');
+      expect(aviso()).toContain('telefone');
+      await digitar('fone omitido');
+      expect(aviso()).toBeUndefined();
+    });
+
+    it('a regiao do aviso e polite', async () => {
+      await digitar('a@b.com');
+      expect(
+        el().querySelector('[data-teste="aviso-identificacao"]')?.closest('[aria-live="polite"]'),
+      ).not.toBeNull();
+    });
+
+    it('sem console, storage nem state do router com o trecho', async () => {
+      const antes = [localStorage.length, sessionStorage.length];
+      const espioes = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) =>
+        spyOn(console, m),
+      );
+      await digitar('CPF 529.982.247-25 maria@exemplo.com');
+      expect([localStorage.length, sessionStorage.length]).toEqual(antes);
+      for (const e of espioes) expect(e).not.toHaveBeenCalled();
+      expect(JSON.stringify(navegar.calls.allArgs())).not.toContain('529');
+    });
+  });
+
+  it('se o paciente nao carregar, o detector segue sem o nome e salvar funciona', async () => {
+    ctrl.verify();
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [DocumentoNovoPage],
+      providers: [
+        provideZonelessChangeDetection(),
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => PID } } } },
+      ],
+    });
+    const c = TestBed.inject(HttpTestingController);
+    const f = TestBed.createComponent(DocumentoNovoPage);
+    await f.whenStable();
+    c.expectOne(URL_PACIENTE).flush({ statusCode: 503 }, { status: 503, statusText: 'x' });
+    await f.whenStable();
+    const area = f.nativeElement.querySelector('#dc-conteudo') as HTMLTextAreaElement;
+    area.value = 'Maria da Silva chegou';
+    area.dispatchEvent(new Event('input'));
+    await f.whenStable();
+    expect(f.nativeElement.querySelector('[data-teste="aviso-identificacao"]')).toBeNull();
+    expect(f.nativeElement.querySelector('[data-teste="paciente"]')).toBeNull();
+    c.verify();
   });
 });

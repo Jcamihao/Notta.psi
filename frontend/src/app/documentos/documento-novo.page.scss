@@ -16,6 +16,10 @@
 .documento h1 {
   margin-bottom: var(--space-3);
 }
+.documento-paciente {
+  margin: 0;
+  color: var(--text-secondary);
+}
 .documento-cartao {
   width: 100%;
   max-width: 44rem;
