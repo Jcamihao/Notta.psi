@@ -119,18 +119,25 @@ model Consentimento {
 // `tipo` e `status` tem CHECK no banco. Nasce RASCUNHO (a policy de INSERT exige); notta_app so
 // SELECT/INSERT (UPDATE entra no item 14, aprovacao no 15).
 model Documento {
-  id              String    @id
+  id              String      @id
   clinicaId       String
   psicologoId     String
   pacienteId      String
-  paciente        Paciente  @relation(fields: [pacienteId, psicologoId, clinicaId], references: [id, psicologoId, clinicaId], onDelete: Restrict)
+  paciente        Paciente    @relation(fields: [pacienteId, psicologoId, clinicaId], references: [id, psicologoId, clinicaId], onDelete: Restrict)
   tipo            String
-  status          String    @default("RASCUNHO")
-  dataSessao      DateTime? @db.Date
+  status          String      @default("RASCUNHO")
+  dataSessao      DateTime?   @db.Date
   conteudoCifrado String
-  criadoEm        DateTime  @default(now())
-  atualizadoEm    DateTime  @updatedAt
+  aprovadoEm      DateTime?
+  substituiId     String?
+  // Correcao: este documento corrige um APROVADO do mesmo paciente e dono (o servico confere
+  // que o corrigido esta APROVADO; a FK confere paciente e dono).
+  substitui       Documento?  @relation("Correcao", fields: [substituiId, pacienteId, psicologoId, clinicaId], references: [id, pacienteId, psicologoId, clinicaId], onDelete: Restrict)
+  corrigidoPor    Documento[] @relation("Correcao")
+  criadoEm        DateTime    @default(now())
+  atualizadoEm    DateTime    @updatedAt
 
   @@unique([id, psicologoId, clinicaId])
+  @@unique([id, pacienteId, psicologoId, clinicaId])
   @@index([clinicaId, psicologoId, pacienteId, criadoEm])
 }
