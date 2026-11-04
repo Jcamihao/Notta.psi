@@ -137,10 +137,46 @@ model Documento {
   // que o corrigido esta APROVADO; a FK confere paciente e dono).
   substitui       Documento?  @relation("Correcao", fields: [substituiId, pacienteId, psicologoId, clinicaId], references: [id, pacienteId, psicologoId, clinicaId], onDelete: Restrict)
   corrigidoPor    Documento[] @relation("Correcao")
+  // Rascunho criado pelo executor da IA (item 19 a 21). Imutavel (trigger documento_imutavel).
+  geradoPorIa     Boolean     @default(false)
+  origemDe        GeracaoIa[] @relation("Origem")
+  geradoEm        GeracaoIa[] @relation("Gerado")
   criadoEm        DateTime    @default(now())
   atualizadoEm    DateTime    @updatedAt
 
   @@unique([id, psicologoId, clinicaId])
   @@unique([id, pacienteId, psicologoId, clinicaId])
   @@index([clinicaId, psicologoId, pacienteId, criadoEm])
+}
+
+// Pedido de geracao por IA (itens 19, 20 e 21): PREVIA -> PENDENTE -> PRONTO | FALHOU (FALHOU
+// retentavel volta a PENDENTE, sem limite). `textoCifrado` = texto anonimizado que a previa
+// mostrou e que sai EXATAMENTE assim; `mapaCifrado` = mapa codigo->original (JSON, tem dado
+// pessoal em claro por dentro, por isso cifrado). Ambos AES-GCM, AAD = GeracaoIa|<coluna>|id|
+// psicologoId, e zerados no PRONTO. Estados, CHECKs e trigger: migration 20261106120000.
+// notta_app: SELECT, INSERT e UPDATE so nas colunas de andamento; sem DELETE (retencao: item 52).
+model GeracaoIa {
+  id            String     @id
+  clinicaId     String
+  psicologoId   String
+  pacienteId    String
+  origemId      String
+  origem        Documento  @relation("Origem", fields: [origemId, pacienteId, psicologoId, clinicaId], references: [id, pacienteId, psicologoId, clinicaId], onDelete: Restrict)
+  tipoDocumento String
+  abordagem     String
+  estado        String
+  motivo        String?
+  retentavel    Boolean?
+  avisos        String[]   @default([])
+  textoCifrado  String?
+  mapaCifrado   String?
+  documentoId   String?    @unique
+  documento     Documento? @relation("Gerado", fields: [documentoId, pacienteId, psicologoId, clinicaId], references: [id, pacienteId, psicologoId, clinicaId], onDelete: Restrict)
+  expiraEm      DateTime
+  criadoEm      DateTime   @default(now())
+  atualizadoEm  DateTime   @updatedAt
+  finalizadoEm  DateTime?
+
+  @@index([clinicaId, psicologoId, pacienteId, criadoEm])
+  @@index([clinicaId, psicologoId, estado, finalizadoEm])
 }
