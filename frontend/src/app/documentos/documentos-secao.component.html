@@ -1,0 +1,54 @@
+<section class="documentos" aria-labelledby="dc-titulo">
+  <div class="documentos-topo">
+    <h2 id="dc-titulo">Documentos</h2>
+    @if (consentimento() === 'CONCEDIDO') {
+      <a app-button [routerLink]="['/pacientes', pacienteId(), 'documentos', 'novo']"
+        >Novo documento</a
+      >
+    } @else {
+      <button app-button type="button" variant="disabled" disabled aria-describedby="dc-bloqueio">
+        Novo documento
+      </button>
+    }
+  </div>
+  @if (consentimento() !== 'CONCEDIDO') {
+    <p id="dc-bloqueio" class="documentos-bloqueio" data-teste="bloqueio">
+      Registre o consentimento para criar documentos.
+    </p>
+  }
+
+  @if (lista(); as l) {
+    @if (l.length) {
+      <ul class="documentos-lista" aria-label="Documentos do paciente">
+        @for (d of l; track d.id) {
+          <li>
+            <a [routerLink]="['/pacientes', pacienteId(), 'documentos', d.id]">
+              {{ tipo[d.tipo] }}
+              @if (d.dataSessao; as s) {
+                da sessão de <time [attr.datetime]="s">{{ dataBr(s) }}</time>
+              } @else {
+                sem data de sessão
+              }
+            </a>
+            <span class="documentos-meta">
+              <app-pill [tone]="tom[d.status]">{{ status[d.status] }}</app-pill>
+              <span
+                >Criado em
+                <time [attr.datetime]="d.criadoEm">{{ dataHora(d.criadoEm) }}</time></span
+              >
+            </span>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="documentos-vazio" data-teste="vazio">Nenhum documento ainda.</p>
+    }
+  } @else if (erroLista()) {
+    <div class="aviso-erro documentos-falha" role="alert">
+      <p>Não foi possível carregar os documentos. Confira sua conexão.</p>
+      <button app-button type="button" variant="soft" (click)="carregar()">Tentar de novo</button>
+    </div>
+  } @else {
+    <p class="documentos-carregando" role="status">Carregando os documentos…</p>
+  }
+</section>

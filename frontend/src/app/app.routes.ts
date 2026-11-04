@@ -40,6 +40,16 @@ export const routes: Routes = [
           import('./pacientes/paciente-form.page').then((m) => m.PacienteFormPage),
       },
       {
+        path: 'pacientes/:id/documentos/novo',
+        loadComponent: () =>
+          import('./documentos/documento-novo.page').then((m) => m.DocumentoNovoPage),
+      },
+      {
+        path: 'pacientes/:id/documentos/:docId',
+        loadComponent: () =>
+          import('./documentos/documento-leitura.page').then((m) => m.DocumentoLeituraPage),
+      },
+      {
         path: 'pacientes/:id',
         loadComponent: () =>
           import('./pacientes/paciente-form.page').then((m) => m.PacienteFormPage),

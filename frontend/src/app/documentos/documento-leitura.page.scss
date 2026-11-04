@@ -1,0 +1,68 @@
+:host {
+  display: block;
+}
+.leitura {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+}
+.leitura-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--fs-day);
+}
+.leitura h1 {
+  margin-bottom: var(--space-3);
+}
+.leitura-carregando {
+  margin: 0;
+  color: var(--text-secondary);
+}
+.leitura-falha {
+  flex-wrap: wrap;
+  align-items: center;
+  max-width: 32rem;
+  p {
+    margin: 0;
+  }
+}
+.leitura-cartao {
+  display: grid;
+  gap: var(--space-5);
+  width: 100%;
+  max-width: 44rem;
+  padding: var(--space-8);
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
+  @media (max-width: 40rem) {
+    padding: var(--space-6);
+  }
+  h2 {
+    margin: 0;
+  }
+}
+.leitura-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-9);
+  margin: 0;
+  dt {
+    color: var(--text-secondary);
+    font-size: var(--fs-day);
+  }
+  dd {
+    margin: var(--space-1) 0 0;
+    font-variant-numeric: tabular-nums;
+  }
+}
+.sem-dado {
+  color: var(--text-secondary);
+}
+// Quebras de linha do texto original; palavras longas nao estouram a tela.
+.leitura-texto {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

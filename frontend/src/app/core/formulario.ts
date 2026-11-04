@@ -37,6 +37,20 @@ export const nascimentoValido: ValidatorFn = (c) => {
   return v > hojeLocal() ? { nascimentoFuturo: true } : null;
 };
 
+// Data da sessao (item 12): opcional, de 1900 em diante, nunca futura.
+export const sessaoValida: ValidatorFn = (c) => {
+  if (vazio(c)) return null;
+  const v = String(c.value);
+  if (v < '1900-01-01') return { sessaoAntiga: true };
+  return v > hojeLocal() ? { sessaoFutura: true } : null;
+};
+
+// Texto do documento: nao aparamos (so rejeitamos vazio); o limite conta como o servidor (length).
+export const conteudoMaximo =
+  (max: number): ValidatorFn =>
+  (c) =>
+    String(c.value ?? '').length > max ? { conteudoLongo: true } : null;
+
 export const telefoneValido: ValidatorFn = (c) => {
   if (vazio(c)) return null;
   const v = String(c.value).trim();
@@ -56,6 +70,9 @@ const MENSAGENS: Record<string, string> = {
   nomeLongo: 'O nome pode ter até 120 caracteres.',
   nascimentoFuturo: 'A data de nascimento não pode ser no futuro.',
   nascimentoAntigo: 'Informe uma data de nascimento a partir de 1900.',
+  sessaoFutura: 'A data da sessão não pode ser no futuro.',
+  sessaoAntiga: 'Informe uma data de sessão a partir de 1900.',
+  conteudoLongo: 'O texto pode ter até 20.000 caracteres. Divida em mais de um documento.',
   telefone: 'Use de 8 a 20 caracteres: só números, espaço, +, - e parênteses.',
   emailLongo: 'O e-mail pode ter até 254 caracteres.',
   emUso: 'Este e-mail já tem cadastro. Entre com ele ou use outro.',

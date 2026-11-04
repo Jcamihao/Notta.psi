@@ -14,8 +14,10 @@ import {
   preenchido,
   telefoneValido,
 } from '../core/formulario';
+import { DocumentosSecaoComponent } from '../documentos/documentos-secao.component';
 import { ButtonComponent } from '../ui/button.component';
 import { ConsentimentoCardComponent } from './consentimento-card.component';
+import { EstadoConsentimento } from './consentimento.service';
 import { AvisoPacientes } from './pacientes.page';
 import { Paciente, PacientesService } from './pacientes.service';
 
@@ -24,6 +26,19 @@ const OBRIGATORIO = {
   nascimento: 'Informe uma data válida.',
   telefone: 'Informe um telefone válido.',
   email: 'Informe um e-mail válido.',
+};
+
+// Recado que as telas de documento deixam no state da navegacao ao voltar para o paciente
+// (so um codigo fixo, nunca texto de documento: o state vai para o historico do navegador).
+export type AvisoDetalhe = 'sem-consentimento' | 'documento-nao-encontrado' | 'documento-criado';
+
+const AVISOS_DETALHE: Record<AvisoDetalhe, { texto: string; ok: boolean }> = {
+  'sem-consentimento': {
+    texto: 'O consentimento deste paciente não está concedido. O documento não foi salvo.',
+    ok: false,
+  },
+  'documento-nao-encontrado': { texto: 'Documento não encontrado.', ok: false },
+  'documento-criado': { texto: 'Documento criado como rascunho.', ok: true },
 };
 
 // Criar (/pacientes/novo) e ver/editar (/pacientes/:id) usam a mesma tela: o id da rota decide.
@@ -35,6 +50,7 @@ const OBRIGATORIO = {
     RouterLink,
     ButtonComponent,
     ConsentimentoCardComponent,
+    DocumentosSecaoComponent,
   ],
   templateUrl: './paciente-form.page.html',
   styleUrl: './paciente-form.page.scss',
@@ -45,6 +61,9 @@ export class PacienteFormPage {
   private readonly router = inject(Router);
   readonly id = inject(ActivatedRoute).snapshot.paramMap.get('id');
 
+  readonly avisoDetalhe = this.lerAviso();
+  // Estado do consentimento, vindo do cartao; a secao Documentos so nasce depois dele.
+  readonly consentimento = signal<EstadoConsentimento | null>(null);
   readonly hoje = hojeLocal();
   readonly carregando = signal(this.id !== null);
   readonly erroCarga = signal(false);
@@ -139,6 +158,12 @@ export class PacienteFormPage {
         },
         error: (e) => this.falhar(e),
       });
+  }
+
+  private lerAviso(): { texto: string; ok: boolean } | null {
+    const codigo = this.router.getCurrentNavigation()?.extras.state?.['aviso'] as
+      AvisoDetalhe | undefined;
+    return (codigo && AVISOS_DETALHE[codigo]) || null;
   }
 
   private preencher(p: Paciente): void {

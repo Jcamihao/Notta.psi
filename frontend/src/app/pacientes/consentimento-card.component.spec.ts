@@ -270,4 +270,41 @@ describe('ConsentimentoCardComponent', () => {
     expect(localStorage.length).toBe(0);
     expect(sessionStorage.length).toBe(0);
   });
+
+  describe('estadoMudou (a pagina usa para habilitar "Novo documento")', () => {
+    let emitidos: string[];
+    beforeEach(() => {
+      emitidos = [];
+      fixture.componentInstance.estadoMudou.subscribe((e) => emitidos.push(e));
+    });
+
+    it('emite o estado ao carregar', async () => {
+      await carregar(NENHUM);
+      expect(emitidos).toEqual(['NENHUM']);
+    });
+
+    it('emite CONCEDIDO ao registrar e REVOGADO ao confirmar a revogacao', async () => {
+      await carregar(NENHUM);
+      await clicar('Registrar consentimento');
+      await flush(ctrl.expectOne(URL), CONCEDIDO, 201);
+      await clicar('Revogar consentimento');
+      await clicar('Confirmar revogação');
+      await flush(ctrl.expectOne(URL), REVOGADO, 201);
+      expect(emitidos).toEqual(['NENHUM', 'CONCEDIDO', 'REVOGADO']);
+    });
+
+    it('nao emite nada se a carga falha', async () => {
+      await flush(ctrl.expectOne(URL), { statusCode: 503 }, 503);
+      expect(emitidos).toEqual([]);
+    });
+
+    it('409: emite o estado real que veio do recarregamento', async () => {
+      await carregar(CONCEDIDO);
+      await clicar('Revogar consentimento');
+      await clicar('Confirmar revogação');
+      await flush(ctrl.expectOne(URL), { statusCode: 409 }, 409);
+      await flush(ctrl.expectOne(URL), REVOGADO);
+      expect(emitidos).toEqual(['CONCEDIDO', 'REVOGADO']);
+    });
+  });
 });

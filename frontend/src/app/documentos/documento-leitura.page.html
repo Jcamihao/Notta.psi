@@ -1,0 +1,46 @@
+<div class="leitura">
+  <a class="leitura-voltar" [routerLink]="['/pacientes', pacienteId]">
+    <lucide-icon [img]="icones.ArrowLeft" [size]="16" [strokeWidth]="1.5" />Voltar ao paciente
+  </a>
+
+  @if (documento(); as d) {
+    <h1>{{ tipo[d.tipo] }}</h1>
+    <section class="leitura-cartao" aria-label="Documento">
+      <dl class="leitura-meta">
+        <div>
+          <dt>Status</dt>
+          <dd>
+            <app-pill [tone]="tom[d.status]">{{ status[d.status] }}</app-pill>
+          </dd>
+        </div>
+        <div>
+          <dt>Data da sessão</dt>
+          <dd>
+            @if (d.dataSessao; as s) {
+              <time [attr.datetime]="s">{{ dataBr(s) }}</time>
+            } @else {
+              <span class="sem-dado">Não informada</span>
+            }
+          </dd>
+        </div>
+        <div>
+          <dt>Criado em</dt>
+          <dd>
+            <time [attr.datetime]="d.criadoEm">{{ dataHora(d.criadoEm) }}</time>
+          </dd>
+        </div>
+      </dl>
+      <h2 id="lt-texto">Texto</h2>
+      <p class="leitura-texto" aria-labelledby="lt-texto" data-teste="texto">{{ d.conteudo }}</p>
+    </section>
+  } @else if (erroCarga()) {
+    <h1>Documento</h1>
+    <div class="aviso-erro leitura-falha" role="alert">
+      <p>Não foi possível carregar o documento. Confira sua conexão.</p>
+      <button app-button type="button" variant="soft" (click)="carregar()">Tentar de novo</button>
+    </div>
+  } @else {
+    <h1>Documento</h1>
+    <p class="leitura-carregando" role="status">Carregando o documento…</p>
+  }
+</div>

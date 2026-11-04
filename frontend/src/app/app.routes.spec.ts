@@ -2,6 +2,8 @@ import { Route } from '@angular/router';
 import { routes } from './app.routes';
 import { authGuard } from './core/auth.guard';
 import { senhaProvisoriaGuard } from './core/senha-provisoria.guard';
+import { DocumentoLeituraPage } from './documentos/documento-leitura.page';
+import { DocumentoNovoPage } from './documentos/documento-novo.page';
 import { PacienteFormPage } from './pacientes/paciente-form.page';
 import { PacientesPage } from './pacientes/pacientes.page';
 
@@ -36,5 +38,18 @@ describe('rotas de pacientes', () => {
   it('/pacientes/novo vem antes de /pacientes/:id', () => {
     const paths = shell.children!.map((r) => r.path);
     expect(paths.indexOf('pacientes/novo')).toBeLessThan(paths.indexOf('pacientes/:id'));
+  });
+
+  it('rotas de documento: dentro do shell, sem adminGuard, "novo" antes de ":docId"', async () => {
+    const novo = filha('pacientes/:id/documentos/novo');
+    const leitura = filha('pacientes/:id/documentos/:docId');
+    expect(novo.canActivate).toBeUndefined();
+    expect(leitura.canActivate).toBeUndefined();
+    expect(await (novo.loadComponent as () => Promise<unknown>)()).toBe(DocumentoNovoPage);
+    expect(await (leitura.loadComponent as () => Promise<unknown>)()).toBe(DocumentoLeituraPage);
+    const paths = shell.children!.map((r) => r.path);
+    expect(paths.indexOf('pacientes/:id/documentos/novo')).toBeLessThan(
+      paths.indexOf('pacientes/:id/documentos/:docId'),
+    );
   });
 });

@@ -25,7 +25,7 @@ describe('PacienteFormPage', () => {
   let ctrl: HttpTestingController;
   let navegar: jasmine.Spy;
 
-  const montar = async (id: string | null) => {
+  const montar = async (id: string | null, aviso?: string) => {
     TestBed.configureTestingModule({
       imports: [PacienteFormPage],
       providers: [
@@ -40,6 +40,10 @@ describe('PacienteFormPage', () => {
     });
     ctrl = TestBed.inject(HttpTestingController);
     navegar = spyOn(TestBed.inject(Router), 'navigateByUrl').and.resolveTo(true);
+    if (aviso)
+      spyOn(TestBed.inject(Router), 'getCurrentNavigation').and.returnValue({
+        extras: { state: { aviso } },
+      } as never);
     fixture = TestBed.createComponent(PacienteFormPage);
     await fixture.whenStable();
   };
@@ -247,7 +251,7 @@ describe('PacienteFormPage', () => {
   describe('ver e editar', () => {
     beforeEach(() => montar(ID));
 
-    const carregar = async (p: Paciente = P) => {
+    const carregar = async (p: Paciente = P, consentimento = 'NENHUM') => {
       const r = ctrl.expectOne(`/api/pacientes/${ID}`);
       expect(r.request.method).toBe('GET');
       r.flush(p);
@@ -255,7 +259,10 @@ describe('PacienteFormPage', () => {
       // O cartao de consentimento so nasce depois do paciente: nunca 2 GET ao mesmo tempo.
       ctrl
         .expectOne(`/api/pacientes/${ID}/consentimento`)
-        .flush({ estado: 'NENHUM', desde: null, historico: [] });
+        .flush({ estado: consentimento, desde: null, historico: [] });
+      await fixture.whenStable();
+      // A secao Documentos so nasce depois do consentimento: 3 chamadas, em sequencia.
+      ctrl.expectOne(`/api/pacientes/${ID}/documentos`).flush([]);
       await fixture.whenStable();
     };
 
@@ -372,6 +379,103 @@ describe('PacienteFormPage', () => {
       await falhar(ctrl.expectOne(`/api/pacientes/${ID}`), 400);
       expect(alerta()).toContain('inválidos');
       expect(el().querySelector('[data-teste="confirmacao"]')).toBeNull();
+    });
+
+    describe('secao Documentos', () => {
+      const secao = () => el().querySelector('app-documentos-secao');
+      const novoDoc = () =>
+        Array.from(
+          el().querySelectorAll('app-documentos-secao a, app-documentos-secao button'),
+        ).find((e) => e.textContent?.trim() === 'Novo documento') as HTMLElement;
+      const clicar = async (rotulo: string) => {
+        (
+          Array.from(el().querySelectorAll('app-consentimento-card button')).find(
+            (b) => b.textContent?.trim() === rotulo,
+          ) as HTMLButtonElement
+        ).click();
+        await fixture.whenStable();
+      };
+      const registrar = async (evento: string) => {
+        const r = ctrl.expectOne(`/api/pacientes/${ID}/consentimento`);
+        expect(r.request.body).toEqual({ evento });
+        r.flush({ estado: evento, desde: null, historico: [] }, { status: 201, statusText: 'x' });
+        await fixture.whenStable();
+      };
+
+      it('nasce so depois do consentimento: paciente, consentimento e documentos, nessa ordem', async () => {
+        expect(secao()).toBeNull();
+        ctrl.expectOne(`/api/pacientes/${ID}`).flush(P);
+        await fixture.whenStable();
+        ctrl.expectNone(`/api/pacientes/${ID}/documentos`);
+        expect(secao()).toBeNull();
+        ctrl
+          .expectOne(`/api/pacientes/${ID}/consentimento`)
+          .flush({ estado: 'NENHUM', desde: null, historico: [] });
+        await fixture.whenStable();
+        expect(secao()).not.toBeNull();
+        ctrl.expectOne(`/api/pacientes/${ID}/documentos`).flush([]);
+        await fixture.whenStable();
+      });
+
+      it('sem consentimento: botao desabilitado com o motivo', async () => {
+        await carregar();
+        expect((novoDoc() as HTMLButtonElement).disabled).toBeTrue();
+        expect(secao()?.textContent).toContain('Registre o consentimento para criar documentos.');
+      });
+
+      it('registrar habilita e revogar desabilita, sem recarregar a pagina nem a lista', async () => {
+        await carregar();
+        await clicar('Registrar consentimento');
+        await registrar('CONCEDIDO');
+        expect(novoDoc().tagName).toBe('A');
+        expect(novoDoc().getAttribute('href')).toBe(`/pacientes/${ID}/documentos/novo`);
+        await clicar('Revogar consentimento');
+        await clicar('Confirmar revogação');
+        await registrar('REVOGADO');
+        expect((novoDoc() as HTMLButtonElement).disabled).toBeTrue();
+        ctrl.expectNone(`/api/pacientes/${ID}`);
+        ctrl.expectNone(`/api/pacientes/${ID}/documentos`);
+      });
+
+      it('consentimento ja concedido ao abrir: botao ativo', async () => {
+        await carregar(P, 'CONCEDIDO');
+        expect(novoDoc().tagName).toBe('A');
+      });
+    });
+  });
+
+  describe('aviso vindo das telas de documento', () => {
+    const casos: [string, string, string][] = [
+      ['sem-consentimento', 'aviso-erro', 'O consentimento deste paciente não está concedido'],
+      ['documento-nao-encontrado', 'aviso-erro', 'Documento não encontrado.'],
+      ['documento-criado', 'aviso-ok', 'Documento criado como rascunho.'],
+    ];
+    for (const [codigo, classe, texto] of casos) {
+      it(`${codigo}: mostra o texto fixo`, async () => {
+        await montar(ID, codigo);
+        const a = el().querySelector('[data-teste="aviso"]')!;
+        expect(a.classList).toContain(classe);
+        expect(a.textContent).toContain(texto);
+        ctrl.expectOne(`/api/pacientes/${ID}`).flush(P);
+        await fixture.whenStable();
+        ctrl
+          .expectOne(`/api/pacientes/${ID}/consentimento`)
+          .flush({ estado: 'NENHUM', desde: null, historico: [] });
+        await fixture.whenStable();
+        ctrl.expectOne(`/api/pacientes/${ID}/documentos`).flush([]);
+      });
+    }
+
+    it('sem recado ou com codigo desconhecido: nenhum aviso', async () => {
+      await montar(ID, 'qualquer-coisa');
+      expect(el().querySelector('[data-teste="aviso"]')).toBeNull();
+      ctrl.expectOne(`/api/pacientes/${ID}`).flush(P);
+      await fixture.whenStable();
+      ctrl
+        .expectOne(`/api/pacientes/${ID}/consentimento`)
+        .flush({ estado: 'NENHUM', desde: null, historico: [] });
+      await fixture.whenStable();
+      ctrl.expectOne(`/api/pacientes/${ID}/documentos`).flush([]);
     });
   });
 });

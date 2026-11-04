@@ -7,28 +7,23 @@ import {
   afterNextRender,
   inject,
   input,
+  output,
   signal,
   viewChild,
 } from '@angular/core';
 import { CircleAlert, CircleCheck, LucideAngularModule } from 'lucide-angular';
+import { dataHoraBr } from '../core/datas';
 import { mensagemHttp } from '../core/formulario';
 import { ButtonComponent } from '../ui/button.component';
 import { PillComponent } from '../ui/pill.component';
 import {
   Consentimento,
   ConsentimentoService,
+  EstadoConsentimento,
   EventoConsentimento,
   ROTULO_CONSENTIMENTO,
   TOM_CONSENTIMENTO,
 } from './consentimento.service';
-
-const DATA_HORA = new Intl.DateTimeFormat('pt-BR', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-});
 
 // Cartao "Consentimento" do detalhe do paciente. Carrega o proprio estado (a pagina so o cria
 // depois de carregar o paciente, entao nunca ha mais de 2 chamadas ao mesmo tempo).
@@ -43,6 +38,8 @@ export class ConsentimentoCardComponent implements OnInit {
   readonly rotulo = ROTULO_CONSENTIMENTO;
   readonly tom = TOM_CONSENTIMENTO;
   readonly pacienteId = input.required<string>();
+  // Avisa a pagina do estado atual (ao carregar, registrar, revogar ou recarregar apos 409).
+  readonly estadoMudou = output<EstadoConsentimento>();
   private readonly servico = inject(ConsentimentoService);
   private readonly injector = inject(Injector);
   private readonly estadoRef = viewChild('estadoRef', { read: ElementRef });
@@ -61,13 +58,13 @@ export class ConsentimentoCardComponent implements OnInit {
   }
 
   dataHora(iso: string): string {
-    return DATA_HORA.format(new Date(iso));
+    return dataHoraBr(iso);
   }
 
   carregar(): void {
     this.erroCarga.set(false);
     this.servico.obter(this.pacienteId()).subscribe({
-      next: (d) => this.dados.set(d),
+      next: (d) => this.definir(d),
       // 401 e 403 (senha provisoria) o interceptor ja trata; aqui rede, 5xx e 404.
       error: () => this.erroCarga.set(true),
     });
@@ -92,7 +89,7 @@ export class ConsentimentoCardComponent implements OnInit {
       next: (d) => {
         this.enviando.set(false);
         this.confirmando.set(false);
-        this.dados.set(d);
+        this.definir(d);
         this.aviso.set(
           evento === 'CONCEDIDO' ? 'Consentimento registrado.' : 'Consentimento revogado.',
         );
@@ -100,6 +97,11 @@ export class ConsentimentoCardComponent implements OnInit {
       },
       error: (e: HttpErrorResponse) => this.falhar(e),
     });
+  }
+
+  private definir(d: Consentimento): void {
+    this.dados.set(d);
+    this.estadoMudou.emit(d.estado);
   }
 
   private falhar(e: HttpErrorResponse): void {
