@@ -18,7 +18,8 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "db:migrate": "prisma migrate deploy",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "scan:segredos": "node scripts/scan-segredos.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

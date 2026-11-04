@@ -7,6 +7,24 @@ export const SEGREDOS_CONHECIDOS = {
     '0123456789abcdef0123456789abcdef',
     'my-super-secret-jwt-key-for-production',
   ],
+  // Chave do SelahIA que nunca vale: texto de exemplo/placeholder.
+  selahiaExemplos: [
+    'changeme',
+    'change-me',
+    'troque-isto',
+    'troque-por-uma-chave',
+    'sua-chave-aqui',
+    'sua-chave',
+    'chave-de-exemplo',
+    'your-api-key',
+    'your_api_key',
+    'api-key',
+    'apikey',
+    'secret',
+    'example',
+    'test',
+    'xxx',
+  ],
   // Usados pelas suites de teste. So passam com NOTTA_PERMITE_SEGREDO_DE_TESTE=1.
   jwtDeTeste: [
     'segredo-jwt-so-de-teste-e2e-',
