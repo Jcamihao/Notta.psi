@@ -2,12 +2,19 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { UsuarioAtual, type UsuarioAutenticado } from '../auth/jwt-auth.guard';
-import { CriarDocumentoDto } from './documentos.dto';
+import {
+  CriarDocumentoDto,
+  EditarDocumentoDto,
+  ListarDocumentosQuery,
+} from './documentos.dto';
 import { DocumentosService } from './documentos.service';
 
 // Qualquer usuario autenticado (ADMIN tambem atende). Sem @PermiteSenhaProvisoria: dado clinico.
@@ -29,8 +36,9 @@ export class DocumentosController {
   listar(
     @UsuarioAtual() user: UsuarioAutenticado,
     @Param('pacienteId', ParseUUIDPipe) pacienteId: string,
+    @Query() query: ListarDocumentosQuery,
   ) {
-    return this.documentos.listar(user, pacienteId);
+    return this.documentos.listar(user, pacienteId, query.status);
   }
 
   @Get(':id')
@@ -40,5 +48,26 @@ export class DocumentosController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.documentos.obter(user, pacienteId, id);
+  }
+
+  @Patch(':id')
+  editar(
+    @UsuarioAtual() user: UsuarioAutenticado,
+    @Param('pacienteId', ParseUUIDPipe) pacienteId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: EditarDocumentoDto,
+  ) {
+    return this.documentos.editar(user, pacienteId, id, dto);
+  }
+
+  // Irreversivel: aprovado nao edita nem apaga (correcao = documento novo com substituiId).
+  @Post(':id/aprovar')
+  @HttpCode(200)
+  aprovar(
+    @UsuarioAtual() user: UsuarioAutenticado,
+    @Param('pacienteId', ParseUUIDPipe) pacienteId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.documentos.aprovar(user, pacienteId, id);
   }
 }

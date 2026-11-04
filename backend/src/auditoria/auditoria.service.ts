@@ -8,6 +8,7 @@ export const ACOES = [
   'LEU',
   'LISTOU',
   'EDITOU',
+  'APROVOU',
   'CONCEDEU',
   'REVOGOU',
 ] as const;

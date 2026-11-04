@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
+  BadRequestException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -14,11 +16,19 @@ import {
   CriptografiaService,
 } from '../criptografia/criptografia.service';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
-import type { CriarDocumentoDto } from './documentos.dto';
+import type {
+  CriarDocumentoDto,
+  EditarDocumentoDto,
+  StatusDocumento,
+} from './documentos.dto';
 
 const TETO_LISTA = 200;
 const PACIENTE_NAO_ENCONTRADO = 'Paciente nao encontrado';
 const DOCUMENTO_NAO_ENCONTRADO = 'Documento nao encontrado';
+const APROVADO_NAO_EDITA = 'Documento aprovado nao pode ser editado';
+const JA_APROVADO = 'Documento ja aprovado';
+const SO_APROVADO_CORRIGE = 'So documento aprovado pode ser corrigido';
+const CORPO_VAZIO = 'Informe conteudo ou dataSessao';
 
 const dia = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
@@ -52,6 +62,8 @@ export class DocumentosService {
     const linha = await this.tenant.runComoUsuario(user, async (tx) => {
       if (!(await this.pacienteDoUsuario(tx, user, pacienteId))) return null;
       await this.consentimento.exigirConcedido(tx, user, pacienteId);
+      if (dto.substituiId)
+        await this.exigirAprovado(tx, user, pacienteId, dto.substituiId);
       const criado = await tx.documento.create({
         data: {
           id,
@@ -61,6 +73,7 @@ export class DocumentosService {
           tipo: dto.tipo,
           dataSessao: dto.dataSessao ? new Date(dto.dataSessao) : null,
           conteudoCifrado,
+          substituiId: dto.substituiId ?? null,
         },
       });
       await this.auditoria.registrar(tx, user, 'CRIOU', 'Documento', id);
@@ -71,7 +84,11 @@ export class DocumentosService {
   }
 
   // So metadados: nada e decifrado (nem lido) aqui.
-  async listar(user: UsuarioAutenticado, pacienteId: string) {
+  async listar(
+    user: UsuarioAutenticado,
+    pacienteId: string,
+    status?: StatusDocumento,
+  ) {
     const linhas = await this.tenant.runComoUsuario(user, async (tx) => {
       if (!(await this.pacienteDoUsuario(tx, user, pacienteId))) return null;
       const achadas = await tx.documento.findMany({
@@ -79,12 +96,15 @@ export class DocumentosService {
           pacienteId,
           clinicaId: user.clinicaId,
           psicologoId: user.psicologoId,
+          ...(status && { status }),
         },
         select: {
           id: true,
           tipo: true,
           dataSessao: true,
           status: true,
+          aprovadoEm: true,
+          substituiId: true,
           criadoEm: true,
         },
         orderBy: { criadoEm: 'desc' },
@@ -123,6 +143,105 @@ export class DocumentosService {
     return this.completo(linha);
   }
 
+  // Atomico: o `status = 'RASCUNHO'` no WHERE do UPDATE e a decisao (nao um SELECT antes). Se uma
+  // aprovacao concorrente ganhar, o UPDATE reavalia o WHERE apos o lock e acha 0 linhas.
+  async editar(
+    user: UsuarioAutenticado,
+    pacienteId: string,
+    id: string,
+    dto: EditarDocumentoDto,
+  ) {
+    if (dto.conteudo === undefined && dto.dataSessao === undefined)
+      throw new BadRequestException(CORPO_VAZIO);
+    // Mesmo AAD da criacao (id e dono nao mudam): a leitura decifra igual.
+    const conteudoCifrado =
+      dto.conteudo === undefined
+        ? undefined
+        : this.cripto.cifrar(
+            user.clinicaId,
+            dto.conteudo,
+            aadDe('Documento', 'conteudoCifrado', id, user.psicologoId),
+          );
+    const linha = await this.tenant.runComoUsuario(user, async (tx) => {
+      const r = await tx.documento.updateMany({
+        where: { ...this.dono(user, pacienteId, id), status: 'RASCUNHO' },
+        data: {
+          conteudoCifrado,
+          dataSessao:
+            dto.dataSessao === undefined
+              ? undefined
+              : dto.dataSessao && new Date(dto.dataSessao),
+        },
+      });
+      if (r.count === 0)
+        return this.recusar(tx, user, pacienteId, id, APROVADO_NAO_EDITA);
+      await this.auditoria.registrar(tx, user, 'EDITOU', 'Documento', id);
+      return tx.documento.findFirstOrThrow({
+        where: this.dono(user, pacienteId, id),
+      });
+    });
+    return this.completo(linha);
+  }
+
+  // Irreversivel (o trigger do banco tambem barra qualquer UPDATE em aprovado). Vale com
+  // consentimento revogado: o documento nasceu sob consentimento.
+  async aprovar(user: UsuarioAutenticado, pacienteId: string, id: string) {
+    const linha = await this.tenant.runComoUsuario(user, async (tx) => {
+      const r = await tx.documento.updateMany({
+        where: { ...this.dono(user, pacienteId, id), status: 'RASCUNHO' },
+        data: { status: 'APROVADO', aprovadoEm: new Date() },
+      });
+      if (r.count === 0)
+        return this.recusar(tx, user, pacienteId, id, JA_APROVADO);
+      await this.auditoria.registrar(tx, user, 'APROVOU', 'Documento', id);
+      return tx.documento.findFirstOrThrow({
+        where: this.dono(user, pacienteId, id),
+      });
+    });
+    return this.completo(linha);
+  }
+
+  private dono(user: UsuarioAutenticado, pacienteId: string, id: string) {
+    return {
+      id,
+      pacienteId,
+      clinicaId: user.clinicaId,
+      psicologoId: user.psicologoId,
+    };
+  }
+
+  // UPDATE de 0 linhas: aprovado = 409 com `mensagem`; alheio, de outro paciente e inexistente = 404.
+  private async recusar(
+    tx: Prisma.TransactionClient,
+    user: UsuarioAutenticado,
+    pacienteId: string,
+    id: string,
+    mensagem: string,
+  ): Promise<never> {
+    const achado = await tx.documento.findFirst({
+      where: this.dono(user, pacienteId, id),
+      select: { status: true },
+    });
+    if (achado?.status === 'APROVADO') throw new ConflictException(mensagem);
+    throw new NotFoundException(DOCUMENTO_NAO_ENCONTRADO);
+  }
+
+  // Correcao so de documento APROVADO do mesmo paciente (a FK ja garante paciente e dono).
+  private async exigirAprovado(
+    tx: Prisma.TransactionClient,
+    user: UsuarioAutenticado,
+    pacienteId: string,
+    id: string,
+  ) {
+    const achado = await tx.documento.findFirst({
+      where: this.dono(user, pacienteId, id),
+      select: { status: true },
+    });
+    if (!achado) throw new NotFoundException(DOCUMENTO_NAO_ENCONTRADO);
+    if (achado.status !== 'APROVADO')
+      throw new ConflictException(SO_APROVADO_CORRIGE);
+  }
+
   private pacienteDoUsuario(
     tx: Prisma.TransactionClient,
     user: UsuarioAutenticado,
@@ -147,6 +266,8 @@ export class DocumentosService {
           aadDe('Documento', 'conteudoCifrado', l.id, l.psicologoId),
         ),
         status: l.status,
+        aprovadoEm: l.aprovadoEm,
+        substituiId: l.substituiId,
         criadoEm: l.criadoEm,
         atualizadoEm: l.atualizadoEm,
       };

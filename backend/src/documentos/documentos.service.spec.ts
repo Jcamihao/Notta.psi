@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
+  BadRequestException,
+  ConflictException,
   ForbiddenException,
   InternalServerErrorException,
   Logger,
@@ -44,6 +46,8 @@ function montar(opcoes: { pacienteExiste?: boolean } = {}) {
           const l = {
             status: 'RASCUNHO',
             dataSessao: null,
+            aprovadoEm: null,
+            substituiId: null,
             ...data,
             criadoEm: new Date('2026-11-03T12:00:00Z'),
             atualizadoEm: new Date('2026-11-03T12:00:00Z'),
@@ -55,6 +59,31 @@ function montar(opcoes: { pacienteExiste?: boolean } = {}) {
       findMany: jest
         .fn<Promise<Linha[]>, [Prisma.DocumentoFindManyArgs]>()
         .mockImplementation(() => Promise.resolve(linhas)),
+      updateMany: jest
+        .fn<Promise<{ count: number }>, [Prisma.DocumentoUpdateManyArgs]>()
+        .mockImplementation((args) => {
+          const alvo = linhas.find(
+            (l) =>
+              l.id === (args.where as { id: string }).id &&
+              l.status === (args.where as { status: string }).status,
+          );
+          // undefined = nao mexe na coluna (como o Prisma)
+          if (alvo)
+            Object.assign(
+              alvo,
+              Object.fromEntries(
+                Object.entries(args.data).filter(([, v]) => v !== undefined),
+              ),
+            );
+          return Promise.resolve({ count: alvo ? 1 : 0 });
+        }),
+      findFirstOrThrow: jest
+        .fn<Promise<Linha>, [Prisma.DocumentoFindFirstOrThrowArgs]>()
+        .mockImplementation((args) =>
+          Promise.resolve(
+            linhas.find((l) => l.id === (args.where as { id: string }).id)!,
+          ),
+        ),
       findFirst: jest
         .fn<Promise<Linha | null>, [Prisma.DocumentoFindFirstArgs]>()
         .mockImplementation((args) =>
@@ -111,6 +140,8 @@ describe('DocumentosService.criar', () => {
       dataSessao: '2026-11-02',
       conteudo: corpo.conteudo,
       status: 'RASCUNHO',
+      aprovadoEm: null,
+      substituiId: null,
       criadoEm: new Date('2026-11-03T12:00:00Z'),
       atualizadoEm: new Date('2026-11-03T12:00:00Z'),
     });
@@ -180,6 +211,8 @@ describe('DocumentosService.listar', () => {
       tipo: true,
       dataSessao: true,
       status: true,
+      aprovadoEm: true,
+      substituiId: true,
       criadoEm: true,
     });
     expect(lista).toHaveLength(1);
@@ -242,5 +275,157 @@ describe('DocumentosService.obter', () => {
     expect(logado).not.toContain('ansiedade');
     erro.mockRestore();
     expect(b.id).not.toBe(a.id);
+  });
+});
+
+describe('DocumentosService.editar', () => {
+  it('UPDATE atomico com status RASCUNHO + dono no where; recifra; audita EDITOU; devolve decifrado', async () => {
+    const { tx, service, registrar } = montar();
+    const { id } = await service.criar(user, pacienteId, corpo);
+    const antes = tx.documento.create.mock.calls[0][0].data.conteudoCifrado;
+    registrar.mockClear();
+    const r = await service.editar(user, pacienteId, id, {
+      conteudo: 'texto novo',
+    });
+    const args = tx.documento.updateMany.mock.calls[0][0];
+    expect(args.where).toEqual({
+      id,
+      pacienteId,
+      clinicaId: user.clinicaId,
+      psicologoId: user.psicologoId,
+      status: 'RASCUNHO',
+    });
+    const novo = (args.data as { conteudoCifrado: string }).conteudoCifrado;
+    expect(novo).toMatch(/^v1\.k1\./);
+    expect(novo).not.toBe(antes);
+    expect(JSON.stringify(args)).not.toContain('texto novo');
+    expect(r.conteudo).toBe('texto novo'); // mesmo AAD: decifra igual
+    expect(registrar).toHaveBeenCalledWith(tx, user, 'EDITOU', 'Documento', id);
+  });
+
+  it('dataSessao null apaga a data; so dataSessao nao recifra', async () => {
+    const { tx, service } = montar();
+    const { id } = await service.criar(user, pacienteId, corpo);
+    await service.editar(user, pacienteId, id, { dataSessao: null });
+    expect(tx.documento.updateMany.mock.calls[0][0].data).toEqual({
+      conteudoCifrado: undefined,
+      dataSessao: null,
+    });
+  });
+
+  it('corpo vazio = 400 antes de tocar o banco', async () => {
+    const { tx, service } = montar();
+    await expect(
+      service.editar(user, pacienteId, randomUUID(), {}),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(tx.documento.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('aprovado = 409 e inexistente = 404, sem auditar', async () => {
+    const { linhas, service, registrar } = montar();
+    const { id } = await service.criar(user, pacienteId, corpo);
+    linhas[0].status = 'APROVADO';
+    registrar.mockClear();
+    await expect(
+      service.editar(user, pacienteId, id, { conteudo: 'x' }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.editar(user, pacienteId, randomUUID(), { conteudo: 'x' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(registrar).not.toHaveBeenCalled();
+  });
+});
+
+describe('DocumentosService.aprovar', () => {
+  it('UPDATE atomico com status RASCUNHO no where; grava APROVADO + aprovadoEm; audita APROVOU', async () => {
+    const { tx, service, registrar } = montar();
+    const { id } = await service.criar(user, pacienteId, corpo);
+    registrar.mockClear();
+    const r = await service.aprovar(user, pacienteId, id);
+    const args = tx.documento.updateMany.mock.calls[0][0];
+    expect(args.where).toEqual({
+      id,
+      pacienteId,
+      clinicaId: user.clinicaId,
+      psicologoId: user.psicologoId,
+      status: 'RASCUNHO',
+    });
+    expect(args.data).toEqual({
+      status: 'APROVADO',
+      aprovadoEm: expect.any(Date) as Date,
+    });
+    expect(r.status).toBe('APROVADO');
+    expect(r.conteudo).toBe(corpo.conteudo);
+    expect(registrar).toHaveBeenCalledWith(
+      tx,
+      user,
+      'APROVOU',
+      'Documento',
+      id,
+    );
+  });
+
+  it('nao consulta consentimento; ja aprovado = 409; inexistente = 404; sem auditar', async () => {
+    const { service, registrar, exigirConcedido } = montar();
+    const { id } = await service.criar(user, pacienteId, corpo);
+    await service.aprovar(user, pacienteId, id);
+    registrar.mockClear();
+    exigirConcedido.mockClear();
+    await expect(service.aprovar(user, pacienteId, id)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    await expect(
+      service.aprovar(user, pacienteId, randomUUID()),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(registrar).not.toHaveBeenCalled();
+    expect(exigirConcedido).not.toHaveBeenCalled();
+  });
+});
+
+describe('DocumentosService.criar com substituiId', () => {
+  it('so de aprovado do mesmo paciente e dono: rascunho = 409, inexistente = 404, nada gravado; aprovado liga', async () => {
+    const { tx, service, linhas } = montar();
+    const rascunho = await service.criar(user, pacienteId, corpo);
+    tx.documento.create.mockClear();
+    await expect(
+      service.criar(user, pacienteId, { ...corpo, substituiId: rascunho.id }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.criar(user, pacienteId, { ...corpo, substituiId: randomUUID() }),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(tx.documento.create).not.toHaveBeenCalled();
+    linhas[0].status = 'APROVADO';
+    const r = await service.criar(user, pacienteId, {
+      ...corpo,
+      substituiId: rascunho.id,
+    });
+    expect(r.substituiId).toBe(rascunho.id);
+    expect(tx.documento.findFirst.mock.calls.at(-1)?.[0].where).toEqual({
+      id: rascunho.id,
+      pacienteId,
+      clinicaId: user.clinicaId,
+      psicologoId: user.psicologoId,
+    });
+  });
+
+  it('a checagem vem depois do consentimento (403 antes)', async () => {
+    const { service, exigirConcedido } = montar();
+    exigirConcedido.mockRejectedValueOnce(new ForbiddenException());
+    await expect(
+      service.criar(user, pacienteId, { ...corpo, substituiId: randomUUID() }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+});
+
+describe('DocumentosService.listar com filtro', () => {
+  it('status entra no where so quando informado', async () => {
+    const { tx, service } = montar();
+    await service.listar(user, pacienteId, 'APROVADO');
+    expect(tx.documento.findMany.mock.calls[0][0].where).toEqual({
+      pacienteId,
+      clinicaId: user.clinicaId,
+      psicologoId: user.psicologoId,
+      status: 'APROVADO',
+    });
   });
 });

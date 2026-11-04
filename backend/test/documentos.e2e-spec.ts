@@ -25,6 +25,8 @@ type Documento = {
   dataSessao: string | null;
   conteudo: string;
   status: string;
+  aprovadoEm: string | null;
+  substituiId: string | null;
   criadoEm: string;
   atualizadoEm: string;
 };
@@ -150,6 +152,7 @@ describe('POST /pacientes/:id/documentos', () => {
       }).expect(201);
       const d = res.body as Documento;
       expect(Object.keys(d).sort()).toEqual([
+        'aprovadoEm',
         'atualizadoEm',
         'conteudo',
         'criadoEm',
@@ -157,6 +160,7 @@ describe('POST /pacientes/:id/documentos', () => {
         'id',
         'pacienteId',
         'status',
+        'substituiId',
         'tipo',
       ]);
       expect(d).toMatchObject({
@@ -366,10 +370,12 @@ describe('GET /pacientes/:id/documentos', () => {
     expect(itens.map((i) => i.id)).toEqual([d2.id, d1.id]);
     for (const i of itens) {
       expect(Object.keys(i).sort()).toEqual([
+        'aprovadoEm',
         'criadoEm',
         'dataSessao',
         'id',
         'status',
+        'substituiId',
         'tipo',
       ]);
     }
@@ -426,12 +432,11 @@ describe('GET /pacientes/:id/documentos/:id', () => {
   });
 });
 
-describe('Documento: sem PATCH nem DELETE', () => {
-  it('rotas nao existem (404 do roteador)', async () => {
+describe('Documento: sem DELETE', () => {
+  it('rota nao existe (404 do roteador)', async () => {
     const pid = await novoPaciente(a);
     const d = await criar(a, pid);
     const url = `/pacientes/${pid}/documentos/${d.id}`;
-    await com(a.token, http().patch(url).send({ conteudo: 'x' })).expect(404);
     await com(a.token, http().delete(url)).expect(404);
     expect((await ler(a, pid, d.id).expect(200)).body).toMatchObject({
       conteudo: TEXTO,
