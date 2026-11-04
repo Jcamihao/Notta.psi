@@ -67,6 +67,7 @@ model Paciente {
   criadoEm          DateTime        @default(now())
   atualizadoEm      DateTime        @updatedAt
   consentimentos    Consentimento[]
+  documentos        Documento[]
 
   // Alvo das FKs compostas das filhas (sessao, documento...): inclui o dono.
   @@unique([id, psicologoId, clinicaId])
@@ -110,4 +111,26 @@ model Consentimento {
   // oraculo de existencia de paciente alheio.
   @@unique([pacienteId, psicologoId, seq])
   @@index([clinicaId, psicologoId])
+}
+
+// Documento clinico (item 12): nota bruta, evolucao ou anamnese. O texto (`conteudoCifrado`) e
+// cifrado (AES-256-GCM, AAD = Documento|conteudoCifrado|id|psicologoId); o id nasce no app porque
+// entra no AAD. `dataSessao` fica em claro (metadado de linha do tempo, nao e conteudo clinico).
+// `tipo` e `status` tem CHECK no banco. Nasce RASCUNHO (a policy de INSERT exige); notta_app so
+// SELECT/INSERT (UPDATE entra no item 14, aprovacao no 15).
+model Documento {
+  id              String    @id
+  clinicaId       String
+  psicologoId     String
+  pacienteId      String
+  paciente        Paciente  @relation(fields: [pacienteId, psicologoId, clinicaId], references: [id, psicologoId, clinicaId], onDelete: Restrict)
+  tipo            String
+  status          String    @default("RASCUNHO")
+  dataSessao      DateTime? @db.Date
+  conteudoCifrado String
+  criadoEm        DateTime  @default(now())
+  atualizadoEm    DateTime  @updatedAt
+
+  @@unique([id, psicologoId, clinicaId])
+  @@index([clinicaId, psicologoId, pacienteId, criadoEm])
 }

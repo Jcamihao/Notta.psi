@@ -11,7 +11,7 @@ export const ACOES = [
   'CONCEDEU',
   'REVOGOU',
 ] as const;
-export const RECURSOS = ['Paciente', 'Consentimento'] as const;
+export const RECURSOS = ['Paciente', 'Consentimento', 'Documento'] as const;
 export type AcaoAuditoria = (typeof ACOES)[number];
 export type RecursoAuditado = (typeof RECURSOS)[number];
 

@@ -3,6 +3,7 @@ import { AuthModule } from './auth/auth.module';
 import { ClinicasModule } from './clinicas/clinicas.module';
 import { ConsentimentoModule } from './consentimento/consentimento.module';
 import { CriptografiaModule } from './criptografia/criptografia.module';
+import { DocumentosModule } from './documentos/documentos.module';
 import { EquipeModule } from './equipe/equipe.module';
 import { LimiteTentativasModule } from './limite-tentativas/limite-tentativas.module';
 import { PacientesModule } from './pacientes/pacientes.module';
@@ -19,6 +20,7 @@ import { SaudeController } from './saude/saude.controller';
     EquipeModule,
     ConsentimentoModule,
     PacientesModule,
+    DocumentosModule,
   ],
   controllers: [SaudeController],
 })
