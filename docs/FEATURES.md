@@ -29,9 +29,9 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 ## Fase 3 — IA
 - [ ] 17. [B] Anonimização antes da IA
 - [ ] 18. [B] Cliente do SelahIA (adapter `psicologia` já existe no SelahIA v2.7.9)
-- [ ] 19. [B] Limite de gerações por psicólogo
-- [ ] 20. [M] Rascunho por IA na abordagem
-- [ ] 21. [M] Plano B quando a IA falha
+- [ ] 19. [B] Limite de gerações por psicólogo (só gerações que deram certo gastam o limite; tentativa que falhou por erro da IA ou de conexão não conta)
+- [ ] 20. [M] Rascunho por IA na abordagem (a nota bruta é salva no servidor ANTES de chamar a IA; a geração é um pedido com estado PENDENTE, PRONTO ou FALHOU, e o resultado entra como rascunho do item 14)
+- [ ] 21. [M] Plano B quando a IA falha e "tentar de novo" sem limite de tentativas (pedido do dono, 2026-11-05): falha da IA, timeout ou queda de conexão (inclusive no celular) nunca perde a nota; o pedido fica salvo com o motivo (sem texto clínico no log), a tela mostra "Tentar de novo" quantas vezes precisar (a nota segue em rascunho para escrever à mão), retentativa é idempotente (não cria rascunho duplicado), e quem fechar o app e voltar vê o pedido onde parou
 
 ## Fase 4 — Confiança e segurança
 - [ ] 22. [M] Termo de consentimento do paciente (obrigatório antes de qualquer dado real)
