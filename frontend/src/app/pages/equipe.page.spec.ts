@@ -11,6 +11,8 @@ const LISTA: MembroEquipe[] = [
     email: 'ana@clinica.com',
     papel: 'ADMIN',
     abordagemPadrao: 'SISTEMICA',
+    ativo: true,
+    desativadoEm: null,
     criadoEm: '2026-03-12T14:00:00.000Z',
   },
   {
@@ -19,9 +21,21 @@ const LISTA: MembroEquipe[] = [
     email: 'bruno@clinica.com',
     papel: 'PSICOLOGO',
     abordagemPadrao: 'PSICANALISE',
+    ativo: true,
+    desativadoEm: null,
     criadoEm: '2026-10-01T14:00:00.000Z',
   },
 ];
+const BIA: MembroEquipe = {
+  psicologoId: 'p3',
+  nome: 'Bia Campos',
+  email: 'bia@clinica.com',
+  papel: 'PSICOLOGO',
+  abordagemPadrao: 'TCC',
+  ativo: false,
+  desativadoEm: '2026-10-20T15:00:00.000Z',
+  criadoEm: '2026-09-01T14:00:00.000Z',
+};
 
 describe('EquipePage', () => {
   let fixture: ComponentFixture<EquipePage>;
@@ -91,6 +105,7 @@ describe('EquipePage', () => {
       'Papel',
       'Abordagem',
       'Desde',
+      'Acesso',
     ]);
     cabecalhos.forEach((t) => expect(t.getAttribute('scope')).toBe('col'));
     expect(linhas().length).toBe(2);
@@ -125,6 +140,204 @@ describe('EquipePage', () => {
     ctrl.expectOne('/api/psicologos').flush({}, { status: 403, statusText: 'Forbidden' });
     await fixture.whenStable();
     expect(navegar).toHaveBeenCalledWith('/');
+  });
+
+  describe('desativar psicologo', () => {
+    const lista = [...LISTA, BIA];
+    const botaoDesativar = (nome: string) =>
+      el().querySelector(`button[aria-label="Desativar ${nome}"]`) as HTMLButtonElement | null;
+    const grupo = () => el().querySelector('[data-teste="confirmacao-desativar"]');
+    const botaoPorTexto = (texto: string) =>
+      Array.from(el().querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === texto,
+      ) as HTMLButtonElement;
+    const pedir = async (nome = 'Bruno Lima') => {
+      botaoDesativar(nome)!.click();
+      await fixture.whenStable();
+    };
+    const confirmar = async () => {
+      botaoPorTexto('Confirmar desativação').click();
+      await fixture.whenStable();
+    };
+    const postDesativar = (id = 'p2') =>
+      ctrl.expectOne((r) => r.method === 'POST' && r.url === `/api/psicologos/${id}/desativar`);
+    const falhar = async (status: number) => {
+      postDesativar().flush({ statusCode: status, message: 'x' }, { status, statusText: 'Erro' });
+      await fixture.whenStable();
+    };
+    const erroEquipe = () =>
+      el().querySelector('[data-teste="erro-equipe"]')?.textContent?.trim() ?? '';
+    const nenhumPostDesativar = () =>
+      ctrl.expectNone((r) => r.method === 'POST' && r.url.endsWith('/desativar'));
+
+    beforeEach(() => listar(lista));
+
+    it('so colega ativo tem botao, com o nome do colega; admin (propria linha) nao tem', () => {
+      expect(botaoDesativar('Bruno Lima')?.textContent?.trim()).toBe('Desativar');
+      expect(botaoDesativar('Ana Souza')).toBeNull();
+      const [ana, , bia] = linhas();
+      expect(ana.querySelector('button')).toBeNull();
+      expect(bia.querySelector('button')).toBeNull();
+      expect(el().querySelectorAll('tbody button').length).toBe(1);
+    });
+
+    it('desativado mostra pill de texto "Desativado em <data>" e nenhum botao', () => {
+      const bia = linhas()[2];
+      expect(bia.textContent).toMatch(/Desativado em\s+\d{2}\/\d{2}\/2026/);
+      expect(bia.querySelectorAll('time')[1]?.getAttribute('datetime')).toBe(BIA.desativadoEm);
+      expect(bia.querySelector('button')).toBeNull();
+      // innerText = o que a pessoa le: a pill e flex e engole o espaco antes do <time>.
+      expect((bia.querySelector('.tabela-estado app-pill') as HTMLElement).innerText).toMatch(
+        /^Desativado em \d{2}\/\d{2}\/2026$/,
+      );
+    });
+
+    it('Desativar abre a confirmacao com o texto honesto e foco em Cancelar, sem chamar a API', async () => {
+      await pedir();
+      const g = grupo()!;
+      expect(g.getAttribute('role')).toBe('group');
+      const nome = document.getElementById(g.getAttribute('aria-labelledby')!)?.textContent;
+      expect(nome).toContain('Desativar Bruno Lima?');
+      const texto = document.getElementById(g.getAttribute('aria-describedby')!)?.textContent;
+      expect(texto).toContain('perde o acesso na hora');
+      expect(texto).toContain('Os dados ficam guardados');
+      expect(texto).toContain('Nesta versão não dá para desfazer');
+      expect(document.activeElement).toBe(botaoPorTexto('Cancelar'));
+      expect(botaoDesativar('Bruno Lima')!.getAttribute('aria-expanded')).toBe('true');
+      nenhumPostDesativar();
+    });
+
+    it('Escape cancela, devolve o foco ao botao Desativar e nao chama a API', async () => {
+      await pedir();
+      grupo()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await fixture.whenStable();
+      expect(grupo()).toBeNull();
+      expect(document.activeElement).toBe(botaoDesativar('Bruno Lima'));
+      nenhumPostDesativar();
+    });
+
+    it('Cancelar fecha, devolve o foco e nao chama a API', async () => {
+      await pedir();
+      botaoPorTexto('Cancelar').click();
+      await fixture.whenStable();
+      expect(grupo()).toBeNull();
+      expect(document.activeElement).toBe(botaoDesativar('Bruno Lima'));
+      nenhumPostDesativar();
+    });
+
+    it('so uma confirmacao aberta por vez', async () => {
+      const outra = { ...LISTA[1], psicologoId: 'p4', nome: 'Caio Reis' };
+      ctrl.verify();
+      fixture.componentInstance.lista.set([...lista, outra]);
+      await fixture.whenStable();
+      await pedir('Bruno Lima');
+      await pedir('Caio Reis');
+      expect(el().querySelectorAll('[data-teste="confirmacao-desativar"]').length).toBe(1);
+      expect(grupo()?.textContent).toContain('Caio Reis');
+    });
+
+    it('confirmar chama POST sem corpo e atualiza so a linha, sem recarregar a lista', async () => {
+      await pedir();
+      await confirmar();
+      const r = postDesativar();
+      expect(r.request.body).toBeNull();
+      r.flush({
+        id: 'p2',
+        nome: 'Bruno Lima',
+        email: 'bruno@clinica.com',
+        papel: 'PSICOLOGO',
+        abordagemPadrao: 'PSICANALISE',
+        ativo: false,
+        desativadoEm: '2026-11-04T12:00:00.000Z',
+      });
+      await fixture.whenStable();
+      const [ana, bruno] = linhas();
+      expect(linhas().length).toBe(3);
+      expect(bruno.textContent).toMatch(/Desativado em\s+04\/11\/2026/);
+      expect(bruno.textContent).toContain('bruno@clinica.com');
+      expect(bruno.querySelector('time')?.getAttribute('datetime')).toBe(LISTA[1].criadoEm);
+      expect(bruno.querySelector('button')).toBeNull();
+      expect(ana.textContent).toContain('Administrador');
+      expect(grupo()).toBeNull();
+      const aviso = el().querySelector('[data-teste="aviso-equipe"]')!;
+      expect(aviso.closest('[aria-live]')).not.toBeNull();
+      expect(aviso.textContent).toContain('O acesso de Bruno Lima foi desativado.');
+      expect(document.activeElement?.id).toBe('eq-estado-p2');
+      // ctrl.verify (afterEach) falha se houve um GET /api/psicologos extra.
+    });
+
+    it('sem duplo envio: botoes desabilitados durante a chamada', async () => {
+      await pedir();
+      await confirmar();
+      expect(botaoPorTexto('Desativando…').disabled).toBeTrue();
+      expect(botaoPorTexto('Cancelar').disabled).toBeTrue();
+      fixture.componentInstance.desativar(LISTA[1]);
+      postDesativar();
+    });
+
+    it('409 recarrega a lista, avisa e mostra o estado real', async () => {
+      await pedir();
+      await confirmar();
+      await falhar(409);
+      expect(erroEquipe()).toBe('O estado mudou, confira a lista e tente de novo.');
+      expect(
+        erroEquipe() && el().querySelector('[data-teste="erro-equipe"]')!.closest('[aria-live]'),
+      ).not.toBeNull();
+      await listar([LISTA[0], { ...LISTA[1], ativo: false, desativadoEm: BIA.desativadoEm }]);
+      expect(linhas()[1].textContent).toContain('Desativado em');
+      expect(linhas()[1].querySelector('button')).toBeNull();
+      expect(navegar).not.toHaveBeenCalled();
+    });
+
+    it('404 recarrega a lista e avisa, sem sair da tela', async () => {
+      await pedir();
+      await confirmar();
+      await falhar(404);
+      expect(erroEquipe()).toBe('Essa pessoa não foi encontrada na equipe. Confira a lista.');
+      await listar([LISTA[0]]);
+      expect(linhas().length).toBe(1);
+      expect(navegar).not.toHaveBeenCalled();
+    });
+
+    it('503 avisa, mantem o botao para tentar de novo e nao recarrega nem derruba a sessao', async () => {
+      await pedir();
+      await confirmar();
+      await falhar(503);
+      expect(erroEquipe()).toBe(
+        'Não foi possível concluir agora. Confira sua conexão e tente de novo.',
+      );
+      expect(grupo()).toBeNull();
+      expect(document.activeElement).toBe(botaoDesativar('Bruno Lima'));
+      expect(linhas()[1].querySelector('button')).not.toBeNull();
+      expect(navegar).not.toHaveBeenCalled();
+    });
+
+    it('erro de rede avisa e permite tentar de novo', async () => {
+      await pedir();
+      await confirmar();
+      postDesativar().error(new ProgressEvent('error'));
+      await fixture.whenStable();
+      expect(erroEquipe()).toContain('Não foi possível concluir agora');
+      await pedir();
+      await confirmar();
+      postDesativar();
+    });
+
+    it('403 avisa e volta para /', async () => {
+      await pedir();
+      await confirmar();
+      await falhar(403);
+      expect(erroEquipe()).toBe('Você não tem permissão para gerenciar a equipe.');
+      expect(navegar).toHaveBeenCalledWith('/');
+    });
+
+    it('nova tentativa limpa o aviso anterior', async () => {
+      await pedir();
+      await confirmar();
+      await falhar(503);
+      await pedir();
+      expect(erroEquipe()).toBe('');
+    });
   });
 
   describe('adicionar psicologo', () => {

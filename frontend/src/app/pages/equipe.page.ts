@@ -1,5 +1,5 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, Injector, afterNextRender, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ABORDAGENS, rotuloAbordagem } from '../core/abordagens';
@@ -23,6 +23,8 @@ export interface MembroEquipe {
   email: string;
   papel: 'ADMIN' | 'PSICOLOGO';
   abordagemPadrao: string;
+  ativo: boolean;
+  desativadoEm: string | null;
   criadoEm: string;
 }
 
@@ -55,6 +57,7 @@ export class EquipePage {
   readonly icones = { ChevronDown, CircleAlert, CircleCheck };
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
 
   readonly abordagens = ABORDAGENS;
   readonly rotuloAbordagem = rotuloAbordagem;
@@ -63,6 +66,11 @@ export class EquipePage {
   readonly enviando = signal(false);
   readonly erroGeral = signal('');
   readonly confirmacao = signal('');
+  // Desativar: um colega por vez em confirmacao; `desativando` = id com a chamada em andamento.
+  readonly confirmando = signal<string | null>(null);
+  readonly desativando = signal<string | null>(null);
+  readonly avisoEquipe = signal('');
+  readonly erroEquipe = signal('');
   readonly form = new FormGroup({
     nome: new FormControl('', { nonNullable: true, validators: [preenchido] }),
     email: new FormControl('', { nonNullable: true, validators: [preenchido, emailValido] }),
@@ -92,6 +100,59 @@ export class EquipePage {
       error: (e: HttpErrorResponse) => {
         if (e.status === 403) void this.router.navigateByUrl('/');
         else this.erroLista.set(true);
+      },
+    });
+  }
+
+  pedirDesativacao(id: string): void {
+    this.limparAvisosEquipe();
+    this.confirmando.set(id);
+    this.focar(`eq-cancelar-${id}`);
+  }
+
+  cancelarDesativacao(id: string): void {
+    if (this.desativando()) return;
+    this.confirmando.set(null);
+    this.focar(`eq-desativar-${id}`);
+  }
+
+  desativar(m: MembroEquipe): void {
+    if (this.desativando()) return;
+    this.limparAvisosEquipe();
+    this.desativando.set(m.psicologoId);
+    this.http.post<MembroEquipe>(`/api/psicologos/${m.psicologoId}/desativar`, null).subscribe({
+      next: (r) => {
+        this.desativando.set(null);
+        this.confirmando.set(null);
+        // O corpo do 200 nao traz criadoEm: mantem o da linha e troca so ativo/desativadoEm.
+        this.lista.update((l) =>
+          (l ?? []).map((x) =>
+            x.psicologoId === m.psicologoId
+              ? { ...x, ativo: r.ativo, desativadoEm: r.desativadoEm }
+              : x,
+          ),
+        );
+        this.avisoEquipe.set(`O acesso de ${m.nome} foi desativado.`);
+        this.focar(`eq-estado-${m.psicologoId}`);
+      },
+      error: (e: HttpErrorResponse) => {
+        this.desativando.set(null);
+        this.confirmando.set(null);
+        if (e.status === 403) {
+          this.erroEquipe.set('Você não tem permissão para gerenciar a equipe.');
+          void this.router.navigateByUrl('/');
+        } else if (e.status === 409 || e.status === 404) {
+          // Outra aba ja desativou, ou a pessoa saiu da lista: mostra o estado real.
+          this.erroEquipe.set(
+            e.status === 409
+              ? 'O estado mudou, confira a lista e tente de novo.'
+              : 'Essa pessoa não foi encontrada na equipe. Confira a lista.',
+          );
+          this.carregar();
+        } else {
+          this.erroEquipe.set(mensagemHttp(e));
+          this.focar(`eq-desativar-${m.psicologoId}`);
+        }
       },
     });
   }
@@ -142,5 +203,14 @@ export class EquipePage {
           this.form.controls.senha.reset();
         },
       });
+  }
+
+  private limparAvisosEquipe(): void {
+    this.avisoEquipe.set('');
+    this.erroEquipe.set('');
+  }
+
+  private focar(id: string): void {
+    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
   }
 }

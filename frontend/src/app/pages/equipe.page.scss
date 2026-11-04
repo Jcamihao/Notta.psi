@@ -81,6 +81,44 @@
 .tabela-vazia {
   color: var(--text-secondary);
 }
+.tabela-estado:focus-visible {
+  outline: 2px solid var(--ink-900);
+  outline-offset: 4px;
+}
+.aviso-regiao:empty {
+  display: none;
+}
+.aviso-regiao {
+  margin-bottom: var(--space-4);
+  .aviso-ok,
+  .aviso-erro {
+    margin: 0;
+  }
+}
+// Confirmacao inline de "Desativar": linha extra logo abaixo da pessoa, mesmo cartao cream-200
+// da confirmacao do consentimento.
+.tabela-confirma > td {
+  padding-top: 0;
+  border-top: 0;
+}
+.confirma {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--cream-200);
+  border-radius: var(--radius-card);
+  p {
+    margin: 0;
+  }
+}
+.confirma-titulo {
+  font-weight: var(--fw-medium);
+}
+.confirma-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
 
 .equipe-novo {
   align-self: start;
@@ -156,6 +194,21 @@
     }
     app-pill {
       justify-self: start;
+    }
+    // Admin ativo: celula "Acesso" vazia, sem rotulo solto.
+    tbody td:empty {
+      display: none;
+    }
+    tbody .tabela-confirma {
+      padding-top: 0;
+      border-top: 0;
+    }
+    tbody .tabela-confirma > td {
+      display: block;
+      padding: 0;
+    }
+    tbody .tabela-confirma > td::before {
+      content: none;
     }
   }
   .equipe-novo {

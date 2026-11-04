@@ -8,6 +8,22 @@
   </div>
 
   <section class="equipe-lista" aria-label="Pessoas da equipe">
+    <div class="aviso-regiao" aria-live="polite">
+      @if (erroEquipe()) {
+        <p class="aviso-erro" data-teste="erro-equipe">
+          <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
+            erroEquipe()
+          }}
+        </p>
+      }
+      @if (avisoEquipe()) {
+        <p class="aviso-ok" data-teste="aviso-equipe">
+          <lucide-icon [img]="icones.CircleCheck" [size]="18" [strokeWidth]="1.5" />{{
+            avisoEquipe()
+          }}
+        </p>
+      }
+    </div>
     @if (lista(); as l) {
       <table class="tabela">
         <caption>
@@ -26,6 +42,7 @@
             <th scope="col">Papel</th>
             <th scope="col">Abordagem</th>
             <th scope="col">Desde</th>
+            <th scope="col">Acesso</th>
           </tr>
         </thead>
         <tbody>
@@ -46,10 +63,79 @@
               <td data-rotulo="Desde">
                 <time class="tabela-data" [attr.datetime]="p.criadoEm">{{ data(p.criadoEm) }}</time>
               </td>
+              <td data-rotulo="Acesso">
+                @if (!p.ativo && p.desativadoEm; as em) {
+                  <span [id]="'eq-estado-' + p.psicologoId" tabindex="-1" class="tabela-estado">
+                    <app-pill dashed
+                      ><span
+                        >Desativado em <time [attr.datetime]="em">{{ data(em) }}</time></span
+                      ></app-pill
+                    >
+                  </span>
+                } @else if (p.ativo && p.papel === 'PSICOLOGO') {
+                  <button
+                    app-button
+                    type="button"
+                    variant="soft"
+                    [id]="'eq-desativar-' + p.psicologoId"
+                    [attr.aria-label]="'Desativar ' + p.nome"
+                    [attr.aria-expanded]="confirmando() === p.psicologoId"
+                    [attr.aria-controls]="'eq-confirma-' + p.psicologoId"
+                    (click)="pedirDesativacao(p.psicologoId)"
+                  >
+                    Desativar
+                  </button>
+                }
+              </td>
             </tr>
+            @if (confirmando() === p.psicologoId) {
+              <tr class="tabela-confirma">
+                <td colspan="6">
+                  <div
+                    class="confirma"
+                    role="group"
+                    [id]="'eq-confirma-' + p.psicologoId"
+                    [attr.aria-labelledby]="'eq-confirma-titulo-' + p.psicologoId"
+                    [attr.aria-describedby]="'eq-confirma-texto-' + p.psicologoId"
+                    data-teste="confirmacao-desativar"
+                    (keydown.escape)="cancelarDesativacao(p.psicologoId)"
+                  >
+                    <p class="confirma-titulo" [id]="'eq-confirma-titulo-' + p.psicologoId">
+                      Desativar {{ p.nome }}?
+                    </p>
+                    <p [id]="'eq-confirma-texto-' + p.psicologoId">
+                      {{ p.nome }} perde o acesso na hora. Os dados ficam guardados. Nesta versão
+                      não dá para desfazer.
+                    </p>
+                    <div class="confirma-acoes">
+                      <button
+                        app-button
+                        type="button"
+                        [variant]="desativando() ? 'progress' : 'primary'"
+                        [disabled]="!!desativando()"
+                        [attr.aria-label]="'Confirmar desativação de ' + p.nome"
+                        (click)="desativar(p)"
+                      >
+                        {{ desativando() ? 'Desativando…' : 'Confirmar desativação' }}
+                      </button>
+                      <button
+                        app-button
+                        type="button"
+                        variant="soft"
+                        [id]="'eq-cancelar-' + p.psicologoId"
+                        [disabled]="!!desativando()"
+                        (click)="cancelarDesativacao(p.psicologoId)"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
           } @empty {
             <tr>
-              <td colspan="5" class="tabela-vazia">Ninguém na equipe ainda.</td>
+              <td colspan="6" class="tabela-vazia">Ninguém na equipe ainda.</td>
             </tr>
           }
         </tbody>
