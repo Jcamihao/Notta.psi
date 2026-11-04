@@ -21,10 +21,10 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 - [x] 10. [M] Consentimento: registrar, revogar, re-conceder
 - [x] 11. [B] Trilha de auditoria (antes dos documentos)
 - [x] 12. [M] Documento clínico: nota bruta, evolução e anamnese
-- [ ] 13. [F] Aviso na digitação sobre detalhes que identificam
-- [ ] 14. [M] Editar e retomar rascunho
-- [ ] 15. [M] Aprovação humana
-- [ ] 16. [M] Prontuário: lista de aprovados
+- [x] 13. [F] Aviso na digitação sobre detalhes que identificam
+- [x] 14. [M] Editar e retomar rascunho
+- [x] 15. [M] Aprovação humana
+- [x] 16. [M] Prontuário: lista de aprovados
 
 ## Fase 3 — IA
 - [ ] 17. [B] Anonimização antes da IA
@@ -66,7 +66,7 @@ Numeração separada para não quebrar as referências da Fase 1 em andamento. A
 - [x] 41. [B] Cabeçalhos HTTP de segurança (helmet), CORS só para a origem do front, limite de corpo e de tempo — entra na Fase 1 (junto do item 5)
 - [ ] 42. [B] Segredos e ambiente: nenhum segredo no repo, scan de segredos antes do commit, validação de env no boot, https obrigatório para o SelahIA — Fase 1 e 3
 - [ ] 43. [B] CI: testes, lint, `npm audit`, atualização de dependências e testes de RLS obrigatórios antes de merge — Fase 2
-- [ ] 44. [B] Trigger no banco: documento APROVADO imutável — Fase 2 (com o item 15)
+- [x] 44. [B] Trigger no banco: documento APROVADO imutável — Fase 2 (com o item 15)
 - [ ] 51. [B] Defesa contra prompt injection e saída insegura da IA (o texto da sessão vira instrução; validar o rascunho) — Fase 3
 - [ ] 45. [M] Senha forte, checagem de senha vazada e anti-enumeração de e-mail — Fase 4
 - [ ] 46. [M] Sessões revogáveis: refresh token rotativo, expiração curta, "sair de todos os aparelhos" — Fase 4
