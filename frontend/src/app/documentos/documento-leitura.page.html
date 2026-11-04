@@ -5,33 +5,197 @@
 
   @if (documento(); as d) {
     <h1>{{ tipo[d.tipo] }}</h1>
+
+    <div class="aviso-regiao" aria-live="polite">
+      @if (mensagem()) {
+        <p class="aviso-ok" data-teste="mensagem">
+          <lucide-icon [img]="icones.CircleCheck" [size]="18" [strokeWidth]="1.5" />{{ mensagem() }}
+        </p>
+      }
+      @if (erroGeral()) {
+        <p class="aviso-erro" data-teste="erro-geral">
+          <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
+            erroGeral()
+          }}
+        </p>
+      }
+    </div>
+
+    @if (d.status === 'APROVADO' && d.aprovadoEm; as aprovadoEm) {
+      <p id="de-faixa" class="leitura-faixa" tabindex="-1" data-teste="faixa">
+        Aprovado em <time [attr.datetime]="aprovadoEm">{{ dataHora(aprovadoEm) }}</time
+        >. Este documento não pode mais ser editado.
+      </p>
+    }
+    @if (d.substituiId; as sid) {
+      <p class="leitura-corrige" data-teste="corrige">
+        Corrige:
+        @if (original(); as o) {
+          <a [routerLink]="['/pacientes', pacienteId, 'documentos', sid]">{{
+            rotuloOriginal(o)
+          }}</a>
+        } @else {
+          <a [routerLink]="['/pacientes', pacienteId, 'documentos', sid]">documento anterior</a>
+        }
+      </p>
+    }
+
     <section class="leitura-cartao" aria-label="Documento">
-      <dl class="leitura-meta">
-        <div>
-          <dt>Status</dt>
-          <dd>
-            <app-pill [tone]="tom[d.status]">{{ status[d.status] }}</app-pill>
-          </dd>
-        </div>
-        <div>
-          <dt>Data da sessão</dt>
-          <dd>
-            @if (d.dataSessao; as s) {
-              <time [attr.datetime]="s">{{ dataBr(s) }}</time>
-            } @else {
-              <span class="sem-dado">Não informada</span>
-            }
-          </dd>
-        </div>
-        <div>
-          <dt>Criado em</dt>
-          <dd>
-            <time [attr.datetime]="d.criadoEm">{{ dataHora(d.criadoEm) }}</time>
-          </dd>
-        </div>
-      </dl>
-      <h2 id="lt-texto">Texto</h2>
-      <p class="leitura-texto" aria-labelledby="lt-texto" data-teste="texto">{{ d.conteudo }}</p>
+      @if (!editando()) {
+        <dl class="leitura-meta">
+          <div>
+            <dt>Status</dt>
+            <dd>
+              <app-pill [tone]="tom[d.status]">{{ status[d.status] }}</app-pill>
+            </dd>
+          </div>
+          <div>
+            <dt>Data da sessão</dt>
+            <dd>
+              @if (d.dataSessao; as s) {
+                <time [attr.datetime]="s">{{ dataBr(s) }}</time>
+              } @else {
+                <span class="sem-dado">Não informada</span>
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Criado em</dt>
+            <dd>
+              <time [attr.datetime]="d.criadoEm">{{ dataHora(d.criadoEm) }}</time>
+            </dd>
+          </div>
+        </dl>
+        <h2 id="lt-texto">Texto</h2>
+        <p class="leitura-texto" aria-labelledby="lt-texto" data-teste="texto">{{ d.conteudo }}</p>
+
+        @if (d.status === 'RASCUNHO') {
+          @if (confirmando()) {
+            <div
+              class="leitura-confirmacao"
+              role="group"
+              aria-labelledby="de-confirmacao-titulo"
+              aria-describedby="de-confirmacao-texto"
+              data-teste="confirmacao"
+              (keydown.escape)="cancelarAprovacao()"
+            >
+              <h2 id="de-confirmacao-titulo">Aprovar este documento?</h2>
+              <p id="de-confirmacao-texto">
+                Aprovar é irreversível. Depois de aprovado, o documento não pode mais ser editado
+                nem apagado. Se precisar corrigir, você cria um novo documento ligado a este.
+              </p>
+              <div class="leitura-acoes">
+                <button
+                  id="de-cancelar-aprovacao"
+                  app-button
+                  type="button"
+                  variant="soft"
+                  [disabled]="aprovando()"
+                  (click)="cancelarAprovacao()"
+                >
+                  Cancelar
+                </button>
+                <button
+                  app-button
+                  type="button"
+                  [variant]="aprovando() ? 'progress' : 'primary'"
+                  [disabled]="aprovando()"
+                  (click)="aprovar()"
+                >
+                  {{ aprovando() ? 'Aprovando…' : 'Confirmar aprovação' }}
+                </button>
+              </div>
+            </div>
+          } @else {
+            <div class="leitura-acoes">
+              <button id="de-editar" app-button type="button" variant="soft" (click)="editar()">
+                Editar
+              </button>
+              <button id="de-aprovar" app-button type="button" (click)="pedirAprovacao()">
+                Aprovar documento
+              </button>
+            </div>
+          }
+        } @else {
+          <div class="leitura-acoes">
+            <a
+              app-button
+              [routerLink]="['/pacientes', pacienteId, 'documentos', 'novo']"
+              [queryParams]="{ corrige: d.id }"
+              >Corrigir</a
+            >
+          </div>
+        }
+      } @else {
+        <form class="formulario" [formGroup]="form" (ngSubmit)="salvar()" novalidate>
+          <div class="campo">
+            <label for="de-dataSessao">Data da sessão (opcional)</label>
+            <input
+              id="de-dataSessao"
+              type="date"
+              formControlName="dataSessao"
+              min="1900-01-01"
+              [max]="hoje"
+              [attr.aria-invalid]="erro('dataSessao') ? 'true' : null"
+              [attr.aria-describedby]="erro('dataSessao') ? 'de-dataSessao-erro' : null"
+            />
+            <p id="de-dataSessao-erro" class="campo-erro" aria-live="polite">
+              @if (erro('dataSessao'); as m) {
+                <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+              }
+            </p>
+          </div>
+
+          <div class="campo">
+            <label for="de-conteudo">Texto</label>
+            <textarea
+              id="de-conteudo"
+              formControlName="conteudo"
+              rows="14"
+              spellcheck="false"
+              autocomplete="off"
+              [attr.aria-invalid]="erro('conteudo') ? 'true' : null"
+              [attr.aria-describedby]="
+                erro('conteudo') ? 'de-conteudo-contador de-conteudo-erro' : 'de-conteudo-contador'
+              "
+            ></textarea>
+            <p
+              id="de-conteudo-contador"
+              class="campo-contador"
+              [class.acima]="acimaDoLimite()"
+              data-teste="contador"
+            >
+              {{ caracteres() }} de {{ limite }} caracteres
+            </p>
+            <app-aviso-identificacao [tipos]="dadosAchados()" (dispensado)="focarTexto()" />
+            <p id="de-conteudo-erro" class="campo-erro" aria-live="polite">
+              @if (erro('conteudo'); as m) {
+                <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+              }
+            </p>
+          </div>
+
+          <div class="leitura-acoes">
+            <button
+              app-button
+              type="button"
+              variant="soft"
+              [disabled]="salvando()"
+              (click)="cancelarEdicao()"
+            >
+              Cancelar
+            </button>
+            <button
+              app-button
+              type="submit"
+              [variant]="salvando() ? 'progress' : 'primary'"
+              [disabled]="salvando()"
+            >
+              {{ salvando() ? 'Salvando…' : 'Salvar alterações' }}
+            </button>
+          </div>
+        </form>
+      }
     </section>
   } @else if (erroCarga()) {
     <h1>Documento</h1>

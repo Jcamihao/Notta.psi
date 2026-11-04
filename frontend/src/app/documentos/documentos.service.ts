@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-// Corpo das respostas de /pacientes/:id/documentos (contrato.md, item 12).
+// Corpo das respostas de /pacientes/:id/documentos (contrato.md, itens 12, 14, 15 e 16).
 export type TipoDocumento = 'NOTA_BRUTA' | 'EVOLUCAO' | 'ANAMNESE';
 export type StatusDocumento = 'RASCUNHO' | 'APROVADO';
 
@@ -12,6 +12,9 @@ export interface DocumentoResumo {
   dataSessao: string | null;
   status: StatusDocumento;
   criadoEm: string;
+  aprovadoEm: string | null;
+  // Id do aprovado que este documento corrige (item 15); null se nao e correcao.
+  substituiId: string | null;
 }
 
 export interface Documento extends DocumentoResumo {
@@ -24,6 +27,13 @@ export interface NovoDocumento {
   tipo: TipoDocumento;
   dataSessao?: string;
   conteudo: string;
+  substituiId?: string;
+}
+
+// PATCH parcial (item 14): so o que mudou; dataSessao null apaga a data.
+export interface AtualizacaoDocumento {
+  conteudo?: string;
+  dataSessao?: string | null;
 }
 
 export const LIMITE_CONTEUDO = 20000;
@@ -55,11 +65,20 @@ export class DocumentosService {
     return this.http.post<Documento>(this.url(pacienteId), corpo);
   }
 
-  listar(pacienteId: string) {
-    return this.http.get<DocumentoResumo[]>(this.url(pacienteId));
+  // Sempre com filtro: o detalhe do paciente mostra prontuario (APROVADO) e rascunhos separados.
+  listar(pacienteId: string, status: StatusDocumento) {
+    return this.http.get<DocumentoResumo[]>(this.url(pacienteId), { params: { status } });
   }
 
   obter(pacienteId: string, id: string) {
     return this.http.get<Documento>(`${this.url(pacienteId)}/${id}`);
+  }
+
+  atualizar(pacienteId: string, id: string, corpo: AtualizacaoDocumento) {
+    return this.http.patch<Documento>(`${this.url(pacienteId)}/${id}`, corpo);
+  }
+
+  aprovar(pacienteId: string, id: string) {
+    return this.http.post<Documento>(`${this.url(pacienteId)}/${id}/aprovar`, null);
   }
 }

@@ -12,29 +12,48 @@ import { DocumentoResumo } from './documentos.service';
 
 const PID = '11111111-1111-4111-8111-111111111111';
 const URL = `/api/pacientes/${PID}/documentos`;
+const URL_APROVADOS = `${URL}?status=APROVADO`;
+const URL_RASCUNHOS = `${URL}?status=RASCUNHO`;
 const BLOQUEIO = 'Registre o consentimento para criar documentos.';
 
-const LISTA: DocumentoResumo[] = [
+const APROVADOS: DocumentoResumo[] = [
   {
-    id: 'a1',
+    id: 'p1',
     tipo: 'EVOLUCAO',
     dataSessao: '2026-11-02',
-    status: 'RASCUNHO',
+    status: 'APROVADO',
     criadoEm: '2026-11-03T13:00:00.000Z',
+    aprovadoEm: '2026-11-03T15:30:00.000Z',
+    substituiId: null,
   },
   {
-    id: 'a2',
+    id: 'p2',
     tipo: 'NOTA_BRUTA',
     dataSessao: null,
     status: 'APROVADO',
     criadoEm: '2026-11-01T13:00:00.000Z',
+    aprovadoEm: '2026-11-01T14:00:00.000Z',
+    substituiId: 'p9',
   },
+];
+const RASCUNHOS: DocumentoResumo[] = [
   {
-    id: 'a3',
+    id: 'r1',
     tipo: 'ANAMNESE',
     dataSessao: '2026-10-31',
     status: 'RASCUNHO',
     criadoEm: '2026-10-31T13:00:00.000Z',
+    aprovadoEm: null,
+    substituiId: null,
+  },
+  {
+    id: 'r2',
+    tipo: 'EVOLUCAO',
+    dataSessao: null,
+    status: 'RASCUNHO',
+    criadoEm: '2026-10-30T13:00:00.000Z',
+    aprovadoEm: null,
+    substituiId: null,
   },
 ];
 
@@ -57,6 +76,7 @@ describe('DocumentosSecaoComponent', () => {
 
   const el = () => fixture.nativeElement as HTMLElement;
   const texto = (sel: string) => el().querySelector(sel)?.textContent?.replace(/\s+/g, ' ').trim();
+  const secao = (n: 0 | 1) => el().querySelectorAll('section')[n];
   const novo = () =>
     Array.from(el().querySelectorAll('a, button')).find(
       (e) => e.textContent?.trim() === 'Novo documento',
@@ -65,63 +85,96 @@ describe('DocumentosSecaoComponent', () => {
     r.flush(corpo, { status, statusText: 'x' });
     await fixture.whenStable();
   };
-  const carregar = async (lista: DocumentoResumo[]) => flush(ctrl.expectOne(URL), lista);
+  // Aprovados primeiro; so depois a requisicao dos rascunhos existe.
+  const carregar = async (aprovados: DocumentoResumo[], rascunhos: DocumentoResumo[]) => {
+    await flush(ctrl.expectOne(URL_APROVADOS), aprovados);
+    await flush(ctrl.expectOne(URL_RASCUNHOS), rascunhos);
+  };
+  const tentarDeNovo = async (s: 0 | 1) => {
+    (
+      Array.from(secao(s).querySelectorAll('button')).find(
+        (b) => b.textContent?.trim() === 'Tentar de novo',
+      ) as HTMLButtonElement
+    ).click();
+    await fixture.whenStable();
+  };
 
-  it('faz uma chamada so (GET da lista) e mostra carregando', async () => {
+  it('duas chamadas em sequencia: aprovados, e so depois rascunhos; mostra carregando nas duas', async () => {
     await montar('CONCEDIDO');
-    expect(el().querySelector('[role="status"]')?.textContent).toContain(
-      'Carregando os documentos',
+    expect(texto('#pr-titulo')).toBe('Prontuário');
+    expect(secao(0).querySelector('[role="status"]')?.textContent).toContain(
+      'Carregando o prontuário',
     );
-    const r = ctrl.expectOne(URL);
+    expect(secao(1).querySelector('[role="status"]')?.textContent).toContain(
+      'Carregando os rascunhos',
+    );
+    const a = ctrl.expectOne(URL_APROVADOS);
+    expect(a.request.method).toBe('GET');
+    ctrl.expectNone(URL_RASCUNHOS);
+    await flush(a, []);
+    const r = ctrl.expectOne(URL_RASCUNHOS);
     expect(r.request.method).toBe('GET');
     await flush(r, []);
   });
 
-  it('vazio: mostra o texto e nenhum item', async () => {
+  it('prontuario tem so aprovados (com "Aprovado em") e rascunhos ficam na secao propria', async () => {
     await montar('CONCEDIDO');
-    await carregar([]);
-    expect(texto('[data-teste="vazio"]')).toBe('Nenhum documento ainda.');
-    expect(el().querySelector('ul')).toBeNull();
-  });
-
-  it('itens: tipo em portugues com acento, data da sessao, status com texto, criado em', async () => {
-    await montar('CONCEDIDO');
-    await carregar(LISTA);
-    const itens = Array.from(el().querySelectorAll('li'));
-    const t = (i: number) => itens[i].textContent?.replace(/\s+/g, ' ');
-    expect(itens.length).toBe(3);
-    expect(t(0)).toContain('Evolução da sessão de 02/11/2026');
-    expect(itens[0].textContent).toContain('Rascunho');
-    expect(itens[0].querySelector('app-pill')?.textContent?.trim()).toBe('Rascunho');
-    expect(itens[0].textContent).toMatch(/Criado em 03\/11\/2026, \d{2}:\d{2}/);
-    expect(t(1)).toContain('Nota bruta sem data de sessão');
-    expect(itens[1].querySelector('app-pill')?.textContent?.trim()).toBe('Aprovado');
-    expect(t(2)).toContain('Anamnese da sessão de 31/10/2026');
+    await carregar(APROVADOS, RASCUNHOS);
+    expect(texto('#pr-titulo')).toBe('Prontuário');
+    expect(texto('#rs-titulo')).toBe('Rascunhos');
+    const pr = Array.from(secao(0).querySelectorAll('li'));
+    const rs = Array.from(secao(1).querySelectorAll('li'));
+    const t = (li: Element) => li.textContent?.replace(/\s+/g, ' ');
+    expect(pr.length).toBe(2);
+    expect(t(pr[0])).toContain('Evolução da sessão de 02/11/2026');
+    expect(pr[0].querySelector('app-pill')?.textContent?.trim()).toBe('Aprovado');
+    expect(t(pr[0])).toMatch(/Aprovado em 03\/11\/2026, \d{2}:\d{2}/);
+    expect(t(pr[1])).toContain('Nota bruta sem data de sessão');
+    expect(rs.length).toBe(2);
+    expect(t(rs[0])).toContain('Anamnese da sessão de 31/10/2026');
+    expect(rs[0].querySelector('app-pill')?.textContent?.trim()).toBe('Rascunho');
+    expect(t(rs[0])).toMatch(/Criado em 31\/10\/2026, \d{2}:\d{2}/);
+    expect(secao(0).textContent).not.toContain('Rascunho');
+    expect(secao(1).textContent).not.toContain('Aprovado');
   });
 
   it('cada item e um link para a leitura do documento', async () => {
     await montar('CONCEDIDO');
-    await carregar(LISTA);
+    await carregar(APROVADOS, RASCUNHOS);
     const hrefs = Array.from(el().querySelectorAll('li a')).map((a) => a.getAttribute('href'));
-    expect(hrefs).toEqual([
-      `/pacientes/${PID}/documentos/a1`,
-      `/pacientes/${PID}/documentos/a2`,
-      `/pacientes/${PID}/documentos/a3`,
-    ]);
+    expect(hrefs).toEqual(
+      ['p1', 'p2', 'r1', 'r2'].map((id) => `/pacientes/${PID}/documentos/${id}`),
+    );
   });
 
-  it('consentimento CONCEDIDO: "Novo documento" e um link ativo e sem aviso de bloqueio', async () => {
+  it('vazio de cada secao tem texto proprio', async () => {
     await montar('CONCEDIDO');
-    await carregar([]);
+    await carregar([], []);
+    expect(texto('[data-teste="vazio-prontuario"]')).toBe('Nenhum documento aprovado ainda.');
+    expect(texto('[data-teste="vazio-rascunhos"]')).toBe('Nenhum rascunho.');
+    expect(el().querySelector('ul')).toBeNull();
+  });
+
+  it('so rascunhos: prontuario vazio e rascunhos listados', async () => {
+    await montar('CONCEDIDO');
+    await carregar([], RASCUNHOS);
+    expect(secao(0).querySelector('[data-teste="vazio-prontuario"]')).not.toBeNull();
+    expect(secao(1).querySelectorAll('li').length).toBe(2);
+  });
+
+  it('consentimento CONCEDIDO: "Novo documento" e um link ativo na secao de rascunhos', async () => {
+    await montar('CONCEDIDO');
+    await carregar([], []);
     expect(novo().tagName).toBe('A');
     expect(novo().getAttribute('href')).toBe(`/pacientes/${PID}/documentos/novo`);
+    expect(secao(1).contains(novo())).toBeTrue();
     expect(el().querySelector('[data-teste="bloqueio"]')).toBeNull();
   });
 
   for (const estado of ['NENHUM', 'REVOGADO'] as const) {
     it(`consentimento ${estado}: botao desabilitado com o motivo visivel e ligado ao botao`, async () => {
       await montar(estado);
-      await carregar([]);
+      await carregar([], []);
       const b = novo() as HTMLButtonElement;
       expect(b.tagName).toBe('BUTTON');
       expect(b.disabled).toBeTrue();
@@ -131,9 +184,9 @@ describe('DocumentosSecaoComponent', () => {
     });
   }
 
-  it('reflete a mudanca do consentimento sem recarregar a lista', async () => {
+  it('reflete a mudanca do consentimento sem recarregar as listas', async () => {
     await montar('NENHUM');
-    await carregar(LISTA);
+    await carregar(APROVADOS, RASCUNHOS);
     expect((novo() as HTMLButtonElement).disabled).toBeTrue();
     fixture.componentRef.setInput('consentimento', 'CONCEDIDO');
     await fixture.whenStable();
@@ -142,35 +195,51 @@ describe('DocumentosSecaoComponent', () => {
     fixture.componentRef.setInput('consentimento', 'REVOGADO');
     await fixture.whenStable();
     expect((novo() as HTMLButtonElement).disabled).toBeTrue();
-    expect(el().querySelectorAll('li').length).toBe(3);
-    ctrl.expectNone(URL);
+    expect(el().querySelectorAll('li').length).toBe(4);
+    ctrl.expectNone(URL_APROVADOS);
+    ctrl.expectNone(URL_RASCUNHOS);
   });
 
-  it('lista continua visivel com consentimento revogado (leitura segue permitida)', async () => {
+  it('listas continuam visiveis com consentimento revogado (leitura segue permitida)', async () => {
     await montar('REVOGADO');
-    await carregar(LISTA);
-    expect(el().querySelectorAll('li').length).toBe(3);
+    await carregar(APROVADOS, RASCUNHOS);
+    expect(el().querySelectorAll('li').length).toBe(4);
   });
 
-  it('erro de rede/5xx: mostra alerta e "Tentar de novo" refaz a chamada', async () => {
+  it('erro so no prontuario: rascunhos carregam; "Tentar de novo" refaz so os aprovados', async () => {
     await montar('CONCEDIDO');
-    await flush(ctrl.expectOne(URL), { statusCode: 503 }, 503);
-    expect(texto('[role="alert"]')).toContain('Não foi possível carregar os documentos');
-    (
-      Array.from(el().querySelectorAll('button')).find(
-        (b) => b.textContent?.trim() === 'Tentar de novo',
-      ) as HTMLButtonElement
-    ).click();
-    await fixture.whenStable();
-    await carregar([]);
+    await flush(ctrl.expectOne(URL_APROVADOS), { statusCode: 503 }, 503);
+    await flush(ctrl.expectOne(URL_RASCUNHOS), RASCUNHOS);
+    expect(texto('[data-teste="erro-prontuario"]')).toContain(
+      'Não foi possível carregar o prontuário',
+    );
+    expect(el().querySelector('[data-teste="erro-rascunhos"]')).toBeNull();
+    expect(secao(1).querySelectorAll('li').length).toBe(2);
+    await tentarDeNovo(0);
+    await flush(ctrl.expectOne(URL_APROVADOS), APROVADOS);
+    ctrl.expectNone(URL_RASCUNHOS);
     expect(el().querySelector('[role="alert"]')).toBeNull();
-    expect(el().querySelector('[data-teste="vazio"]')).not.toBeNull();
+    expect(secao(0).querySelectorAll('li').length).toBe(2);
   });
 
-  it('tem titulo "Documentos" ligado a secao', async () => {
+  it('erro so nos rascunhos: prontuario fica; "Tentar de novo" refaz so os rascunhos', async () => {
     await montar('CONCEDIDO');
-    await carregar([]);
-    expect(el().querySelector('section')?.getAttribute('aria-labelledby')).toBe('dc-titulo');
-    expect(texto('#dc-titulo')).toBe('Documentos');
+    await flush(ctrl.expectOne(URL_APROVADOS), APROVADOS);
+    await flush(ctrl.expectOne(URL_RASCUNHOS), { statusCode: 503 }, 503);
+    expect(texto('[data-teste="erro-rascunhos"]')).toContain(
+      'Não foi possível carregar os rascunhos',
+    );
+    expect(secao(0).querySelectorAll('li').length).toBe(2);
+    await tentarDeNovo(1);
+    await flush(ctrl.expectOne(URL_RASCUNHOS), []);
+    ctrl.expectNone(URL_APROVADOS);
+    expect(el().querySelector('[data-teste="vazio-rascunhos"]')).not.toBeNull();
+  });
+
+  it('titulos ligados as secoes', async () => {
+    await montar('CONCEDIDO');
+    await carregar([], []);
+    expect(secao(0).getAttribute('aria-labelledby')).toBe('pr-titulo');
+    expect(secao(1).getAttribute('aria-labelledby')).toBe('rs-titulo');
   });
 });

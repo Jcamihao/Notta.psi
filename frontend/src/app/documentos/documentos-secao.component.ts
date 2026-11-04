@@ -10,11 +10,13 @@ import {
   DocumentosService,
   ROTULO_STATUS,
   ROTULO_TIPO,
+  StatusDocumento,
   TOM_STATUS,
 } from './documentos.service';
 
-// Secao "Documentos" do detalhe do paciente: so metadados (o texto so abre na tela de leitura).
-// A pagina so a cria depois de saber o estado do consentimento: nunca ha chamadas simultaneas.
+// Secoes "Prontuario" (so APROVADOS) e "Rascunhos" do detalhe do paciente: so metadados (o texto
+// so abre na tela de leitura). A pagina so a cria depois de saber o estado do consentimento e
+// as duas listas carregam em sequencia (aprovados, depois rascunhos): nunca ha chamadas simultaneas.
 @Component({
   selector: 'app-documentos-secao',
   imports: [RouterLink, ButtonComponent, PillComponent],
@@ -31,19 +33,31 @@ export class DocumentosSecaoComponent implements OnInit {
   readonly tipo = ROTULO_TIPO;
   readonly status = ROTULO_STATUS;
   readonly tom = TOM_STATUS;
-  readonly lista = signal<DocumentoResumo[] | null>(null);
-  readonly erroLista = signal(false);
+  readonly aprovados = signal<DocumentoResumo[] | null>(null);
+  readonly rascunhos = signal<DocumentoResumo[] | null>(null);
+  readonly erroAprovados = signal(false);
+  readonly erroRascunhos = signal(false);
 
   ngOnInit(): void {
-    this.carregar();
+    this.carregar('APROVADO', () => this.carregar('RASCUNHO'));
   }
 
-  carregar(): void {
-    this.erroLista.set(false);
-    this.servico.listar(this.pacienteId()).subscribe({
-      next: (l) => this.lista.set(l),
+  carregar(status: StatusDocumento, depois?: () => void): void {
+    const [lista, erro] =
+      status === 'APROVADO'
+        ? [this.aprovados, this.erroAprovados]
+        : [this.rascunhos, this.erroRascunhos];
+    erro.set(false);
+    this.servico.listar(this.pacienteId(), status).subscribe({
+      next: (l) => {
+        lista.set(l);
+        depois?.();
+      },
       // 401 e 403 (senha provisoria) o interceptor ja trata; aqui rede, 5xx e 404.
-      error: () => this.erroLista.set(true),
+      error: () => {
+        erro.set(true);
+        depois?.();
+      },
     });
   }
 }

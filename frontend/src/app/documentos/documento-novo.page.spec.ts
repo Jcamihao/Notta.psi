@@ -35,7 +35,12 @@ describe('DocumentoNovoPage', () => {
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => PID } } } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: { get: () => PID }, queryParamMap: { get: () => null } },
+          },
+        },
       ],
     });
     ctrl = TestBed.inject(HttpTestingController);
@@ -348,7 +353,12 @@ describe('DocumentoNovoPage', () => {
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => PID } } } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { paramMap: { get: () => PID }, queryParamMap: { get: () => null } },
+          },
+        },
       ],
     });
     const c = TestBed.inject(HttpTestingController);
@@ -363,5 +373,199 @@ describe('DocumentoNovoPage', () => {
     expect(f.nativeElement.querySelector('[data-teste="aviso-identificacao"]')).toBeNull();
     expect(f.nativeElement.querySelector('[data-teste="paciente"]')).toBeNull();
     c.verify();
+  });
+});
+
+describe('DocumentoNovoPage (correcao, ?corrige=)', () => {
+  const OID = '33333333-3333-4333-8333-333333333333';
+  const URL_ORIGINAL = `${URL}/${OID}`;
+  const ORIGINAL = {
+    id: OID,
+    pacienteId: PID,
+    tipo: 'ANAMNESE',
+    dataSessao: '2026-10-20',
+    conteudo: 'Texto aprovado que sera corrigido.',
+    status: 'APROVADO',
+    criadoEm: '2026-10-20T10:00:00.000Z',
+    atualizadoEm: '2026-10-20T10:00:00.000Z',
+    aprovadoEm: '2026-10-21T10:00:00.000Z',
+    substituiId: null,
+  };
+  let fixture: ComponentFixture<DocumentoNovoPage>;
+  let ctrl: HttpTestingController;
+  let navegar: jasmine.Spy;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [DocumentoNovoPage],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: { get: () => PID },
+              queryParamMap: { get: (k: string) => (k === 'corrige' ? OID : null) },
+            },
+          },
+        },
+      ],
+    });
+    ctrl = TestBed.inject(HttpTestingController);
+    navegar = spyOn(TestBed.inject(Router), 'navigateByUrl').and.resolveTo(true);
+    fixture = TestBed.createComponent(DocumentoNovoPage);
+    await fixture.whenStable();
+  });
+  afterEach(() => ctrl.verify());
+
+  const el = () => fixture.nativeElement as HTMLElement;
+  const texto = (sel: string) => el().querySelector(sel)?.textContent?.replace(/\s+/g, ' ').trim();
+  const campo = <T extends HTMLElement>(nome: string) => el().querySelector(`#dc-${nome}`) as T;
+  const flush = async (r: TestRequest, corpo: object, status = 200) => {
+    r.flush(corpo, { status, statusText: 'x' });
+    await fixture.whenStable();
+  };
+  const abrir = async (original: object = ORIGINAL) => {
+    await flush(ctrl.expectOne(URL_ORIGINAL), original);
+    await flush(ctrl.expectOne(URL_PACIENTE), PACIENTE);
+  };
+  const enviar = async () => {
+    el().querySelector('form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+  };
+
+  it('busca o aprovado, e so depois o paciente (em sequencia), e mostra carregando sem formulario', async () => {
+    expect(texto('[role="status"]')).toBe('Carregando o documento a corrigir…');
+    expect(el().querySelector('form')).toBeNull();
+    const r = ctrl.expectOne(URL_ORIGINAL);
+    expect(r.request.method).toBe('GET');
+    ctrl.expectNone(URL_PACIENTE);
+    await flush(r, ORIGINAL);
+    await flush(ctrl.expectOne(URL_PACIENTE), PACIENTE);
+  });
+
+  it('pre-preenche tipo, data e texto so em memoria e mostra o que esta sendo corrigido', async () => {
+    await abrir();
+    expect(texto('h1')).toBe('Corrigir documento');
+    expect(campo<HTMLSelectElement>('tipo').value).toBe('ANAMNESE');
+    expect(campo<HTMLInputElement>('dataSessao').value).toBe('2026-10-20');
+    expect(campo<HTMLTextAreaElement>('conteudo').value).toBe(ORIGINAL.conteudo);
+    expect(texto('[data-teste="corrigindo"]')).toContain('Corrigindo: Anamnese de 20/10/2026');
+    expect(texto('[data-teste="contador"]')).toBe('34 de 20.000 caracteres');
+    expect(JSON.stringify(fixture.componentInstance.original())).not.toContain('Texto aprovado');
+  });
+
+  it('enviar: POST com substituiId e o conteudo do formulario, e volta ao paciente sem texto no state', async () => {
+    await abrir();
+    const c = campo<HTMLTextAreaElement>('conteudo');
+    c.value = 'Texto corrigido pelo psicologo.';
+    c.dispatchEvent(new Event('input'));
+    await enviar();
+    const r = ctrl.expectOne(URL);
+    expect(r.request.method).toBe('POST');
+    expect(r.request.body).toEqual({
+      tipo: 'ANAMNESE',
+      dataSessao: '2026-10-20',
+      conteudo: 'Texto corrigido pelo psicologo.',
+      substituiId: OID,
+    });
+    await flush(r, {}, 201);
+    expect(navegar).toHaveBeenCalledOnceWith(`/pacientes/${PID}`, {
+      state: { aviso: 'documento-criado' },
+    });
+    expect(JSON.stringify(navegar.calls.allArgs())).not.toContain('Texto');
+  });
+
+  it('valida igual ao criar (texto vazio nao envia)', async () => {
+    await abrir();
+    const c = campo<HTMLTextAreaElement>('conteudo');
+    c.value = '   ';
+    c.dispatchEvent(new Event('input'));
+    await enviar();
+    ctrl.expectNone(URL);
+    expect(campo('conteudo').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('o aviso de dado identificavel tambem vale na correcao', async () => {
+    await abrir({ ...ORIGINAL, conteudo: 'Maria passou o CPF 529.982.247-25.' });
+    expect(texto('[data-teste="aviso-identificacao"]')).toContain('(CPF, nome do paciente)');
+  });
+
+  it('original ainda RASCUNHO: explica, nao mostra formulario e oferece link ao documento', async () => {
+    await flush(ctrl.expectOne(URL_ORIGINAL), {
+      ...ORIGINAL,
+      status: 'RASCUNHO',
+      aprovadoEm: null,
+    });
+    expect(texto('[data-teste="erro-original"]')).toContain(
+      'Só documento aprovado pode ser corrigido.',
+    );
+    expect(el().querySelector('form')).toBeNull();
+    expect(el().querySelector('[data-teste="erro-original"] a')?.getAttribute('href')).toBe(
+      `/pacientes/${PID}/documentos/${OID}`,
+    );
+    expect(fixture.componentInstance.form.controls.conteudo.value).toBe('');
+    await flush(ctrl.expectOne(URL_PACIENTE), PACIENTE);
+  });
+
+  it('404 do original: volta ao paciente com o aviso fixo', async () => {
+    await flush(ctrl.expectOne(URL_ORIGINAL), { statusCode: 404 }, 404);
+    expect(navegar).toHaveBeenCalledOnceWith(`/pacientes/${PID}`, {
+      state: { aviso: 'documento-nao-encontrado' },
+    });
+  });
+
+  it('503 do original: alerta com "Tentar de novo" que refaz a busca', async () => {
+    await flush(ctrl.expectOne(URL_ORIGINAL), { statusCode: 503 }, 503);
+    expect(texto('[data-teste="erro-original"]')).toContain('Não foi possível carregar');
+    expect(el().querySelector('form')).toBeNull();
+    (el().querySelector('[data-teste="erro-original"] button') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    await abrir();
+    expect(el().querySelector('form')).not.toBeNull();
+  });
+
+  it('409 ao enviar (original mudou): mensagem na tela e o texto digitado e mantido', async () => {
+    await abrir();
+    await enviar();
+    await flush(
+      ctrl.expectOne(URL),
+      { statusCode: 409, message: 'So documento aprovado pode ser corrigido' },
+      409,
+    );
+    expect(texto('[data-teste="erro-geral"]')).toContain(
+      'Só documento aprovado pode ser corrigido.',
+    );
+    expect(campo<HTMLTextAreaElement>('conteudo').value).toBe(ORIGINAL.conteudo);
+    expect(navegar).not.toHaveBeenCalled();
+  });
+
+  it('403 sem consentimento: avisa no paciente e limpa o texto', async () => {
+    await abrir();
+    await enviar();
+    await flush(
+      ctrl.expectOne(URL),
+      { statusCode: 403, message: 'Consentimento nao concedido' },
+      403,
+    );
+    expect(navegar).toHaveBeenCalledOnceWith(`/pacientes/${PID}`, {
+      state: { aviso: 'sem-consentimento' },
+    });
+    expect(campo<HTMLTextAreaElement>('conteudo').value).toBe('');
+  });
+
+  it('ao sair o texto do original sai do formulario; nada em storage nem console', async () => {
+    const antes = [localStorage.length, sessionStorage.length];
+    const espioes = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) =>
+      spyOn(console, m),
+    );
+    await abrir();
+    expect(fixture.componentInstance.form.controls.conteudo.value).toBe(ORIGINAL.conteudo);
+    fixture.destroy();
+    expect(fixture.componentInstance.form.controls.conteudo.value).toBe('');
+    expect([localStorage.length, sessionStorage.length]).toEqual(antes);
+    for (const e of espioes) expect(e).not.toHaveBeenCalled();
   });
 });

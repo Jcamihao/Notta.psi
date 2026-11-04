@@ -2,107 +2,134 @@
   <a class="documento-voltar" [routerLink]="['/pacientes', pacienteId]">
     <lucide-icon [img]="icones.ArrowLeft" [size]="16" [strokeWidth]="1.5" />Voltar ao paciente
   </a>
-  <h1>Novo documento</h1>
+  <h1>{{ corrigeId ? 'Corrigir documento' : 'Novo documento' }}</h1>
   @if (nomePaciente(); as n) {
     <p class="documento-paciente" data-teste="paciente">Paciente: {{ n }}</p>
   }
 
-  <section class="documento-cartao" aria-label="Dados do documento">
-    <p class="documento-lead">
-      O documento nasce como rascunho e fica guardado cifrado. Só você o lê. Nada é salvo antes de
-      você enviar.
-    </p>
-
-    <form class="formulario" [formGroup]="form" (ngSubmit)="enviar()" novalidate>
-      <div class="aviso-regiao" aria-live="polite">
-        @if (erroGeral()) {
-          <p class="aviso-erro" data-teste="erro-geral">
-            <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
-              erroGeral()
-            }}
-          </p>
-        }
-      </div>
-
-      <div class="campo">
-        <label for="dc-tipo">Tipo</label>
-        <div class="campo-select">
-          <select
-            id="dc-tipo"
-            formControlName="tipo"
-            [attr.aria-invalid]="erro('tipo') ? 'true' : null"
-            [attr.aria-describedby]="erro('tipo') ? 'dc-tipo-erro' : null"
-          >
-            <option value="" disabled>Selecione</option>
-            @for (t of tipos; track t[0]) {
-              <option [value]="t[0]">{{ t[1] }}</option>
-            }
-          </select>
-          <lucide-icon [img]="icones.ChevronDown" [size]="18" [strokeWidth]="1.5" />
-        </div>
-        <p id="dc-tipo-erro" class="campo-erro" aria-live="polite">
-          @if (erro('tipo'); as m) {
-            <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
-          }
-        </p>
-      </div>
-
-      <div class="campo">
-        <label for="dc-dataSessao">Data da sessão (opcional)</label>
-        <input
-          id="dc-dataSessao"
-          type="date"
-          formControlName="dataSessao"
-          min="1900-01-01"
-          [max]="hoje"
-          [attr.aria-invalid]="erro('dataSessao') ? 'true' : null"
-          [attr.aria-describedby]="erro('dataSessao') ? 'dc-dataSessao-erro' : null"
-        />
-        <p id="dc-dataSessao-erro" class="campo-erro" aria-live="polite">
-          @if (erro('dataSessao'); as m) {
-            <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
-          }
-        </p>
-      </div>
-
-      <div class="campo">
-        <label for="dc-conteudo">Texto</label>
-        <textarea
-          id="dc-conteudo"
-          formControlName="conteudo"
-          rows="14"
-          spellcheck="false"
-          autocomplete="off"
-          [attr.aria-invalid]="erro('conteudo') ? 'true' : null"
-          [attr.aria-describedby]="
-            erro('conteudo') ? 'dc-conteudo-contador dc-conteudo-erro' : 'dc-conteudo-contador'
-          "
-        ></textarea>
-        <p
-          id="dc-conteudo-contador"
-          class="documento-contador"
-          [class.acima]="acimaDoLimite()"
-          data-teste="contador"
+  @if (carregandoOriginal()) {
+    <p class="documento-carregando" role="status">Carregando o documento a corrigir…</p>
+  } @else if (erroOriginal(); as erroO) {
+    <div class="aviso-erro documento-falha" role="alert" data-teste="erro-original">
+      @if (erroO === 'carga') {
+        <p>Não foi possível carregar o documento a corrigir. Confira sua conexão.</p>
+        <button app-button type="button" variant="soft" (click)="carregarOriginal(corrigeId!)">
+          Tentar de novo
+        </button>
+      } @else {
+        <p>Só documento aprovado pode ser corrigido.</p>
+        <a
+          app-button
+          variant="soft"
+          [routerLink]="['/pacientes', pacienteId, 'documentos', corrigeId]"
+          >Ver o documento</a
         >
-          {{ caracteres() }} de {{ limite }} caracteres
+      }
+    </div>
+  } @else {
+    <section class="documento-cartao" aria-label="Dados do documento">
+      @if (original(); as o) {
+        <p class="documento-corrige" data-teste="corrigindo">
+          Corrigindo: {{ rotuloOriginal(o) }}. O documento aprovado continua como está; a correção é
+          um novo rascunho ligado a ele.
         </p>
-        <app-aviso-identificacao [tipos]="dadosAchados()" (dispensado)="focarTexto()" />
-        <p id="dc-conteudo-erro" class="campo-erro" aria-live="polite">
-          @if (erro('conteudo'); as m) {
-            <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
-          }
-        </p>
-      </div>
+      }
+      <p class="documento-lead">
+        O documento nasce como rascunho e fica guardado cifrado. Só você o lê. Nada é salvo antes de
+        você enviar.
+      </p>
 
-      <button
-        app-button
-        type="submit"
-        full
-        [variant]="enviando() ? 'progress' : 'primary'"
-        [disabled]="enviando()"
-      >
-        {{ enviando() ? 'Salvando…' : 'Salvar rascunho' }}
-      </button>
-    </form>
-  </section>
+      <form class="formulario" [formGroup]="form" (ngSubmit)="enviar()" novalidate>
+        <div class="aviso-regiao" aria-live="polite">
+          @if (erroGeral()) {
+            <p class="aviso-erro" data-teste="erro-geral">
+              <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
+                erroGeral()
+              }}
+            </p>
+          }
+        </div>
+
+        <div class="campo">
+          <label for="dc-tipo">Tipo</label>
+          <div class="campo-select">
+            <select
+              id="dc-tipo"
+              formControlName="tipo"
+              [attr.aria-invalid]="erro('tipo') ? 'true' : null"
+              [attr.aria-describedby]="erro('tipo') ? 'dc-tipo-erro' : null"
+            >
+              <option value="" disabled>Selecione</option>
+              @for (t of tipos; track t[0]) {
+                <option [value]="t[0]">{{ t[1] }}</option>
+              }
+            </select>
+            <lucide-icon [img]="icones.ChevronDown" [size]="18" [strokeWidth]="1.5" />
+          </div>
+          <p id="dc-tipo-erro" class="campo-erro" aria-live="polite">
+            @if (erro('tipo'); as m) {
+              <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+            }
+          </p>
+        </div>
+
+        <div class="campo">
+          <label for="dc-dataSessao">Data da sessão (opcional)</label>
+          <input
+            id="dc-dataSessao"
+            type="date"
+            formControlName="dataSessao"
+            min="1900-01-01"
+            [max]="hoje"
+            [attr.aria-invalid]="erro('dataSessao') ? 'true' : null"
+            [attr.aria-describedby]="erro('dataSessao') ? 'dc-dataSessao-erro' : null"
+          />
+          <p id="dc-dataSessao-erro" class="campo-erro" aria-live="polite">
+            @if (erro('dataSessao'); as m) {
+              <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+            }
+          </p>
+        </div>
+
+        <div class="campo">
+          <label for="dc-conteudo">Texto</label>
+          <textarea
+            id="dc-conteudo"
+            formControlName="conteudo"
+            rows="14"
+            spellcheck="false"
+            autocomplete="off"
+            [attr.aria-invalid]="erro('conteudo') ? 'true' : null"
+            [attr.aria-describedby]="
+              erro('conteudo') ? 'dc-conteudo-contador dc-conteudo-erro' : 'dc-conteudo-contador'
+            "
+          ></textarea>
+          <p
+            id="dc-conteudo-contador"
+            class="campo-contador"
+            [class.acima]="acimaDoLimite()"
+            data-teste="contador"
+          >
+            {{ caracteres() }} de {{ limite }} caracteres
+          </p>
+          <app-aviso-identificacao [tipos]="dadosAchados()" (dispensado)="focarTexto()" />
+          <p id="dc-conteudo-erro" class="campo-erro" aria-live="polite">
+            @if (erro('conteudo'); as m) {
+              <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+            }
+          </p>
+        </div>
+
+        <button
+          app-button
+          type="submit"
+          full
+          [variant]="enviando() ? 'progress' : 'primary'"
+          [disabled]="enviando()"
+        >
+          {{ enviando() ? 'Salvando…' : 'Salvar rascunho' }}
+        </button>
+      </form>
+    </section>
+  }
 </div>

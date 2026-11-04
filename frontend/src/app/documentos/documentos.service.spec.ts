@@ -15,6 +15,8 @@ const COMPLETO: Documento = {
   conteudo: 'texto',
   status: 'RASCUNHO',
   criadoEm: '2026-11-03T10:00:00.000Z',
+  aprovadoEm: null,
+  substituiId: null,
   atualizadoEm: '2026-11-03T10:00:00.000Z',
 };
 
@@ -47,16 +49,63 @@ describe('DocumentosService', () => {
     expect(got).toEqual(COMPLETO);
   });
 
-  it('listar: GET so de metadados', () => {
+  it('listar: GET so de metadados, sempre com o filtro de status', () => {
     let got: DocumentoResumo[] | undefined;
-    servico.listar(PID).subscribe((l) => (got = l));
-    const r = ctrl.expectOne(URL);
+    servico.listar(PID, 'APROVADO').subscribe((l) => (got = l));
+    const r = ctrl.expectOne(`${URL}?status=APROVADO`);
     expect(r.request.method).toBe('GET');
     const lista: DocumentoResumo[] = [
-      { id: DID, tipo: 'ANAMNESE', dataSessao: null, status: 'RASCUNHO', criadoEm: 'x' },
+      {
+        id: DID,
+        tipo: 'ANAMNESE',
+        dataSessao: null,
+        status: 'APROVADO',
+        criadoEm: 'x',
+        aprovadoEm: 'y',
+        substituiId: null,
+      },
     ];
     r.flush(lista);
     expect(got).toEqual(lista);
+  });
+
+  it('listar RASCUNHO usa ?status=RASCUNHO', () => {
+    servico.listar(PID, 'RASCUNHO').subscribe();
+    ctrl.expectOne(`${URL}?status=RASCUNHO`).flush([]);
+  });
+
+  it('criar de correcao envia substituiId', () => {
+    servico.criar(PID, { tipo: 'EVOLUCAO', conteudo: 'x', substituiId: DID }).subscribe();
+    const r = ctrl.expectOne(URL);
+    expect(r.request.body).toEqual({ tipo: 'EVOLUCAO', conteudo: 'x', substituiId: DID });
+    r.flush(COMPLETO);
+  });
+
+  it('atualizar: PATCH /:id com o corpo parcial recebido, sem acrescentar campos', () => {
+    let got: Documento | undefined;
+    servico.atualizar(PID, DID, { conteudo: 'novo' }).subscribe((d) => (got = d));
+    const r = ctrl.expectOne(`${URL}/${DID}`);
+    expect(r.request.method).toBe('PATCH');
+    expect(r.request.body).toEqual({ conteudo: 'novo' });
+    r.flush({ ...COMPLETO, conteudo: 'novo' });
+    expect(got?.conteudo).toBe('novo');
+  });
+
+  it('atualizar: dataSessao null vai no corpo (apaga a data)', () => {
+    servico.atualizar(PID, DID, { dataSessao: null }).subscribe();
+    const r = ctrl.expectOne(`${URL}/${DID}`);
+    expect(r.request.body).toEqual({ dataSessao: null });
+    r.flush(COMPLETO);
+  });
+
+  it('aprovar: POST /:id/aprovar sem corpo', () => {
+    let got: Documento | undefined;
+    servico.aprovar(PID, DID).subscribe((d) => (got = d));
+    const r = ctrl.expectOne(`${URL}/${DID}/aprovar`);
+    expect(r.request.method).toBe('POST');
+    expect(r.request.body).toBeNull();
+    r.flush({ ...COMPLETO, status: 'APROVADO', aprovadoEm: '2026-11-04T01:00:00.000Z' });
+    expect(got?.status).toBe('APROVADO');
   });
 
   it('obter: GET /:id com o corpo completo', () => {

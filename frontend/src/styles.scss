@@ -126,6 +126,31 @@ a:hover {
   translate: 0 -50%;
   pointer-events: none;
 }
+// Texto longo (documento clinico): textarea no mesmo molde dos campos, com contador abaixo.
+.campo textarea {
+  width: 100%;
+  min-height: 12rem;
+  padding: var(--space-5) var(--space-6);
+  font: inherit;
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+  background: var(--white);
+  border: 1.5px solid var(--ink-700);
+  border-radius: var(--radius-card);
+  resize: vertical;
+}
+.campo-contador {
+  margin: 0;
+  padding-left: var(--space-6);
+  color: var(--text-secondary);
+  font-size: var(--fs-day);
+  font-variant-numeric: tabular-nums;
+  &.acima {
+    color: var(--text-primary);
+    font-weight: var(--fw-medium);
+  }
+}
+
 // Erro sem cor (o sistema nao tem vermelho): borda dobrada para 3px, mensagem com icone.
 .campo [aria-invalid='true'] {
   box-shadow: inset 0 0 0 1.5px var(--ink-900);
@@ -181,7 +206,8 @@ a:hover {
 // iOS amplia a pagina ao focar campo com menos de 16px.
 @media (pointer: coarse) {
   .campo input,
-  .campo select {
+  .campo select,
+  .campo textarea {
     font-size: 16px;
   }
 }

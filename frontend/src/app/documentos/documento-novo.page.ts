@@ -15,6 +15,7 @@ import {
   sessaoValida,
 } from '../core/formulario';
 import { AvisoDetalhe } from '../pacientes/paciente-form.page';
+import { dataBr } from '../pacientes/pacientes.page';
 import { PacientesService } from '../pacientes/pacientes.service';
 import { ButtonComponent } from '../ui/button.component';
 import { AvisoIdentificacaoComponent } from './aviso-identificacao.component';
@@ -30,6 +31,13 @@ const OBRIGATORIO = {
   dataSessao: 'Informe uma data válida.',
   conteudo: 'Escreva o texto do documento.',
 };
+
+// Do documento aprovado que esta sendo corrigido so guardamos o rotulo (nunca o texto: ele vive
+// so no formulario).
+interface Original {
+  tipo: TipoDocumento;
+  dataSessao: string | null;
+}
 
 // Novo documento: sem autosave e sem copia do texto fora do formulario (nem storage, nem URL,
 // nem state do router). O texto sai da memoria ao enviar ou ao sair da pagina.
@@ -50,13 +58,19 @@ export class DocumentoNovoPage implements OnDestroy {
   private readonly servico = inject(DocumentosService);
   private readonly pacientes = inject(PacientesService);
   private readonly router = inject(Router);
-  readonly pacienteId = inject(ActivatedRoute).snapshot.paramMap.get('id')!;
+  private readonly rota = inject(ActivatedRoute).snapshot;
+  readonly pacienteId = this.rota.paramMap.get('id')!;
+  // ?corrige=<id do aprovado>: so o id vai na URL; o texto do original entra so no formulario.
+  readonly corrigeId = this.rota.queryParamMap.get('corrige');
 
   readonly tipos = Object.entries(ROTULO_TIPO) as [TipoDocumento, string][];
   readonly limite = LIMITE_CONTEUDO.toLocaleString('pt-BR');
   readonly hoje = hojeLocal();
   readonly enviando = signal(false);
   readonly erroGeral = signal('');
+  readonly original = signal<Original | null>(null);
+  readonly carregandoOriginal = signal(this.corrigeId !== null);
+  readonly erroOriginal = signal<'carga' | 'nao-aprovado' | null>(null);
   readonly form = new FormGroup({
     tipo: new FormControl('', { nonNullable: true, validators: [preenchido] }),
     dataSessao: new FormControl('', { nonNullable: true, validators: [sessaoValida] }),
@@ -75,6 +89,40 @@ export class DocumentoNovoPage implements OnDestroy {
   readonly dadosAchados = computed(() => detectarDados(this.texto(), this.nomePaciente()));
 
   constructor() {
+    if (this.corrigeId) this.carregarOriginal(this.corrigeId);
+    else this.carregarNome();
+  }
+
+  rotuloOriginal(o: Original): string {
+    return `${ROTULO_TIPO[o.tipo]} ${o.dataSessao ? `de ${dataBr(o.dataSessao)}` : 'sem data de sessão'}`;
+  }
+
+  carregarOriginal(id: string): void {
+    this.erroOriginal.set(null);
+    this.carregandoOriginal.set(true);
+    this.servico.obter(this.pacienteId, id).subscribe({
+      next: (d) => {
+        this.carregandoOriginal.set(false);
+        if (d.status !== 'APROVADO') {
+          this.erroOriginal.set('nao-aprovado');
+        } else {
+          this.original.set({ tipo: d.tipo, dataSessao: d.dataSessao });
+          this.form.reset({ tipo: d.tipo, dataSessao: d.dataSessao ?? '', conteudo: d.conteudo });
+        }
+        this.carregarNome();
+      },
+      error: (e: HttpErrorResponse) => {
+        if (e.status === 404) this.voltar('documento-nao-encontrado');
+        // 401 e 403 (senha provisoria) o interceptor ja trata; aqui rede, 5xx e 400.
+        else {
+          this.carregandoOriginal.set(false);
+          this.erroOriginal.set('carga');
+        }
+      },
+    });
+  }
+
+  private carregarNome(): void {
     this.pacientes.obter(this.pacienteId).subscribe({
       next: (p) => this.nomePaciente.set(p.nome),
       error: () => undefined,
@@ -108,6 +156,7 @@ export class DocumentoNovoPage implements OnDestroy {
         tipo: v.tipo as TipoDocumento,
         ...(v.dataSessao && { dataSessao: v.dataSessao }),
         conteudo: v.conteudo,
+        ...(this.corrigeId && { substituiId: this.corrigeId }),
       })
       .subscribe({
         next: () => this.voltar('documento-criado'),
@@ -120,6 +169,10 @@ export class DocumentoNovoPage implements OnDestroy {
     // O servidor recusou: o texto nao vai ser salvo, entao nao fica na tela.
     if (e.status === 403 && e.error?.message === 'Consentimento nao concedido') {
       this.voltar('sem-consentimento');
+    } else if (e.status === 409 && this.corrigeId) {
+      this.erroGeral.set(
+        'Só documento aprovado pode ser corrigido. Volte ao documento e confira o estado dele.',
+      );
     } else if (e.status === 404) {
       this.limpar();
       void this.router.navigateByUrl('/pacientes', { state: { aviso: 'nao-encontrado' } });

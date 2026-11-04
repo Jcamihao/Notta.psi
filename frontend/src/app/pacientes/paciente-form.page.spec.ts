@@ -20,6 +20,21 @@ const P: Paciente = {
   criadoEm: '2026-10-31T10:00:00.000Z',
 };
 
+const URL_DOCS = (id: string) => `/api/pacientes/${id}/documentos`;
+// Prontuario (aprovados) e rascunhos: duas chamadas, uma depois da outra.
+const listas = async (
+  ctrl: HttpTestingController,
+  espera: () => Promise<unknown>,
+  id: string,
+  aprovados: object[] = [],
+  rascunhos: object[] = [],
+) => {
+  ctrl.expectOne(`${URL_DOCS(id)}?status=APROVADO`).flush(aprovados);
+  await espera();
+  ctrl.expectOne(`${URL_DOCS(id)}?status=RASCUNHO`).flush(rascunhos);
+  await espera();
+};
+
 describe('PacienteFormPage', () => {
   let fixture: ComponentFixture<PacienteFormPage>;
   let ctrl: HttpTestingController;
@@ -261,9 +276,8 @@ describe('PacienteFormPage', () => {
         .expectOne(`/api/pacientes/${ID}/consentimento`)
         .flush({ estado: consentimento, desde: null, historico: [] });
       await fixture.whenStable();
-      // A secao Documentos so nasce depois do consentimento: 3 chamadas, em sequencia.
-      ctrl.expectOne(`/api/pacientes/${ID}/documentos`).flush([]);
-      await fixture.whenStable();
+      // A secao Documentos so nasce depois do consentimento: 4 chamadas, em sequencia.
+      await listas(ctrl, () => fixture.whenStable(), ID);
     };
 
     it('mostra carregando, depois o formulario preenchido', async () => {
@@ -402,18 +416,22 @@ describe('PacienteFormPage', () => {
         await fixture.whenStable();
       };
 
-      it('nasce so depois do consentimento: paciente, consentimento e documentos, nessa ordem', async () => {
+      it('nasce so depois do consentimento: paciente, consentimento, aprovados e rascunhos, nessa ordem (4 chamadas)', async () => {
         expect(secao()).toBeNull();
         ctrl.expectOne(`/api/pacientes/${ID}`).flush(P);
         await fixture.whenStable();
-        ctrl.expectNone(`/api/pacientes/${ID}/documentos`);
+        ctrl.expectNone((r) => r.url === URL_DOCS(ID));
         expect(secao()).toBeNull();
         ctrl
           .expectOne(`/api/pacientes/${ID}/consentimento`)
           .flush({ estado: 'NENHUM', desde: null, historico: [] });
         await fixture.whenStable();
         expect(secao()).not.toBeNull();
-        ctrl.expectOne(`/api/pacientes/${ID}/documentos`).flush([]);
+        const aprovados = ctrl.expectOne(`${URL_DOCS(ID)}?status=APROVADO`);
+        ctrl.expectNone(`${URL_DOCS(ID)}?status=RASCUNHO`);
+        aprovados.flush([]);
+        await fixture.whenStable();
+        ctrl.expectOne(`${URL_DOCS(ID)}?status=RASCUNHO`).flush([]);
         await fixture.whenStable();
       });
 
@@ -434,7 +452,7 @@ describe('PacienteFormPage', () => {
         await registrar('REVOGADO');
         expect((novoDoc() as HTMLButtonElement).disabled).toBeTrue();
         ctrl.expectNone(`/api/pacientes/${ID}`);
-        ctrl.expectNone(`/api/pacientes/${ID}/documentos`);
+        ctrl.expectNone((r) => r.url === URL_DOCS(ID));
       });
 
       it('consentimento ja concedido ao abrir: botao ativo', async () => {
@@ -462,7 +480,7 @@ describe('PacienteFormPage', () => {
           .expectOne(`/api/pacientes/${ID}/consentimento`)
           .flush({ estado: 'NENHUM', desde: null, historico: [] });
         await fixture.whenStable();
-        ctrl.expectOne(`/api/pacientes/${ID}/documentos`).flush([]);
+        await listas(ctrl, () => fixture.whenStable(), ID);
       });
     }
 
@@ -475,7 +493,7 @@ describe('PacienteFormPage', () => {
         .expectOne(`/api/pacientes/${ID}/consentimento`)
         .flush({ estado: 'NENHUM', desde: null, historico: [] });
       await fixture.whenStable();
-      ctrl.expectOne(`/api/pacientes/${ID}/documentos`).flush([]);
+      await listas(ctrl, () => fixture.whenStable(), ID);
     });
   });
 });
