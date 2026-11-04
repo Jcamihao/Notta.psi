@@ -1,0 +1,104 @@
+<div class="ia">
+  <a class="ia-voltar" [routerLink]="['/pacientes', pacienteId, 'documentos', docId]">
+    <lucide-icon [img]="icones.ArrowLeft" [size]="16" [strokeWidth]="1.5" />Voltar à nota
+  </a>
+  <h1>Gerar com IA</h1>
+
+  <div class="aviso-regiao" aria-live="polite">
+    @if (mensagem()) {
+      <p class="aviso-ok" data-teste="mensagem">
+        <lucide-icon [img]="icones.CircleCheck" [size]="18" [strokeWidth]="1.5" />{{ mensagem() }}
+      </p>
+    }
+    @if (erro()) {
+      <p class="aviso-erro" data-teste="erro">
+        <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{ erro() }}
+      </p>
+    }
+  </div>
+
+  @if (passo() === 'config') {
+    <section class="ia-cartao" aria-labelledby="ia-config-titulo" data-teste="passo-config">
+      <h2 id="ia-config-titulo" tabindex="-1">1. O que gerar</h2>
+      <p class="ia-lead">
+        A IA escreve um rascunho a partir da nota bruta. Antes de enviar, você vê o texto
+        anonimizado, e só depois de aprovar o rascunho ele entra no prontuário.
+      </p>
+
+      <fieldset class="ia-tipos">
+        <legend>Tipo de documento</legend>
+        @for (t of tipos; track t.valor) {
+          <label class="ia-tipo">
+            <input
+              type="radio"
+              name="ia-tipo"
+              [value]="t.valor"
+              [checked]="tipo() === t.valor"
+              (change)="escolherTipo(t.valor)"
+            />
+            {{ t.rotulo }}
+          </label>
+        }
+      </fieldset>
+
+      <app-ia-termos
+        [termos]="termos()"
+        rotuloAdicionar="Adicionar à lista"
+        (adicionou)="adicionarTermo($event)"
+        (removeu)="removerTermo($event)"
+      />
+
+      <div class="ia-acoes">
+        <button
+          app-button
+          type="button"
+          [variant]="gerando() ? 'progress' : 'primary'"
+          [disabled]="gerando()"
+          (click)="verPrevia()"
+        >
+          {{ gerando() ? 'Gerando a prévia…' : 'Ver prévia' }}
+        </button>
+      </div>
+    </section>
+  } @else {
+    <section class="ia-cartao" aria-labelledby="ia-previa-titulo" data-teste="passo-previa">
+      <h2 id="ia-previa-titulo" tabindex="-1">2. Prévia do que vai para a IA</h2>
+      <p class="ia-aviso" data-teste="aviso-previa">
+        <lucide-icon [img]="icones.TriangleAlert" [size]="18" [strokeWidth]="1.5" />{{
+          avisoPrevia
+        }}
+      </p>
+      <p class="ia-resumo">
+        Tipo: <strong>{{ rotuloTipo[tipo()] }}</strong>
+      </p>
+
+      <p class="ia-previa" data-teste="previa">
+        @for (p of partes(); track $index) {
+          <span [class.ia-codigo]="p.codigo">{{ p.texto }}</span>
+        }
+      </p>
+      <p class="ia-legenda">
+        Os trechos em destaque, entre colchetes, são dados que o sistema escondeu da IA.
+      </p>
+
+      <app-ia-termos
+        [termos]="termos()"
+        [podeRemover]="false"
+        [desabilitado]="gerando()"
+        (adicionou)="adicionarTermoNaPrevia($event)"
+      />
+
+      <div class="ia-acoes">
+        <button
+          app-button
+          type="button"
+          variant="soft"
+          [disabled]="gerando()"
+          (click)="voltarParaConfig()"
+        >
+          Mudar tipo ou termos
+        </button>
+      </div>
+    </section>
+  }
+</div>

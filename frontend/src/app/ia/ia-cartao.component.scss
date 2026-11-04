@@ -1,0 +1,33 @@
+:host {
+  display: block;
+  width: 100%;
+  max-width: 44rem;
+}
+.ia-cartao {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-4);
+  padding: var(--space-8);
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
+  @media (max-width: 40rem) {
+    padding: var(--space-6);
+  }
+  h2,
+  p {
+    margin: 0;
+  }
+}
+.ia-cartao-texto,
+.ia-cartao-contador {
+  color: var(--text-secondary);
+}
+.ia-cartao-contador {
+  font-size: var(--fs-day);
+  font-variant-numeric: tabular-nums;
+}
+.ia-cartao-falha {
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+}

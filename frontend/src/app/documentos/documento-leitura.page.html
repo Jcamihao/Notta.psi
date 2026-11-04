@@ -197,6 +197,9 @@
         </form>
       }
     </section>
+    @if (d.tipo === 'NOTA_BRUTA' && !editando()) {
+      <app-ia-cartao [pacienteId]="pacienteId" [docId]="d.id" />
+    }
   } @else if (erroCarga()) {
     <h1>Documento</h1>
     <div class="aviso-erro leitura-falha" role="alert">

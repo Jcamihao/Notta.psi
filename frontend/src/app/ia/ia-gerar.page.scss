@@ -1,0 +1,115 @@
+:host {
+  display: block;
+}
+.ia {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+}
+.ia-voltar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--fs-day);
+}
+.ia h1 {
+  margin-bottom: var(--space-3);
+}
+.aviso-regiao {
+  width: 100%;
+  max-width: 44rem;
+  &:empty {
+    display: none;
+  }
+  .aviso-ok,
+  .aviso-erro {
+    margin: 0;
+  }
+}
+.ia-cartao {
+  display: grid;
+  gap: var(--space-5);
+  width: 100%;
+  max-width: 44rem;
+  padding: var(--space-8);
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
+  @media (max-width: 40rem) {
+    padding: var(--space-6);
+  }
+  h2,
+  p {
+    margin: 0;
+  }
+}
+.ia-lead,
+.ia-legenda {
+  color: var(--text-secondary);
+}
+.ia-legenda {
+  font-size: var(--fs-day);
+}
+.ia-tipos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-8);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  legend {
+    margin-bottom: var(--space-3);
+    padding: 0;
+    font-size: var(--fs-day);
+    font-weight: var(--fw-medium);
+  }
+}
+.ia-tipo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--size-control);
+  cursor: pointer;
+  input {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    accent-color: var(--ink-900);
+  }
+}
+.ia-aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--yellow-300);
+  border-radius: var(--radius-card);
+  font-weight: var(--fw-medium);
+  lucide-icon {
+    flex: none;
+    margin-top: 1px;
+  }
+}
+// Texto exato da previa: quebras de linha preservadas, palavras longas nao estouram a tela.
+.ia-previa {
+  max-height: 24rem;
+  overflow: auto;
+  padding: var(--space-5) var(--space-6);
+  background: var(--white);
+  border: 1.5px solid var(--ink-700);
+  border-radius: var(--radius-card);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+// Destaque nao depende so da cor: os colchetes continuam no texto e o codigo fica em negrito.
+.ia-codigo {
+  padding: 0 var(--space-1);
+  background: var(--pink-200);
+  border-radius: var(--radius-chip);
+  font-weight: var(--fw-semibold);
+}
+.ia-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}

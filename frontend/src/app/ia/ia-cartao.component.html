@@ -1,0 +1,45 @@
+<section class="ia-cartao" aria-labelledby="ia-cartao-titulo">
+  <h2 id="ia-cartao-titulo">Gerar com IA</h2>
+
+  @if (erroCarga()) {
+    <div class="aviso-erro ia-cartao-falha" role="alert" data-teste="ia-erro">
+      <p>Não foi possível verificar a IA agora. Confira sua conexão.</p>
+      <button app-button type="button" variant="soft" (click)="carregar()">Tentar de novo</button>
+    </div>
+  } @else if (uso(); as u) {
+    @if (!u.habilitada) {
+      <p class="ia-cartao-texto" data-teste="ia-desligada">A IA está desligada neste ambiente.</p>
+    } @else if (consentimento() === null) {
+      <p class="ia-cartao-texto" role="status">Verificando o consentimento…</p>
+    } @else if (consentimento() !== 'CONCEDIDO') {
+      <p id="ia-bloqueio" class="ia-cartao-texto" data-teste="ia-sem-consentimento">
+        Registre o consentimento do paciente para usar a IA.
+      </p>
+      <button app-button type="button" variant="disabled" disabled aria-describedby="ia-bloqueio">
+        Gerar com IA
+      </button>
+    } @else {
+      <p class="ia-cartao-texto">
+        A IA escreve um rascunho de evolução ou anamnese a partir desta nota. Você vê o texto
+        anonimizado antes de enviar e aprova o resultado.
+      </p>
+      @if (noLimite()) {
+        <p id="ia-limite" class="ia-cartao-texto" data-teste="ia-limite">
+          Limite diário de gerações atingido; renova em {{ dataHora(u.renovaEm) }}.
+        </p>
+        <button app-button type="button" variant="disabled" disabled aria-describedby="ia-limite">
+          Gerar com IA
+        </button>
+      } @else {
+        <a app-button [routerLink]="['/pacientes', pacienteId(), 'documentos', docId(), 'ia']"
+          >Gerar com IA</a
+        >
+      }
+      <p class="ia-cartao-contador" data-teste="ia-contador">
+        {{ u.usadas }} de {{ u.limite }} gerações hoje
+      </p>
+    }
+  } @else {
+    <p class="ia-cartao-texto" role="status">Verificando a IA…</p>
+  }
+</section>

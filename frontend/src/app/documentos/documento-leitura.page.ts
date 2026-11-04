@@ -26,6 +26,7 @@ import {
 import { AvisoDetalhe } from '../pacientes/paciente-form.page';
 import { dataBr } from '../pacientes/pacientes.page';
 import { PacientesService } from '../pacientes/pacientes.service';
+import { IaCartaoComponent } from '../ia/ia-cartao.component';
 import { ButtonComponent } from '../ui/button.component';
 import { PillComponent } from '../ui/pill.component';
 import { AvisoIdentificacaoComponent } from './aviso-identificacao.component';
@@ -64,6 +65,7 @@ interface Original {
     ButtonComponent,
     PillComponent,
     AvisoIdentificacaoComponent,
+    IaCartaoComponent,
   ],
   templateUrl: './documento-leitura.page.html',
   styleUrl: './documento-leitura.page.scss',

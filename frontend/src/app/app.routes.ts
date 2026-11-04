@@ -45,6 +45,10 @@ export const routes: Routes = [
           import('./documentos/documento-novo.page').then((m) => m.DocumentoNovoPage),
       },
       {
+        path: 'pacientes/:id/documentos/:docId/ia',
+        loadComponent: () => import('./ia/ia-gerar.page').then((m) => m.IaGerarPage),
+      },
+      {
         path: 'pacientes/:id/documentos/:docId',
         loadComponent: () =>
           import('./documentos/documento-leitura.page').then((m) => m.DocumentoLeituraPage),

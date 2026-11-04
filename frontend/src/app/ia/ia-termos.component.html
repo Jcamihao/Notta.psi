@@ -1,0 +1,56 @@
+<div class="campo">
+  <label for="ia-termo">Termo extra para esconder da IA (opcional)</label>
+  <div class="ia-termos-linha">
+    <input
+      #campo
+      id="ia-termo"
+      type="text"
+      autocomplete="off"
+      spellcheck="false"
+      [attr.maxlength]="tamanho + 1"
+      [disabled]="desabilitado()"
+      [attr.aria-invalid]="erro() ? 'true' : null"
+      aria-describedby="ia-termo-dica ia-termo-erro"
+      (keydown.enter)="$event.preventDefault(); adicionar(campo)"
+    />
+    <button
+      app-button
+      type="button"
+      variant="soft"
+      [disabled]="desabilitado()"
+      (click)="adicionar(campo)"
+    >
+      {{ rotuloAdicionar() }}
+    </button>
+  </div>
+  <p id="ia-termo-dica" class="campo-dica">
+    Nome de familiar, escola, empresa ou outro detalhe que identifica alguém. Até
+    {{ limite }} termos de {{ tamanho }} caracteres.
+  </p>
+  <p id="ia-termo-erro" class="campo-erro" aria-live="polite">
+    @if (erro(); as m) {
+      <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+    }
+  </p>
+</div>
+
+@if (termos().length) {
+  <ul class="ia-termos-lista" aria-label="Termos extras" data-teste="termos">
+    @for (t of termos(); track t; let i = $index) {
+      <li>
+        <span class="ia-termo-texto">{{ t }}</span>
+        @if (podeRemover()) {
+          <button
+            app-icon-button
+            type="button"
+            tone="soft"
+            [icon]="icones.X"
+            [size]="32"
+            [attr.aria-label]="'Remover o termo ' + t"
+            (click)="removeu.emit(i)"
+          ></button>
+        }
+      </li>
+    }
+  </ul>
+}
