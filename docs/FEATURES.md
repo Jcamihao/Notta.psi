@@ -29,7 +29,7 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 ## Fase 3 — IA
 - [x] 17. [B] Anonimização antes da IA
 - [x] 18. [B] Cliente do SelahIA (adapter `psicologia` já existe no SelahIA v2.7.9)
-- [ ] 19. [B] Limite de gerações por psicólogo (só gerações que deram certo gastam o limite; tentativa que falhou por erro da IA ou de conexão não conta)
+- [x] 19. [B] Limite de gerações por psicólogo (só gerações que deram certo gastam o limite; tentativa que falhou por erro da IA ou de conexão não conta)
 - [ ] 20. [M] Rascunho por IA na abordagem (a nota bruta é salva no servidor ANTES de chamar a IA; a geração é um pedido com estado PENDENTE, PRONTO ou FALHOU, e o resultado entra como rascunho do item 14)
 - [ ] 21. [M] Plano B quando a IA falha e "tentar de novo" sem limite de tentativas (pedido do dono, 2026-11-05): falha da IA, timeout ou queda de conexão (inclusive no celular) nunca perde a nota; o pedido fica salvo com o motivo (sem texto clínico no log), a tela mostra "Tentar de novo" quantas vezes precisar (a nota segue em rascunho para escrever à mão), retentativa é idempotente (não cria rascunho duplicado), e quem fechar o app e voltar vê o pedido onde parou
 
@@ -67,7 +67,7 @@ Numeração separada para não quebrar as referências da Fase 1 em andamento. A
 - [x] 42. [B] Segredos e ambiente: nenhum segredo no repo, scan de segredos antes do commit, validação de env no boot, https obrigatório para o SelahIA — Fase 1 e 3
 - [ ] 43. [B] CI: testes, lint, `npm audit`, atualização de dependências e testes de RLS obrigatórios antes de merge — Fase 2
 - [x] 44. [B] Trigger no banco: documento APROVADO imutável — Fase 2 (com o item 15)
-- [ ] 51. [B] Defesa contra prompt injection e saída insegura da IA (o texto da sessão vira instrução; validar o rascunho) — Fase 3
+- [x] 51. [B] Defesa contra prompt injection e saída insegura da IA (o texto da sessão vira instrução; validar o rascunho) — Fase 3
 - [ ] 45. [M] Senha forte, checagem de senha vazada e anti-enumeração de e-mail — Fase 4
 - [ ] 46. [M] Sessões revogáveis: refresh token rotativo, expiração curta, "sair de todos os aparelhos" — Fase 4
 - [ ] 47. [M] MFA para psicólogos (TOTP ou código por e-mail; decisão do dono) — Fase 4
