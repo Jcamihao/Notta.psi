@@ -171,11 +171,19 @@ export class JwtAuthGuard implements CanActivate {
     const psicologo = await this.tenant.run(clinicaId, (tx) =>
       tx.psicologo.findFirst({
         where: { id: sub, clinicaId },
-        select: { papel: true, senhaProvisoria: true, tokenVersao: true },
+        select: {
+          papel: true,
+          senhaProvisoria: true,
+          tokenVersao: true,
+          ativo: true,
+        },
       }),
     );
     // tv diferente (ou ausente/nao numero) = token emitido antes da ultima troca de senha.
-    if (!psicologo || psicologo.tokenVersao !== tv) return null;
+    // Desativado (item 58) = mesmo 401 de inexistente: o token cai na hora, sem revelar o motivo.
+    if (!psicologo || !psicologo.ativo || psicologo.tokenVersao !== tv) {
+      return null;
+    }
     return {
       psicologoId: sub,
       clinicaId,

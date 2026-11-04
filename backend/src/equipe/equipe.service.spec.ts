@@ -3,6 +3,7 @@ import {
   ConflictException,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
@@ -24,19 +25,37 @@ function montar() {
         .mockResolvedValue([]),
       create: jest
         .fn<
-          Promise<{ id: string }>,
+          Promise<{ id: string; ativo: boolean; desativadoEm: Date | null }>,
           [{ data: Prisma.PsicologoUncheckedCreateInput; select: object }]
         >()
-        .mockResolvedValue({ id: 'novo-id' }),
+        .mockResolvedValue({ id: 'novo-id', ativo: true, desativadoEm: null }),
+      updateMany: jest
+        .fn<Promise<{ count: number }>, [Prisma.PsicologoUpdateManyArgs]>()
+        .mockResolvedValue({ count: 1 }),
+      findFirst: jest
+        .fn<Promise<object | null>, [Prisma.PsicologoFindFirstArgs]>()
+        .mockResolvedValue(null),
+      findFirstOrThrow: jest
+        .fn<Promise<object>, [Prisma.PsicologoFindFirstOrThrowArgs]>()
+        .mockResolvedValue({ id: 'x' }),
     },
   };
   const tenant = {
     run: jest.fn((_id: string, fn: (t: typeof tx) => Promise<unknown>) =>
       fn(tx),
     ),
+    runComoUsuario: jest.fn(
+      (_u: object, fn: (t: typeof tx) => Promise<unknown>) => fn(tx),
+    ),
   };
-  const service = new EquipeService(tenant as unknown as TenantPrismaService);
-  return { tx, tenant, service };
+  const auditoria = {
+    registrar: jest.fn<Promise<void>, unknown[]>().mockResolvedValue(),
+  };
+  const service = new EquipeService(
+    tenant as unknown as TenantPrismaService,
+    auditoria,
+  );
+  return { tx, tenant, auditoria, service };
 }
 
 const dto = {
@@ -71,6 +90,8 @@ describe('EquipeService.listar', () => {
         email: 'ana@x.com',
         papel: 'ADMIN',
         abordagemPadrao: 'TCC',
+        ativo: false,
+        desativadoEm: criadoEm,
         createdAt: criadoEm,
       },
     ]);
@@ -81,6 +102,8 @@ describe('EquipeService.listar', () => {
         email: 'ana@x.com',
         papel: 'ADMIN',
         abordagemPadrao: 'TCC',
+        ativo: false,
+        desativadoEm: criadoEm,
         criadoEm,
       },
     ]);
@@ -92,6 +115,8 @@ describe('EquipeService.criar', () => {
     const { tx, tenant, service } = montar();
     await expect(service.criar(user, dto)).resolves.toEqual({
       psicologoId: 'novo-id',
+      ativo: true,
+      desativadoEm: null,
     });
     expect(tenant.run.mock.calls[0][0]).toBe(user.clinicaId);
     const { data, select } = tx.psicologo.create.mock.calls[0][0];
@@ -104,7 +129,7 @@ describe('EquipeService.criar', () => {
       senhaProvisoria: true,
     });
     expect(data.senhaHash).toMatch(/^\$2[aby]\$12\$/);
-    expect(select).toEqual({ id: true });
+    expect(select).toEqual({ id: true, ativo: true, desativadoEm: true });
   });
 
   it('P2002 -> 409 "E-mail ja cadastrado"; outro erro -> 500 generico', async () => {
@@ -127,5 +152,65 @@ describe('EquipeService.criar', () => {
     );
     expect(log).toHaveBeenCalledWith('falha ao criar psicologo: Error');
     log.mockRestore();
+  });
+});
+
+describe('EquipeService.desativar', () => {
+  const alvo = randomUUID();
+
+  it('UPDATE atomico no WHERE (id, clinicaId, PSICOLOGO, ativo) como o ADMIN, e audita DESATIVOU na mesma tx', async () => {
+    const { tx, tenant, auditoria, service } = montar();
+    await service.desativar(user, alvo);
+    expect(tenant.runComoUsuario).toHaveBeenCalledWith(
+      user,
+      expect.any(Function),
+    );
+    const { where, data } = tx.psicologo.updateMany.mock.calls[0][0];
+    expect(where).toEqual({
+      id: alvo,
+      clinicaId: user.clinicaId,
+      papel: 'PSICOLOGO',
+      ativo: true,
+    });
+    expect(data).toEqual({
+      ativo: false,
+      desativadoEm: expect.any(Date) as Date,
+    });
+    expect(auditoria.registrar).toHaveBeenCalledWith(
+      tx,
+      user,
+      'DESATIVOU',
+      'Psicologo',
+      alvo,
+    );
+    const { where: w2 } = tx.psicologo.findFirstOrThrow.mock.calls[0][0];
+    expect(w2).toEqual({ id: alvo, clinicaId: user.clinicaId });
+  });
+
+  it('0 linhas: inexistente = 404; ja desativado = 409; ativo (proprio ou ADMIN) = 409 outro texto; nada auditado', async () => {
+    const { tx, auditoria, service } = montar();
+    tx.psicologo.updateMany.mockResolvedValue({ count: 0 });
+    await expect(service.desativar(user, alvo)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    tx.psicologo.findFirst.mockResolvedValue({ ativo: false });
+    await expect(service.desativar(user, alvo)).rejects.toEqual(
+      new ConflictException('Psicologo ja desativado'),
+    );
+    tx.psicologo.findFirst.mockResolvedValue({ ativo: true });
+    await expect(service.desativar(user, alvo)).rejects.toEqual(
+      new ConflictException('Nao e possivel desativar este usuario'),
+    );
+    expect(tx.psicologo.findFirst.mock.calls[0][0].where).toEqual({
+      id: alvo,
+      clinicaId: user.clinicaId,
+    });
+    expect(auditoria.registrar).not.toHaveBeenCalled();
+  });
+
+  it('falha da auditoria sobe (a transacao desfaz a desativacao)', async () => {
+    const { auditoria, service } = montar();
+    auditoria.registrar.mockRejectedValueOnce(new Error('trilha'));
+    await expect(service.desativar(user, alvo)).rejects.toThrow('trilha');
   });
 });

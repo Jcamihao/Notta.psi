@@ -102,12 +102,13 @@ afterAll(async () => {
 });
 
 describe('UPDATE em Psicologo: so a propria linha', () => {
-  it('policies de Psicologo: select/insert/delete por clinica, update proprio, login_lookup', async () => {
+  it('policies de Psicologo: select/insert/delete por clinica, update proprio, desativar colega (item 58), login_lookup', async () => {
     const p = await owner.$queryRaw<{ policyname: string; cmd: string }[]>`
       SELECT policyname, cmd FROM pg_policies
       WHERE tablename = 'Psicologo' ORDER BY policyname`;
     expect(p).toEqual([
       { policyname: 'login_lookup', cmd: 'SELECT' },
+      { policyname: 'psicologo_desativar_colega', cmd: 'UPDATE' },
       { policyname: 'psicologo_update_proprio', cmd: 'UPDATE' },
       { policyname: 'tenant_isolation_delete', cmd: 'DELETE' },
       { policyname: 'tenant_isolation_insert', cmd: 'INSERT' },
@@ -115,9 +116,13 @@ describe('UPDATE em Psicologo: so a propria linha', () => {
     ]);
   });
 
-  it('colega da mesma clinica nao atualiza a linha de outro nem a do ADMIN (0 linhas)', async () => {
+  it('colega da mesma clinica nao atualiza a linha de outro nem a do ADMIN (0 linhas); ADMIN so desativa (nome do colega = barrado)', async () => {
     expect(await mudarNome(psiA, adminA, 'hack')).toEqual({ count: 0 });
-    expect(await mudarNome(adminA, psiA, 'hack')).toEqual({ count: 0 });
+    // Item 58: a policy do ADMIN deixa a linha do colega visivel para UPDATE, mas so para
+    // desativar; mudar o nome e barrado pelo trigger (nao e mais "0 linhas").
+    await expect(mudarNome(adminA, psiA, 'hack')).rejects.toThrow(
+      /so ativo e desativadoEm mudam/,
+    );
     expect(await nomeDe(adminA)).toBe('admin-a');
     expect(await nomeDe(psiA)).toBe('psi-a');
   });

@@ -1,5 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import bcrypt from 'bcrypt';
+import { AuditoriaService } from '../auditoria/auditoria.service';
 import { CUSTO_BCRYPT } from '../auth/auth.service';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
 import { erroAoCriarPsicologo } from '../comum/novo-psicologo';
@@ -14,7 +20,10 @@ import type { CriarPsicologoDto } from './equipe.controller';
 export class EquipeService {
   private readonly logger = new Logger(EquipeService.name);
 
-  constructor(private readonly tenant: TenantPrismaService) {}
+  constructor(
+    private readonly tenant: TenantPrismaService,
+    private readonly auditoria: AuditoriaService,
+  ) {}
 
   async criar(user: UsuarioAutenticado, dto: CriarPsicologoDto) {
     // bcrypt (CPU) FORA da transacao: nao segura conexao do pool.
@@ -33,10 +42,11 @@ export class EquipeService {
             // assim o ADMIN nao fica com acesso a conta (e ao prontuario) dele.
             senhaProvisoria: true,
           },
-          select: { id: true },
+          select: { id: true, ativo: true, desativadoEm: true },
         }),
       );
-      return { psicologoId: p.id };
+      const { id, ...resto } = p;
+      return { psicologoId: id, ...resto };
     } catch (e) {
       throw erroAoCriarPsicologo(e, this.logger, 'psicologo');
     }
@@ -54,6 +64,8 @@ export class EquipeService {
           email: true,
           papel: true,
           abordagemPadrao: true,
+          ativo: true,
+          desativadoEm: true,
           createdAt: true,
         },
       }),
@@ -63,5 +75,44 @@ export class EquipeService {
       ...resto,
       criadoEm: createdAt,
     }));
+  }
+
+  // ADMIN desativa um colega (item 58). Atomico: UPDATE com `ativo = true` e `papel = PSICOLOGO`
+  // no WHERE, sob a policy psicologo_desativar_colega + trigger (nunca reativa, nunca a si).
+  // Auditoria na MESMA transacao. Dados clinicos do desativado nao sao tocados.
+  desativar(user: UsuarioAutenticado, id: string) {
+    const { clinicaId } = user;
+    return this.tenant.runComoUsuario(user, async (tx) => {
+      const { count } = await tx.psicologo.updateMany({
+        where: { id, clinicaId, papel: 'PSICOLOGO', ativo: true },
+        data: { ativo: false, desativadoEm: new Date() },
+      });
+      if (count !== 1) {
+        // 0 linhas: relê para dizer o motivo (404 igual para outra clinica e inexistente).
+        const alvo = await tx.psicologo.findFirst({
+          where: { id, clinicaId },
+          select: { ativo: true },
+        });
+        if (!alvo) throw new NotFoundException('Psicologo nao encontrado');
+        throw new ConflictException(
+          alvo.ativo
+            ? 'Nao e possivel desativar este usuario'
+            : 'Psicologo ja desativado',
+        );
+      }
+      await this.auditoria.registrar(tx, user, 'DESATIVOU', 'Psicologo', id);
+      return tx.psicologo.findFirstOrThrow({
+        where: { id, clinicaId },
+        select: {
+          id: true,
+          nome: true,
+          email: true,
+          papel: true,
+          abordagemPadrao: true,
+          ativo: true,
+          desativadoEm: true,
+        },
+      });
+    });
   }
 }

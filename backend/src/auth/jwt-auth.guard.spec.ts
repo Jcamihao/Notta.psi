@@ -24,6 +24,7 @@ const A = randomUUID();
 const B = randomUUID();
 const psicologoA = randomUUID();
 const psicologoProvisorio = randomUUID();
+const psicologoDesativado = randomUUID();
 const linhas = [
   {
     id: psicologoA,
@@ -31,6 +32,7 @@ const linhas = [
     papel: 'PSICOLOGO',
     senhaProvisoria: false,
     tokenVersao: 3,
+    ativo: true,
   },
   {
     id: psicologoProvisorio,
@@ -38,6 +40,15 @@ const linhas = [
     papel: 'PSICOLOGO',
     senhaProvisoria: true,
     tokenVersao: 0,
+    ativo: true,
+  },
+  {
+    id: psicologoDesativado,
+    clinicaId: A,
+    papel: 'PSICOLOGO',
+    senhaProvisoria: false,
+    tokenVersao: 0,
+    ativo: false,
   },
 ];
 
@@ -122,6 +133,16 @@ function contexto(
 }
 
 describe('JwtAuthGuard (camada do codigo)', () => {
+  it('psicologo desativado (item 58) = 401, mesmo com token valido e tv certo', async () => {
+    const { ctx, req } = contexto(
+      await jwt.signAsync({ sub: psicologoDesativado, clinicaId: A, tv: 0 }),
+    );
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(req.user).toBeUndefined();
+  });
+
   it('token valido: request.user com papel lido do banco', async () => {
     const { ctx, req } = contexto(
       await jwt.signAsync({ sub: psicologoA, clinicaId: A, tv: 3 }),

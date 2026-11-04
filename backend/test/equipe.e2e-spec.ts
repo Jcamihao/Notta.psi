@@ -99,7 +99,11 @@ describe('POST /psicologos', () => {
     const res = await post(a.token, corpoPsi(` ${e.toUpperCase()} `)).expect(
       201,
     );
-    expect(Object.keys(res.body as object)).toEqual(['psicologoId']);
+    expect(res.body).toEqual({
+      psicologoId: expect.any(String) as string,
+      ativo: true,
+      desativadoEm: null,
+    });
     const { psicologoId } = res.body as { psicologoId: string };
     const p = await app
       .get(TenantPrismaService)
@@ -209,7 +213,9 @@ describe('GET /psicologos', () => {
       expect(Object.keys(p).sort()).toEqual(
         [
           'abordagemPadrao',
+          'ativo',
           'criadoEm',
+          'desativadoEm',
           'email',
           'nome',
           'papel',

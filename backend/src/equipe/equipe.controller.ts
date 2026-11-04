@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Post,
+} from '@nestjs/common';
 import { IsString, Length } from 'class-validator';
 import { UsuarioAtual, type UsuarioAutenticado } from '../auth/jwt-auth.guard';
 import { Papeis } from '../auth/papeis';
@@ -34,5 +42,15 @@ export class EquipeController {
   @Get()
   listar(@UsuarioAtual() user: UsuarioAutenticado) {
     return this.equipe.listar(user);
+  }
+
+  // Sem corpo. Nao reativa (decisao do dono, item 58).
+  @HttpCode(200)
+  @Post(':id/desativar')
+  desativar(
+    @UsuarioAtual() user: UsuarioAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.equipe.desativar(user, id);
   }
 }

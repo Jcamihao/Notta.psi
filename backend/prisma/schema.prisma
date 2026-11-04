@@ -42,6 +42,9 @@ model Psicologo {
   senhaProvisoria Boolean     @default(false)
   // Claim `tv` do JWT. Trocar a senha incrementa: tokens antigos viram 401.
   tokenVersao     Int         @default(0)
+  // Desativado pelo ADMIN (item 58): nao entra mais; dados ficam guardados. Nunca reativa.
+  ativo           Boolean     @default(true)
+  desativadoEm    DateTime?
   createdAt       DateTime    @default(now())
   pacientes       Paciente[]
   auditorias      Auditoria[]

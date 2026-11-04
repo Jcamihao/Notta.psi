@@ -11,6 +11,7 @@ Decisao do dono (2026-10-30): **cada psicologo ve so os proprios pacientes e doc
 | Trocar a PROPRIA senha (`POST /auth/trocar-senha`, item 57) | sim | sim | nao (401) |
 | Qualquer outra rota com senha PROVISORIA (colega recem-criado, item 62) | n/a | **nao (403 "Troca de senha obrigatoria")** | nao (401) |
 | Gerenciar equipe: criar e listar psicologos (`POST/GET /psicologos`, item 8) | sim | nao (403) | nao (401) |
+| Desativar um colega (`POST /psicologos/:id/desativar`, item 58) | sim (so PSICOLOGO ativo, nunca a si nem outro ADMIN) | nao (403) | nao (401) |
 | Atender e ler os PROPRIOS pacientes/documentos (Fase 2) | sim | sim | nao (401) |
 | Ler paciente/documento de COLEGA | **nao** | **nao** | nao |
 
@@ -21,7 +22,17 @@ Decisao do dono (2026-10-30): **cada psicologo ve so os proprios pacientes e doc
 - **Rota nova e bloqueada enquanto a senha for provisoria** ate ter `@PermiteSenhaProvisoria()` (falha fechada, `JwtAuthGuard`). So marque rota que o colega PRECISA antes de trocar a senha; nunca rota de dado clinico.
 - A tabela `Psicologo` usa policies por clinica para SELECT e INSERT (`tenant_isolation_*`), nao `psicologo_proprio`: o ADMIN lista nome, e-mail, papel e abordagem dos colegas (nunca `senhaHash`). Isso nao abre prontuario: paciente/documento seguem o padrao abaixo.
 - **Barreiras no banco em `Psicologo` e `Clinica` (M-2 da 2a revisao, migration `20261031210000_barreiras_psicologo_clinica`):** o INSERT so aceita colega (`PSICOLOGO`, senha provisoria, `tokenVersao` 0) ou o 1o ADMIN da clinica (sem outro psicologo, senha definitiva, versao 0); o `notta_app` nao tem DELETE em `Psicologo` nem UPDATE/DELETE em `Clinica`; o trigger `psicologo_barreira_update` so deixa `senhaProvisoria` ir de true para false junto com nova `senhaHash`, e `tokenVersao` so subir 1 e junto com nova `senhaHash`. O app nao desliga o trigger (nao e dono, sem TRIGGER). `lo_create` e revogado fora da migration, por superuser: `backend/prisma/bootstrap/endurecer-banco.sql`.
-- UPDATE em `Psicologo` so na PROPRIA linha (policy `psicologo_update_proprio`: clinica E `id = app.current_psicologo_id`, entao use `runComoUsuario`) e so nas colunas `nome`, `abordagemPadrao`, `senhaHash`, `senhaProvisoria` e `tokenVersao`. `papel`, `email`, `clinicaId` e `id` sao imutaveis para o `notta_app` (permission denied). Coluna nova editavel pelo app: `GRANT UPDATE (coluna)` explicito na migration.
+- **Desativar psicologo (item 58, migration `20261105120000_psicologo_desativar`).** Decisao do dono (2026-11-04): o ADMIN desativa um colega; o colega NAO entra mais; pacientes, documentos, consentimentos e trilha dele FICAM guardados, sem leitura por ninguem; reativar nao existe (nem pelo dono do banco); transferir pacientes fica fora desta etapa.
+  - **Colunas:** `ativo` (default true) e `desativadoEm`, com CHECK `(ativo = false) = (desativadoEm IS NOT NULL)`.
+  - **Quem desativa:** policy de UPDATE `psicologo_desativar_colega` (permissiva, soma com `psicologo_update_proprio`): o ator (`app.current_psicologo_id`, entao use `runComoUsuario`) e ADMIN ATIVO da mesma clinica; o alvo e OUTRA pessoa (`id <>` ator), `papel = 'PSICOLOGO'` e `ativo`; o WITH CHECK exige o alvo `ativo = false`. ADMIN nao desativa ADMIN nem a si mesmo; colega nao desativa ninguem; outra clinica = 0 linhas.
+  - **Trigger `psicologo_barreira_update` (estendido):** `ativo`/`desativadoEm` so vao de true/NULL para false/data e NUNCA voltam (vale para o dono tambem); ninguem muda o PROPRIO `ativo`; na linha de OUTRA pessoa so `ativo`/`desativadoEm` mudam (o ADMIN nao troca nome, abordagem, senha nem versao do token do colega). `papel`, `email` e `clinicaId` seguem sem UPDATE para o app (permission denied). INSERT ja desativado e barrado (`tenant_isolation_insert` exige `ativo`).
+  - **Efeito imediato:** `JwtAuthGuard` e `AuthService.login` leem `ativo`; desativado = 401 igual ao de usuario inexistente (login com o mesmo tempo de bcrypt). O token cai na proxima requisicao, sem esperar expirar.
+  - **Rota:** `POST /psicologos/:id/desativar` (`@Papeis('ADMIN')`, sem corpo, id uuid): 200 `{id, nome, email, papel, abordagemPadrao, ativo: false, desativadoEm}`; 409 `Psicologo ja desativado`; 409 `Nao e possivel desativar este usuario` (a si mesmo ou outro ADMIN); 404 igual para outra clinica e id inexistente. UPDATE atomico (`WHERE ativo = true AND papel = 'PSICOLOGO'`) + auditoria `DESATIVOU` (recurso `Psicologo`) na MESMA transacao.
+  - **Lista:** `GET /psicologos` (e o 201 de `POST /psicologos`) trazem `ativo` e `desativadoEm`; desativados continuam na lista.
+  - **E-mail ocupado:** o e-mail do desativado continua unico global: criar colega novo com ele = 409 `E-mail ja cadastrado`. Liberar e-mail e item futuro (junto com reativacao ou exclusao/LGPD, item 26).
+  - **O que fica guardado:** a linha de `Psicologo` (nao ha DELETE), `Paciente`, `Documento`, `Consentimento` e `Auditoria` do desativado, intactos e cifrados como antes. Ninguem le: a RLS `psicologo_proprio` so abre para o proprio dono, que nao loga mais; o ADMIN recebe 404 igual ao de colega.
+  - **Consequencia:** o ADMIN nao tem como recuperar a conta nem passar os pacientes a outro colega nesta versao.
+- UPDATE em `Psicologo` na PROPRIA linha (policy `psicologo_update_proprio`: clinica E `id = app.current_psicologo_id`, entao use `runComoUsuario`) e so nas colunas `nome`, `abordagemPadrao`, `senhaHash`, `senhaProvisoria` e `tokenVersao` (mais `ativo`/`desativadoEm`, que o trigger barra na propria linha). `papel`, `email`, `clinicaId` e `id` sao imutaveis para o `notta_app` (permission denied). Coluna nova editavel pelo app: `GRANT UPDATE (coluna)` explicito na migration.
 
 ## Como proteger uma rota por papel
 
@@ -91,7 +102,7 @@ Vale para paciente, sessao, documento, anotacao e qualquer tabela com dado de um
 
 ## Trilha de auditoria (item 11)
 
-Registra **quem** (`psicologoId`), **o que** (`acao`: `CRIOU`, `LEU`, `LISTOU`, `EDITOU`, `APROVOU`, `CONCEDEU`, `REVOGOU`), **em que recurso** (`recurso` = `Paciente`, `Consentimento` ou `Documento`, `recursoId`) e **quando** (`criadoEm`), por tempo indefinido. Decisao do dono (2026-11-01).
+Registra **quem** (`psicologoId`), **o que** (`acao`: `CRIOU`, `LEU`, `LISTOU`, `EDITOU`, `APROVOU`, `CONCEDEU`, `REVOGOU`, `DESATIVOU`), **em que recurso** (`recurso` = `Paciente`, `Consentimento`, `Documento` ou `Psicologo`, `recursoId`) e **quando** (`criadoEm`), por tempo indefinido. Decisao do dono (2026-11-01).
 
 - **O que NAO registra:** nome, e-mail, telefone, nascimento, valor de campo, texto clinico, IP, user-agent. So ids e constantes. `LISTOU` nao tem `recursoId`. 404, 400 e 401 nao gravam (nao houve acesso). `recursoId` nao tem FK: a trilha sobrevive ao recurso.
 - **Como grava:** `AuditoriaService.registrar(tx, user, acao, recurso, recursoId?)` (`backend/src/auditoria/`), SEMPRE na mesma transacao (`runComoUsuario`) da acao. Se a trilha falhar, a acao inteira desfaz e a rota responde 500 (falha fechada). Sem fila. Rota clinica nova: chame `registrar` dentro do mesmo `runComoUsuario` e acrescente a constante em `ACOES`/`RECURSOS`.

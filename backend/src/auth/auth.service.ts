@@ -42,6 +42,7 @@ export class AuthService implements OnModuleInit {
           clinicaId: true,
           senhaHash: true,
           tokenVersao: true,
+          ativo: true,
         },
       }),
     );
@@ -50,7 +51,8 @@ export class AuthService implements OnModuleInit {
       senha,
       psicologo?.senhaHash ?? this.hashFalso,
     );
-    if (!psicologo || !ok) {
+    // Desativado (item 58) = mesmo 401 e mesmo tempo (o compare acima roda com o hash real).
+    if (!psicologo || !psicologo.ativo || !ok) {
       throw new UnauthorizedException('Credenciais invalidas');
     }
     return { token: await this.token(psicologo) };
