@@ -82,7 +82,7 @@ Numeração separada para não quebrar as referências da Fase 1 em andamento. A
 
 ## Lacunas descobertas durante a Fase 1 (adicionadas em 2026-10-30)
 - [x] 57. [M] Trocar a própria senha (o admin define a senha inicial do colega; o colega precisa poder trocá-la) — Fase 4, junto do item 24
-- [ ] 58. [M] Desativar psicólogo da equipe (hoje não há como remover quem saiu da clínica) — Fase 2, antes de haver pacientes reais
+- [x] 58. [M] Desativar psicólogo da equipe (hoje não há como remover quem saiu da clínica) — Fase 2, antes de haver pacientes reais
 
 ## Fase 1.5 — Endurecimento (revisão independente da Fase 1, 2026-10-31; antes da Fase 2)
 Relatório completo em `.superpowers/sdd/fase-1/review-fase-1.md`. 0 críticos, 5 importantes.
@@ -97,3 +97,4 @@ Relatório completo em `.superpowers/sdd/fase-1/review-fase-1.md`. 0 críticos, 
 
 ## Fase 1.6 — Correções da 2ª revisão (feita e verificada em 2026-10-31)
 Commits ef7836a (app), 20c4860 e 8b3f537 (banco e testes). Back: 191 unit + 159 e2e verdes. Risco I-1 aceito e documentado em docs/ACESSO.md; o item 65 o fecha. A migration nova exige rodar `backend/prisma/bootstrap/endurecer-banco.sql` uma vez por banco como superuser (revoke de lo_create).
+- [ ] 67. [M] Transferir pacientes de um psicólogo desativado para outro da clínica (sem isso o prontuário de quem sai fica preso; decisão do dono: quem autoriza e como fica o registro) — antes de abrir para clínicas
