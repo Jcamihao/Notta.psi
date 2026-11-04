@@ -8,11 +8,15 @@ export const TIMEOUT_SELAHIA_MS = 50_000;
 
 export const IA_CONFIG = Symbol('IA_CONFIG');
 
+export const LIMITE_DIARIO_PADRAO = 20;
+
 export interface IaConfig {
   habilitada: boolean;
   url: string;
   apiKey: string;
   timeoutMs: number;
+  // Geracoes PRONTO por psicologo por dia (America/Sao_Paulo), item 19.
+  limiteDiario: number;
 }
 
 const HOSTS_LOCAIS = ['localhost', '127.0.0.1'];
@@ -25,6 +29,7 @@ export function lerConfigIa(env: NodeJS.ProcessEnv = process.env): IaConfig {
     url: '',
     apiKey: '',
     timeoutMs: TIMEOUT_SELAHIA_MS,
+    limiteDiario: LIMITE_DIARIO_PADRAO,
   };
   if (env.NOTTA_IA_HABILITADA !== '1') return desligada;
 
@@ -68,5 +73,17 @@ export function lerConfigIa(env: NodeJS.ProcessEnv = process.env): IaConfig {
     url: url.origin + url.pathname.replace(/\/+$/, ''),
     apiKey,
     timeoutMs: TIMEOUT_SELAHIA_MS,
+    limiteDiario: lerLimiteDiario(env.NOTTA_IA_LIMITE_DIARIO),
   };
+}
+
+// Inteiro >= 1 (so digitos). Ausente ou vazio = padrao; qualquer outra coisa derruba o boot.
+function lerLimiteDiario(bruto: string | undefined): number {
+  const v = (bruto ?? '').trim();
+  if (v === '') return LIMITE_DIARIO_PADRAO;
+  const n = /^\d{1,6}$/.test(v) ? Number(v) : 0;
+  if (n < 1) {
+    throw new Error('NOTTA_IA_LIMITE_DIARIO invalido: use um inteiro >= 1');
+  }
+  return n;
 }

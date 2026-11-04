@@ -8,6 +8,6 @@ import { SelahIaClient } from './selahia.client';
     { provide: IA_CONFIG, useFactory: () => lerConfigIa() },
     SelahIaClient,
   ],
-  exports: [SelahIaClient],
+  exports: [SelahIaClient, IA_CONFIG],
 })
 export class IaModule {}

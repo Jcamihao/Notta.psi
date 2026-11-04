@@ -175,6 +175,22 @@ export class PacientesService {
     return saida;
   }
 
+  // So o nome, decifrado (a geracao por IA precisa dele para anonimizar). Falha = 500 generico.
+  nomeDe(
+    l: Pick<Paciente, 'id' | 'clinicaId' | 'psicologoId' | 'nomeCifrado'>,
+  ) {
+    try {
+      return this.cripto.decifrar(
+        l.clinicaId,
+        l.nomeCifrado,
+        aadDe('Paciente', COLUNAS.nome, l.id, l.psicologoId),
+      );
+    } catch (e) {
+      this.logger.error(`falha ao decifrar paciente: ${(e as Error).name}`);
+      throw new InternalServerErrorException();
+    }
+  }
+
   private paraResposta(l: Paciente) {
     const ler = (campo: Campo) => {
       const valor = l[COLUNAS[campo]];

@@ -362,7 +362,7 @@ describe('Documento: editar e aprovar pelo app', () => {
     const antes = await estadoDe(psiA, id);
     await sql(
       psiA,
-      `UPDATE "Documento" SET "conteudoCifrado" = 'novo', "dataSessao" = NULL, "atualizadoEm" = now() + interval '1 second' WHERE id = '${id}'`,
+      `UPDATE "Documento" SET "conteudoCifrado" = 'novo', "dataSessao" = NULL, "atualizadoEm" = "atualizadoEm" + interval '1 second' WHERE id = '${id}'`,
     );
     const depois = await estadoDe(psiA, id);
     expect(depois.conteudoCifrado).toBe('novo');
@@ -519,9 +519,11 @@ describe('Documento: trigger de imutabilidade (item 44)', () => {
   });
 
   it('TRUNCATE barrado ate para o dono (com lock_timeout)', async () => {
-    await expect(ddl(owner, `TRUNCATE "Documento"`)).rejects.toThrow(
-      /TRUNCATE barrado/,
-    );
+    // GeracaoIa aponta para Documento: o Postgres so deixa truncar as duas juntas, e ai o trigger
+    // de Documento dispara.
+    await expect(
+      ddl(owner, `TRUNCATE "Documento", "GeracaoIa"`),
+    ).rejects.toThrow(/TRUNCATE barrado/);
     expect(await ver(psiA)).not.toHaveLength(0);
   });
 });
@@ -590,6 +592,6 @@ describe('Documento: insercao e correcao (CHECK e FK)', () => {
     await novoDoc(psiA, pacienteDe.psiA, { substituiId: aprovado });
     await expect(
       sqlDono(psiA, `DELETE FROM "Documento" WHERE id = '${aprovado}'`, true),
-    ).rejects.toThrow(/Foreign key constraint|violates foreign key/);
+    ).rejects.toThrow(/foreign key constraint/i);
   });
 });

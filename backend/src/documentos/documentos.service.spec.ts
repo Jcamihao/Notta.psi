@@ -210,6 +210,7 @@ describe('DocumentosService.listar', () => {
       id: true,
       tipo: true,
       dataSessao: true,
+      geradoPorIa: true,
       status: true,
       aprovadoEm: true,
       substituiId: true,

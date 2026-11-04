@@ -5,6 +5,7 @@ import { ConsentimentoModule } from './consentimento/consentimento.module';
 import { CriptografiaModule } from './criptografia/criptografia.module';
 import { DocumentosModule } from './documentos/documentos.module';
 import { EquipeModule } from './equipe/equipe.module';
+import { GeracaoIaModule } from './geracao-ia/geracao-ia.module';
 import { IaModule } from './ia/ia.module';
 import { LimiteTentativasModule } from './limite-tentativas/limite-tentativas.module';
 import { PacientesModule } from './pacientes/pacientes.module';
@@ -23,6 +24,7 @@ import { SaudeController } from './saude/saude.controller';
     PacientesModule,
     DocumentosModule,
     IaModule,
+    GeracaoIaModule,
   ],
   controllers: [SaudeController],
 })

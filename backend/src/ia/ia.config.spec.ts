@@ -167,3 +167,38 @@ describe('lerConfigIa: habilitada', () => {
     }
   });
 });
+
+describe('lerConfigIa: NOTTA_IA_LIMITE_DIARIO (item 19)', () => {
+  it('padrao 20 quando ausente ou vazio (habilitada ou nao)', () => {
+    expect(lerConfigIa(com({})).limiteDiario).toBe(20);
+    expect(
+      lerConfigIa(com({ NOTTA_IA_LIMITE_DIARIO: '  ' })).limiteDiario,
+    ).toBe(20);
+    expect(lerConfigIa({}).limiteDiario).toBe(20);
+  });
+
+  it.each([
+    ['1', 1],
+    ['5', 5],
+    [' 100 ', 100],
+  ])('valor %j vale %d', (v, esperado) => {
+    expect(lerConfigIa(com({ NOTTA_IA_LIMITE_DIARIO: v })).limiteDiario).toBe(
+      esperado,
+    );
+  });
+
+  it.each(['0', '-1', '1.5', 'abc', '1e3', '20 geracoes', '9999999', '+5'])(
+    'valor invalido %j derruba o boot com a IA habilitada',
+    (v) => {
+      expect(() => lerConfigIa(com({ NOTTA_IA_LIMITE_DIARIO: v }))).toThrow(
+        'NOTTA_IA_LIMITE_DIARIO invalido',
+      );
+    },
+  );
+
+  it('desabilitada ignora valor invalido', () => {
+    expect(() =>
+      lerConfigIa({ NOTTA_IA_HABILITADA: '0', NOTTA_IA_LIMITE_DIARIO: 'x' }),
+    ).not.toThrow();
+  });
+});

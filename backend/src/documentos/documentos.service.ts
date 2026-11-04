@@ -105,6 +105,7 @@ export class DocumentosService {
           status: true,
           aprovadoEm: true,
           substituiId: true,
+          geradoPorIa: true,
           criadoEm: true,
         },
         orderBy: { criadoEm: 'desc' },
@@ -201,6 +202,52 @@ export class DocumentosService {
     return this.completo(linha);
   }
 
+  // Rascunho vindo da IA (item 20/21), chamado pelo executor DENTRO da transacao dele, com o `id`
+  // ja escolhido (o pedido GeracaoIa aponta para ele). So aqui se cifra o texto gerado.
+  async criarGeradoPorIa(
+    tx: Prisma.TransactionClient,
+    user: Pick<UsuarioAutenticado, 'clinicaId' | 'psicologoId'>,
+    d: {
+      id: string;
+      pacienteId: string;
+      tipo: 'EVOLUCAO' | 'ANAMNESE';
+      conteudo: string;
+    },
+  ) {
+    await tx.documento.create({
+      data: {
+        id: d.id,
+        clinicaId: user.clinicaId,
+        psicologoId: user.psicologoId,
+        pacienteId: d.pacienteId,
+        tipo: d.tipo,
+        conteudoCifrado: this.cripto.cifrar(
+          user.clinicaId,
+          d.conteudo,
+          aadDe('Documento', 'conteudoCifrado', d.id, user.psicologoId),
+        ),
+        geradoPorIa: true,
+      },
+    });
+    await this.auditoria.registrar(tx, user, 'CRIOU', 'Documento', d.id);
+  }
+
+  // Texto decifrado de uma nota (origem da geracao por IA). Falha = 500 generico, so o tipo no log.
+  textoDe(
+    l: Pick<Documento, 'id' | 'clinicaId' | 'psicologoId' | 'conteudoCifrado'>,
+  ) {
+    try {
+      return this.cripto.decifrar(
+        l.clinicaId,
+        l.conteudoCifrado,
+        aadDe('Documento', 'conteudoCifrado', l.id, l.psicologoId),
+      );
+    } catch (e) {
+      this.logger.error(`falha ao decifrar documento: ${(e as Error).name}`);
+      throw new InternalServerErrorException();
+    }
+  }
+
   private dono(user: UsuarioAutenticado, pacienteId: string, id: string) {
     return {
       id,
@@ -268,6 +315,7 @@ export class DocumentosService {
         status: l.status,
         aprovadoEm: l.aprovadoEm,
         substituiId: l.substituiId,
+        geradoPorIa: l.geradoPorIa,
         criadoEm: l.criadoEm,
         atualizadoEm: l.atualizadoEm,
       };

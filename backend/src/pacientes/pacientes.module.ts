@@ -10,5 +10,6 @@ import { PacientesService } from './pacientes.service';
   imports: [CriptografiaModule, AuditoriaModule, ConsentimentoModule],
   controllers: [PacientesController],
   providers: [PacientesService],
+  exports: [PacientesService],
 })
 export class PacientesModule {}

@@ -12,12 +12,15 @@ export const ACOES = [
   'CONCEDEU',
   'REVOGOU',
   'DESATIVOU',
+  'PREVIA_IA',
+  'ENVIOU_IA',
 ] as const;
 export const RECURSOS = [
   'Paciente',
   'Consentimento',
   'Documento',
   'Psicologo',
+  'GeracaoIa',
 ] as const;
 export type AcaoAuditoria = (typeof ACOES)[number];
 export type RecursoAuditado = (typeof RECURSOS)[number];

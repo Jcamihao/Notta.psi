@@ -10,5 +10,6 @@ import { DocumentosService } from './documentos.service';
   imports: [CriptografiaModule, AuditoriaModule, ConsentimentoModule],
   controllers: [DocumentosController],
   providers: [DocumentosService],
+  exports: [DocumentosService],
 })
 export class DocumentosModule {}

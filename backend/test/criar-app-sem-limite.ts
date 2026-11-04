@@ -3,6 +3,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
 import { configurarApp, OPCOES_APP } from '../src/configurar-app';
+import { IA_CONFIG, type IaConfig, lerConfigIa } from '../src/ia/ia.config';
 import { LimiteTentativasGuard } from '../src/limite-tentativas/limite-tentativas.guard';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { apagarClinicas as apagarClinicasComoOwner } from './acesso-owner';
@@ -21,6 +22,8 @@ export async function criarApp(
     logger?: LoggerService;
     controllers?: Type[];
     tenant?: object;
+    // Ajusta so a config da IA (ex.: timeoutMs curto); o resto vem do env, como no boot.
+    ia?: Partial<IaConfig>;
   } = {},
 ) {
   let b = Test.createTestingModule({
@@ -29,6 +32,12 @@ export async function criarApp(
   });
   if (opcoes.tenant) {
     b = b.overrideProvider(TenantPrismaService).useValue(opcoes.tenant);
+  }
+  if (opcoes.ia) {
+    const ia = opcoes.ia;
+    b = b
+      .overrideProvider(IA_CONFIG)
+      .useFactory({ factory: () => ({ ...lerConfigIa(), ...ia }) });
   }
   if (opcoes.semLimite) {
     b = b
@@ -45,7 +54,11 @@ export async function criarApp(
 
 // Para suites que NAO testam limite de tentativas (guards de throttle desligados).
 export function criarAppSemLimite(
-  opcoes: { logger?: LoggerService; controllers?: Type[] } = {},
+  opcoes: {
+    logger?: LoggerService;
+    controllers?: Type[];
+    ia?: Partial<IaConfig>;
+  } = {},
 ) {
   return criarApp({ ...opcoes, semLimite: true });
 }
