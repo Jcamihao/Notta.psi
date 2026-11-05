@@ -10,6 +10,7 @@ import {
   corpoClinica,
   criarAppSemLimite,
 } from './criar-app-sem-limite';
+import { CLIENTE_API } from './cliente-api';
 
 // Item 10 ponta a ponta: consentimento por paciente, append-only, maquina de estados,
 // auditoria na mesma transacao.
@@ -45,6 +46,7 @@ const evento = (u: Usuario, id: string, e: 'CONCEDIDO' | 'REVOGADO') =>
 async function login(email: string) {
   const res = await http()
     .post('/auth/login')
+    .set(CLIENTE_API)
     .send({ email, senha: SENHA })
     .expect(200);
   return (res.body as { token: string }).token;
@@ -55,6 +57,7 @@ async function novoUsuario(): Promise<Usuario> {
   const email = `cons-${++n}-${sufixo}@teste.local`;
   const res = await http()
     .post('/clinicas')
+    .set(CLIENTE_API)
     .send(corpoClinica(email, { senha: SENHA }))
     .expect(201);
   const { clinicaId, psicologoId } = res.body as {
@@ -236,7 +239,10 @@ describe('isolamento e autenticacao', () => {
     const colega = { token: await login(email) };
     await ver(colega, id).expect(403);
     await evento(colega as Usuario, id, 'CONCEDIDO').expect(403);
-    const nova = await com(colega, http().post('/auth/trocar-senha'))
+    const nova = await com(
+      colega,
+      http().post('/auth/trocar-senha').set(CLIENTE_API),
+    )
       .send({ senhaAtual: SENHA, novaSenha: 'outra-senha-456' })
       .expect(200);
     const livre = { token: (nova.body as { token: string }).token };

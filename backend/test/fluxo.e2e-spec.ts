@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { apagarClinicas, corpoClinica, criarApp } from './criar-app-sem-limite';
+import { CLIENTE_API } from './cliente-api';
 
 // Pilha real: AppModule + configurarApp, com limites e guards ligados.
 it('fluxo: cadastro -> login -> /eu', async () => {
@@ -11,6 +12,7 @@ it('fluxo: cadastro -> login -> /eu', async () => {
   try {
     const cad = await request(http)
       .post('/clinicas')
+      .set(CLIENTE_API)
       .send(corpoClinica(email, { nomeClinica: 'Clinica Fluxo' }))
       .expect(201);
     const ids = cad.body as { clinicaId: string; psicologoId: string };
@@ -18,6 +20,7 @@ it('fluxo: cadastro -> login -> /eu', async () => {
 
     const log = await request(http)
       .post('/auth/login')
+      .set(CLIENTE_API)
       .send({ email, senha: 'senha-forte-123' })
       .expect(200);
     const { token } = log.body as { token: string };

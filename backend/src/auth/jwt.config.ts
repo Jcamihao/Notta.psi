@@ -6,6 +6,9 @@ import {
   SEGREDOS_CONHECIDOS,
 } from '../comum/segredos-conhecidos';
 
+// Acesso de 15 minutos (item 46); a sessao se renova pelo refresh (cookie), ate 7 dias.
+export const ACESSO_SEGUNDOS = 15 * 60;
+
 // HS256 fixado na assinatura E na verificacao (sem `algorithms`, o jsonwebtoken aceitaria
 // HS384/HS512 com o mesmo segredo). Validado no boot: falha fechada, sem ecoar o valor.
 export function opcoesJwt(
@@ -34,7 +37,7 @@ export function opcoesJwt(
     // KeyObject: o jsonwebtoken pula o createPublicKey que tentaria (e falharia, caro) a cada
     // verify com string; sob rajada isso era ~20% da CPU do processo.
     secret: createSecretKey(Buffer.from(segredo)),
-    signOptions: { algorithm: 'HS256', expiresIn: '8h' },
+    signOptions: { algorithm: 'HS256', expiresIn: ACESSO_SEGUNDOS },
     verifyOptions: { algorithms: ['HS256'] },
   };
 }

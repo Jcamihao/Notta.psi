@@ -9,6 +9,7 @@ import {
   criarApp,
   criarAppSemLimite,
 } from './criar-app-sem-limite';
+import { CLIENTE_API } from './cliente-api';
 
 // I-2 da 2a revisao: um usuario autenticado (com clinica propria, cadastro e gratis) em
 // rajada NAO pode degradar OUTRA clinica. O limite por psicologo e o teto de simultaneas
@@ -26,11 +27,13 @@ beforeAll(async () => {
   for (const n of ['atacante', 'vitima', 'rajada']) {
     const res = await request(http)
       .post('/clinicas')
+      .set(CLIENTE_API)
       .send(corpoClinica(email(n), { senha: SENHA }))
       .expect(201);
     criadas.push((res.body as { clinicaId: string }).clinicaId);
     const login = await request(http)
       .post('/auth/login')
+      .set(CLIENTE_API)
       .send({ email: email(n), senha: SENHA })
       .expect(200);
     tokens[n] = (login.body as { token: string }).token;

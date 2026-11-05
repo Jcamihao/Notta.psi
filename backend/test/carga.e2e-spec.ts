@@ -11,6 +11,7 @@ import {
   criarAppSemLimite,
 } from './criar-app-sem-limite';
 import { portaoBcrypt } from './portao-bcrypt';
+import { CLIENTE_API } from './cliente-api';
 
 // Robustez sob carga: erro de infraestrutura NUNCA vira 401 (o front desloga no 401)
 // e toda rota autenticada tem limite por psicologo (throttler `api`, 300/min).
@@ -26,11 +27,13 @@ beforeAll(async () => {
   for (const n of ['a', 'b']) {
     const res = await request(http)
       .post('/clinicas')
+      .set(CLIENTE_API)
       .send(corpoClinica(email(n), { senha: SENHA }))
       .expect(201);
     criadas.push((res.body as { clinicaId: string }).clinicaId);
     const login = await request(http)
       .post('/auth/login')
+      .set(CLIENTE_API)
       .send({ email: email(n), senha: SENHA })
       .expect(200);
     tokens.push((login.body as { token: string }).token);
@@ -74,9 +77,12 @@ describe('banco/pool fora: 503, nunca 401', () => {
   afterAll(() => app.close());
 
   it('token valido -> 503 corpo fixo + Retry-After 2, sem detalhe do erro', async () => {
-    const token = await app
-      .get(JwtService)
-      .signAsync({ sub: randomUUID(), clinicaId: randomUUID(), tv: 0 });
+    const token = await app.get(JwtService).signAsync({
+      sub: randomUUID(),
+      clinicaId: randomUUID(),
+      tv: 0,
+      sid: randomUUID(),
+    });
     const res = await request(app.getHttpServer())
       .get('/eu')
       .set('Authorization', `Bearer ${token}`)
@@ -158,11 +164,13 @@ describe('throttler api: 300/min por psicologo em rota autenticada', () => {
       for (let i = 0; i < 5; i++) {
         await request(http)
           .post('/auth/login')
+          .set(CLIENTE_API)
           .send({ email: email('a'), senha: 'errada-123' })
           .expect(401);
       }
       await request(http)
         .post('/auth/login')
+        .set(CLIENTE_API)
         .send({ email: email('a'), senha: 'errada-123' })
         .expect(429);
     } finally {
@@ -193,6 +201,7 @@ describe('tetos de hash (login)', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...CLIENTE_API,
           ...(ip && { 'X-Forwarded-For': ip }),
         },
         body: JSON.stringify({ email: em, senha }),

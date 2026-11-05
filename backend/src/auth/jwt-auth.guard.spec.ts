@@ -9,6 +9,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { ThrottlerException } from '@nestjs/throttler';
+import { relogio } from '../comum/relogio';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import {
   JwtAuthGuard,
@@ -52,9 +53,100 @@ const linhas = [
   },
 ];
 
+// Sessoes (item 46). O `sid` padrao de cada psicologo e a sessao ATIVA dele.
+const SID = {
+  a: randomUUID(),
+  provisorio: randomUUID(),
+  desativado: randomUUID(),
+  revogada: randomUUID(),
+  vencida: randomUUID(),
+  deOutro: randomUUID(),
+};
+const AGORA = new Date('2026-11-08T12:00:00.000Z');
+const FUTURO = new Date('2026-11-15T12:00:00.000Z');
+const sessoes: Record<string, unknown>[] = [
+  {
+    id: SID.a,
+    psicologoId: psicologoA,
+    clinicaId: A,
+    familia: 'fam-a',
+    revogadaEm: null,
+    absolutaAte: FUTURO,
+    ultimoUsoEm: AGORA,
+  },
+  {
+    id: SID.provisorio,
+    psicologoId: psicologoProvisorio,
+    clinicaId: A,
+    familia: 'fam-p',
+    revogadaEm: null,
+    absolutaAte: FUTURO,
+    ultimoUsoEm: AGORA,
+  },
+  {
+    id: SID.desativado,
+    psicologoId: psicologoDesativado,
+    clinicaId: A,
+    familia: 'fam-d',
+    revogadaEm: null,
+    absolutaAte: FUTURO,
+    ultimoUsoEm: AGORA,
+  },
+  {
+    id: SID.revogada,
+    psicologoId: psicologoA,
+    clinicaId: A,
+    familia: 'fam-r',
+    revogadaEm: new Date('2026-11-08T11:00:00.000Z'),
+    absolutaAte: FUTURO,
+    ultimoUsoEm: AGORA,
+  },
+  {
+    id: SID.vencida,
+    psicologoId: psicologoA,
+    clinicaId: A,
+    familia: 'fam-v',
+    revogadaEm: null,
+    absolutaAte: new Date('2026-11-08T11:59:59.999Z'),
+    ultimoUsoEm: AGORA,
+  },
+  {
+    id: SID.deOutro,
+    psicologoId: psicologoProvisorio,
+    clinicaId: A,
+    familia: 'fam-o',
+    revogadaEm: null,
+    absolutaAte: FUTURO,
+    ultimoUsoEm: AGORA,
+  },
+];
+const gravacoes: Record<string, unknown>[] = [];
+const casa = (l: Record<string, unknown>, where: Record<string, unknown>) =>
+  Object.entries(where).every(([k, v]) => l[k] === v);
+
 const tenant = {
-  run: (clinicaId: string, fn: (tx: unknown) => Promise<unknown>) =>
+  run: (
+    clinicaId: string,
+    fn: (tx: unknown) => Promise<unknown>,
+    opcoes?: { psicologoId?: string },
+  ) =>
     fn({
+      sessao: {
+        // Simula a RLS da Sessao: so as linhas do psicologo do contexto (sem contexto = nenhuma).
+        findFirst: ({ where }: { where: Record<string, unknown> }) =>
+          Promise.resolve(
+            sessoes.find(
+              (l) =>
+                l.psicologoId === opcoes?.psicologoId &&
+                l.clinicaId === clinicaId &&
+                casa(l, where),
+            ) ?? null,
+          ),
+        updateMany: (args: Record<string, unknown>) => {
+          gravacoes.push(args);
+          return Promise.resolve({ count: 1 });
+        },
+      },
       psicologo: {
         findFirst: ({ where }: { where: Record<string, unknown> }) =>
           Promise.resolve(
@@ -74,6 +166,20 @@ const jwt = new JwtService(
     NOTTA_PERMITE_SEGREDO_DE_TESTE: '1',
   }),
 );
+// Assina com o `sid` da sessao ativa do `sub` (salvo se o teste passar outro, ou `sid: undefined`).
+const SID_DO: Record<string, string> = {
+  [psicologoA]: SID.a,
+  [psicologoProvisorio]: SID.provisorio,
+  [psicologoDesativado]: SID.desativado,
+};
+const assinar = (claims: { sub: string } & Record<string, unknown>) =>
+  jwt.signAsync({ sid: SID_DO[claims.sub], ...claims });
+
+beforeEach(() => {
+  jest.spyOn(relogio, 'agora').mockReturnValue(AGORA);
+  gravacoes.length = 0;
+});
+afterEach(() => jest.restoreAllMocks());
 // Storage FALSO do throttler (contagem simples, sem timers): bloqueia acima do limite.
 function storageFalso() {
   const hits = new Map<string, number>();
@@ -135,7 +241,7 @@ function contexto(
 describe('JwtAuthGuard (camada do codigo)', () => {
   it('psicologo desativado (item 58) = 401, mesmo com token valido e tv certo', async () => {
     const { ctx, req } = contexto(
-      await jwt.signAsync({ sub: psicologoDesativado, clinicaId: A, tv: 0 }),
+      await assinar({ sub: psicologoDesativado, clinicaId: A, tv: 0 }),
     );
     await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
       UnauthorizedException,
@@ -145,7 +251,7 @@ describe('JwtAuthGuard (camada do codigo)', () => {
 
   it('token valido: request.user com papel lido do banco', async () => {
     const { ctx, req } = contexto(
-      await jwt.signAsync({ sub: psicologoA, clinicaId: A, tv: 3 }),
+      await assinar({ sub: psicologoA, clinicaId: A, tv: 3 }),
     );
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
     expect(req.user).toEqual({
@@ -163,7 +269,7 @@ describe('JwtAuthGuard (camada do codigo)', () => {
     ['tv texto', { tv: '3' }],
   ])('%s: 401', async (_n, extra) => {
     const { ctx, req } = contexto(
-      await jwt.signAsync({ sub: psicologoA, clinicaId: A, ...extra }),
+      await assinar({ sub: psicologoA, clinicaId: A, ...extra }),
     );
     await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
       UnauthorizedException,
@@ -173,7 +279,7 @@ describe('JwtAuthGuard (camada do codigo)', () => {
 
   it('sub valido com clinicaId de outra clinica: 401 mesmo sem RLS', async () => {
     const { ctx, req } = contexto(
-      await jwt.signAsync({ sub: psicologoA, clinicaId: B, tv: 3 }),
+      await assinar({ sub: psicologoA, clinicaId: B, tv: 3 }),
     );
     await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
       UnauthorizedException,
@@ -184,7 +290,7 @@ describe('JwtAuthGuard (camada do codigo)', () => {
 
 describe('JwtAuthGuard: senha provisoria', () => {
   const token = () =>
-    jwt.signAsync({ sub: psicologoProvisorio, clinicaId: A, tv: 0 });
+    assinar({ sub: psicologoProvisorio, clinicaId: A, tv: 0 });
 
   it('rota comum: 403 "Troca de senha obrigatoria" (corpo do contrato)', async () => {
     const { ctx } = contexto(await token());
@@ -215,7 +321,7 @@ describe('JwtAuthGuard: senha provisoria', () => {
 
   it('senha definitiva: rota comum passa', async () => {
     const { ctx } = contexto(
-      await jwt.signAsync({ sub: psicologoA, clinicaId: A, tv: 3 }),
+      await assinar({ sub: psicologoA, clinicaId: A, tv: 3 }),
     );
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
   });
@@ -234,7 +340,7 @@ describe('JwtAuthGuard: 401 x 503', () => {
 
   it('erro de infraestrutura com token valido: 503 fixo + Retry-After 2', async () => {
     const { ctx, req, headers } = contexto(
-      await jwt.signAsync({ sub: psicologoA, clinicaId: A, tv: 3 }),
+      await assinar({ sub: psicologoA, clinicaId: A, tv: 3 }),
     );
     const erro = await quebrado.canActivate(ctx).catch((e: unknown) => e);
     expect(erro).toBeInstanceOf(ServiceUnavailableException);
@@ -280,7 +386,7 @@ describe('JwtAuthGuard: limite api e teto de simultaneas ANTES do banco', () => 
     return r;
   }
 
-  const tokenA = () => jwt.signAsync({ sub: psicologoA, clinicaId: A, tv: 3 });
+  const tokenA = () => assinar({ sub: psicologoA, clinicaId: A, tv: 3 });
 
   // Espera a condicao (verifyAsync e o banco falso sao assincronos), sem relogio.
   async function ate(cond: () => boolean) {
@@ -293,9 +399,13 @@ describe('JwtAuthGuard: limite api e teto de simultaneas ANTES do banco', () => 
   function tenantContado() {
     const t = {
       chamadas: 0,
-      run: (c: string, fn: (tx: unknown) => Promise<unknown>) => {
+      run: (
+        c: string,
+        fn: (tx: unknown) => Promise<unknown>,
+        opcoes?: { psicologoId?: string },
+      ) => {
         t.chamadas++;
-        return tenant.run(c, fn);
+        return tenant.run(c, fn, opcoes);
       },
     };
     return t;
@@ -364,9 +474,15 @@ describe('JwtAuthGuard: limite api e teto de simultaneas ANTES do banco', () => 
     const presos: (() => void)[] = [];
     // Banco que so responde quando mandamos: segura as requisicoes "em andamento".
     const lento = {
-      run: (c: string, fn: (tx: unknown) => Promise<unknown>) => {
+      run: (
+        c: string,
+        fn: (tx: unknown) => Promise<unknown>,
+        opcoes?: { psicologoId?: string },
+      ) => {
         chamadas++;
-        return new Promise((ok) => presos.push(() => ok(tenant.run(c, fn))));
+        return new Promise((ok) =>
+          presos.push(() => ok(tenant.run(c, fn, opcoes))),
+        );
       },
     } as unknown as TenantPrismaService;
     const g = novoGuard(lento);
@@ -386,7 +502,7 @@ describe('JwtAuthGuard: limite api e teto de simultaneas ANTES do banco', () => 
 
     // Outro psicologo nao divide o teto.
     const outro = contexto(
-      await jwt.signAsync({ sub: psicologoProvisorio, clinicaId: A, tv: 0 }),
+      await assinar({ sub: psicologoProvisorio, clinicaId: A, tv: 0 }),
       rotaLiberada,
     );
     const pOutro = g.canActivate(outro.ctx);
@@ -463,5 +579,107 @@ describe('opcoesJwt', () => {
         NOTTA_PERMITE_SEGREDO_DE_TESTE: '1',
       }),
     ).toThrow();
+  });
+});
+
+describe('JwtAuthGuard: sessao e cookie (item 46)', () => {
+  const comHeaders = (headers: Record<string, string>) => {
+    const { ctx, req } = contexto('x');
+    req.headers = headers;
+    return { ctx, req };
+  };
+  // Sem argumento = a sessao ativa; `jwtDe(undefined)` = JWT sem sid.
+  const jwtDe = (...sid: (string | undefined)[]) =>
+    assinar({
+      sub: psicologoA,
+      clinicaId: A,
+      tv: 3,
+      sid: sid.length ? sid[0] : SID.a,
+    });
+
+  it('JWT valido com sessao ativa: user + sessao { id, familia } no request', async () => {
+    const { ctx, req } = contexto(await jwtDe());
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect((req as unknown as { sessao: unknown }).sessao).toEqual({
+      id: SID.a,
+      familia: 'fam-a',
+    });
+  });
+
+  it.each([
+    ['sem sid', undefined],
+    ['sid que nao e uuid', 'nao-uuid'],
+    ['sid inexistente', randomUUID()],
+    ['sessao REVOGADA (JWT ainda valido)', SID.revogada],
+    ['sessao acima do limite absoluto de 7 dias', SID.vencida],
+    ['sessao de OUTRO psicologo', SID.deOutro],
+  ])('%s: 401, sem user', async (_n, sid) => {
+    const { ctx, req } = contexto(await jwtDe(sid));
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    expect(req.user).toBeUndefined();
+  });
+
+  it('o limite absoluto usa o relogio do app (agora == absolutaAte ja e 401)', async () => {
+    jest
+      .spyOn(relogio, 'agora')
+      .mockReturnValue(new Date('2026-11-15T12:00:00.000Z'));
+    const { ctx } = contexto(await jwtDe());
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('cookie de acesso e aceito quando nao ha Authorization', async () => {
+    const { ctx, req } = comHeaders({
+      cookie: `outro=1; notta_acesso=${await jwtDe()}; x=2`,
+    });
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    expect(req.user).toMatchObject({ psicologoId: psicologoA });
+  });
+
+  it('Authorization presente mas torto = 401 e NUNCA cai para o cookie', async () => {
+    const { ctx } = comHeaders({
+      authorization: 'Basic abc',
+      cookie: `notta_acesso=${await jwtDe()}`,
+    });
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('Bearer vence o cookie (cookie invalido nao atrapalha)', async () => {
+    const { ctx } = comHeaders({
+      authorization: `Bearer ${await jwtDe()}`,
+      cookie: 'notta_acesso=lixo',
+    });
+    await expect(guard.canActivate(ctx)).resolves.toBe(true);
+  });
+
+  it('sem Authorization nem cookie = 401', async () => {
+    const { ctx } = comHeaders({});
+    await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('ultimoUsoEm: grava quando passou mais de 1 min; nao grava antes', async () => {
+    jest
+      .spyOn(relogio, 'agora')
+      .mockReturnValue(new Date(AGORA.getTime() + 61_000));
+    await guard.canActivate(contexto(await jwtDe()).ctx);
+    expect(gravacoes).toEqual([
+      {
+        where: { id: SID.a, revogadaEm: null },
+        data: { ultimoUsoEm: new Date(AGORA.getTime() + 61_000) },
+      },
+    ]);
+    gravacoes.length = 0;
+    jest
+      .spyOn(relogio, 'agora')
+      .mockReturnValue(new Date(AGORA.getTime() + 59_000));
+    await guard.canActivate(contexto(await jwtDe()).ctx);
+    expect(gravacoes).toEqual([]);
   });
 });

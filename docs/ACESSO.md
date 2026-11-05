@@ -6,7 +6,7 @@ Decisao do dono (2026-10-30): **cada psicologo ve so os proprios pacientes e doc
 
 | Acao | ADMIN | PSICOLOGO | Sem login |
 |---|---|---|---|
-| Cadastrar clinica (`POST /clinicas`), login, `/saude` | sim | sim | sim (rotas publicas) |
+| Cadastrar clinica (`POST /clinicas`), login, renovar a sessao, `/saude` | sim | sim | sim (rotas publicas) |
 | Ver os proprios dados (`GET /eu`) | sim | sim | nao (401) |
 | Trocar a PROPRIA senha (`POST /auth/trocar-senha`, item 57) | sim | sim | nao (401) |
 | Qualquer outra rota com senha PROVISORIA (colega recem-criado, item 62) | n/a | **nao (403 "Troca de senha obrigatoria")** | nao (401) |
@@ -33,6 +33,24 @@ Decisao do dono (2026-10-30): **cada psicologo ve so os proprios pacientes e doc
   - **O que fica guardado:** a linha de `Psicologo` (nao ha DELETE), `Paciente`, `Documento`, `Consentimento` e `Auditoria` do desativado, intactos e cifrados como antes. Ninguem le: a RLS `psicologo_proprio` so abre para o proprio dono, que nao loga mais; o ADMIN recebe 404 igual ao de colega.
   - **Consequencia:** o ADMIN nao tem como recuperar a conta nem passar os pacientes a outro colega nesta versao.
 - UPDATE em `Psicologo` na PROPRIA linha (policy `psicologo_update_proprio`: clinica E `id = app.current_psicologo_id`, entao use `runComoUsuario`) e so nas colunas `nome`, `abordagemPadrao`, `senhaHash`, `senhaProvisoria` e `tokenVersao` (mais `ativo`/`desativadoEm`, que o trigger barra na propria linha). `papel`, `email`, `clinicaId` e `id` sao imutaveis para o `notta_app` (permission denied). Coluna nova editavel pelo app: `GRANT UPDATE (coluna)` explicito na migration.
+
+## Sessao segura: cookie httpOnly, refresh rotativo, sessao revogavel e CSRF (itens 46 e 49, back)
+
+Decisao do dono (2026-11-05): acesso de **15 min** que se renova sozinho; sessao maxima de **7 dias**; desconexao apos **30 min parado**; "sair de todos os aparelhos". Antes, o JWT de 8 h ficava no `sessionStorage` (um script injetado o lia). Agora o navegador so tem cookies `httpOnly`. Rotas e envs: `backend/README.md` (secao "Sessao segura"). Front: etapa seguinte (lista no relatorio da task B46).
+
+- **Tabela `Sessao`** (migration `20261108120000_sessao`): UMA linha por geracao do refresh; `familia` = um login (todas as renovacoes dele); `id` = o `sid` do JWT. Colunas: `refreshHash` (SHA-256 hex, UNIQUE, CHECK de formato: o refresh cru NUNCA e gravado), `criadoEm`, `ultimoUsoEm`, `absolutaAte` (login + 7 dias, herdado pelas linhas rotacionadas; CHECK `absolutaAte <= criadoEm + 7 dias`), `usadoEm` (o refresh ja foi trocado), `revogadaEm` + `motivoRevogacao` (`SAIU`, `SAIU_DE_TODOS`, `REUSO`, `EXPIROU`, `SENHA_TROCADA`; par obrigatorio por CHECK). FK composta `(psicologoId, clinicaId) -> Psicologo` RESTRICT. As datas vem SEMPRE do `relogio` do app (nunca do `now()` do banco: fuso).
+- **RLS ENABLE + FORCE**, policies: `sessao_select_proprio`, `sessao_insert_proprio` (so nasce ativa: nem usada nem revogada) e `sessao_update_proprio` (clinica E psicologo do contexto); `sessao_por_hash` (SELECT so da linha cujo `refreshHash` e o `app.refresh_hash` da transacao: a renovacao nao tem sessao; mesmo molde de `convite_por_token` e `login_lookup`; sem a variavel = ZERO linhas); `sessao_dono_update`/`sessao_dono_delete` so `TO notta_owner` (para o trigger poder disparar e para a limpeza de teste). O hash NAO abre outra tabela.
+- **Grants do `notta_app`:** SELECT e INSERT; UPDATE so em `ultimoUsoEm`, `usadoEm`, `revogadaEm`, `motivoRevogacao`; sem DELETE e sem TRUNCATE (a retencao e o item 52).
+- **Trigger `sessao_barreira` (BEFORE UPDATE, todos os papeis, o dono inclusive):** identidade imutavel (`id`, clinica, psicologo, `familia`, `refreshHash`, `criadoEm`, `absolutaAte`); linha revogada nao muda mais (nao revive); `usadoEm` nao volta a NULL nem muda.
+- **`TenantPrismaService.runRefresh(hash, fn(tx, assumirDono))`:** unico lugar com `set_config('app.refresh_hash', ...)`. Achada a linha, `assumirDono` poe clinica e psicologo LIDOS DELA; so entao valem as policies proprias (revogar a familia, criar a linha seguinte, auditar). Mesmas regras de `run`: so banco dentro, sem rede.
+- **Guard:** o JWT carrega `sid`; a MESMA transacao que ja le o psicologo confere a sessao (existe, e dele, nao revogada, `agora < absolutaAte`). Revogou = 401 na hora, nao so em 15 min. Grava `ultimoUsoEm` no maximo 1x por minuto. Aceita o cookie `notta_acesso` OU `Authorization: Bearer` (cabecalho presente mas torto = 401, nunca cai para o cookie).
+- **Renovar:** valida o hash, linha nao usada nem revogada, `agora < absolutaAte`, parado <= 30 min, psicologo ativo. `UPDATE ... WHERE usadoEm IS NULL` atomico: so UMA renovacao concorrente vence, a outra cai no REUSO. Reuso = revoga a familia (`REUSO`) + auditoria `REFRESH_REUSADO` (recurso `Sessao`, recursoId = a linha reusada) na MESMA transacao (se a auditoria falhar, 500 e nada e revogado). Expirou/ocioso = familia `EXPIROU`.
+- **Sair / sair de todos / trocar senha:** ver README. Trocar senha revoga as OUTRAS familias (`SENHA_TROCADA`) na mesma transacao que muda a senha e emite so um cookie de acesso novo (mesmo `sid`, `tv` novo).
+- **CSRF:** `CsrfGuard` global antes do JWT. Requisicao por cookie com metodo nao seguro: header `X-CSRF-Token` = cookie `notta_csrf` (comparacao em tempo constante) E Origin/Referer na lista de origens (`NOTTA_APP_URL`, `NOTTA_CORS_ORIGIN`). `login`, cadastro de clinica e `renovar`: so Origin. Bearer e `@Publico()` do termo: fora. 403 com corpo fixo. O CSRF e uma vez por login (nao muda na renovacao).
+- **Limite de tentativas:** `renovar` 30/min por IP (/64), contado antes do banco.
+- **Limpeza em teste:** `apagarClinicas` apaga `Sessao` antes de `Psicologo` (FK RESTRICT); teste que apaga `Psicologo` por conta propria apaga a `Sessao` antes (como owner, com o psicologo no contexto: o DELETE tambem precisa passar pela policy de SELECT).
+- **Cookies (decisao de nome):** `notta_acesso`, `notta_refresh`, `notta_csrf`, sem prefixo `__Host-`/`__Secure-`. Motivo: o front le o CSRF pelo nome; o refresh precisa de `Path=/api/auth` e `__Host-` exige `Path=/`; `__Host-` exige `Secure`, e o http de desenvolvimento nao o tem. Consequencia aceita: sem o prefixo, um subdominio irmao poderia "plantar" cookie (cookie tossing); mitigacao: nao hospedar nada de terceiros em subdominio do dominio do app.
+- Testes: `test/sessao-rls.e2e-spec.ts` (banco, trigger, policy por hash), `test/sessao.e2e-spec.ts` (HTTP: cookies, rotacao, reuso, ociosidade, limite, sair, sair de todos, troca de senha, CSRF, throttler), `src/auth/*.spec.ts` (guard, cookies, CSRF).
 
 ## Como proteger uma rota por papel
 

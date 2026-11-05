@@ -47,6 +47,9 @@ export const THROTTLERS = [
   // Sem login nao ha outra chave; 20/min cobre o uso humano (abrir, aceitar) e barra varredura de token.
   // O contador e por rota + IP (chave do throttler): GET, aceitar e recusar contam separado.
   { name: 'consentimento-publico', ttl: MINUTO, limit: 20 },
+  // Renovacao da sessao (item 46): publica (cookie de refresh), por IP (/64 no IPv6). Uso normal =
+  // 1 por 15 min por aba; 30/min cobre varias abas e barra tentativa em massa de refresh.
+  { name: 'renovar', ttl: MINUTO, limit: 30 },
   // Uso normal da API por psicologo (somado entre TODAS as rotas autenticadas).
   { name: 'api', ttl: MINUTO, limit: 300 },
 ];

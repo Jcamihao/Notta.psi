@@ -12,6 +12,7 @@ import {
   criarApp,
   criarAppSemLimite,
 } from './criar-app-sem-limite';
+import { CLIENTE_API } from './cliente-api';
 
 const sufixo = randomUUID().slice(0, 8);
 const email = (n: string) => `${n}-${sufixo}@teste.local`;
@@ -25,6 +26,7 @@ type Cadastro = { clinicaId: string; psicologoId: string; email: string };
 async function cadastrar(n: string, extra: object = {}): Promise<Cadastro> {
   const res = await request(app.getHttpServer())
     .post('/clinicas')
+    .set(CLIENTE_API)
     .send(corpoClinica(email(n), { senha: SENHA, ...extra }))
     .expect(201);
   const body = res.body as Cadastro;
@@ -35,6 +37,7 @@ async function cadastrar(n: string, extra: object = {}): Promise<Cadastro> {
 function login(emailLogin: string, senha = SENHA) {
   return request(app.getHttpServer())
     .post('/auth/login')
+    .set(CLIENTE_API)
     .send({ email: emailLogin, senha });
 }
 
@@ -75,16 +78,20 @@ afterAll(async () => {
 afterEach(() => jest.restoreAllMocks());
 
 describe('POST /auth/login', () => {
-  it('200 com JWT HS256, exp - iat = 8 h, claims sub, clinicaId e tv', async () => {
+  it('200 com JWT HS256, exp - iat = 15 min, claims sub, clinicaId, tv e sid; corpo {usuario, token}', async () => {
     const res = await login(a.email).expect(200);
-    expect(Object.keys(res.body as object)).toEqual(['token']);
+    expect(Object.keys(res.body as object).sort()).toEqual([
+      'token',
+      'usuario',
+    ]);
     const [h, p] = (res.body as { token: string }).token.split('.');
     expect(decodificar(h).alg).toBe('HS256');
     const payload = decodificar(p);
     expect(payload.sub).toBe(a.psicologoId);
     expect(payload.clinicaId).toBe(a.clinicaId);
     expect(payload.tv).toBe(0);
-    expect((payload.exp as number) - (payload.iat as number)).toBe(28800);
+    expect((payload.exp as number) - (payload.iat as number)).toBe(900);
+    expect(payload.sid).toMatch(/^[0-9a-f-]{36}$/);
     expect(payload.papel).toBeUndefined();
   });
 
@@ -115,6 +122,7 @@ describe('POST /auth/login', () => {
   it('campo extra e senha de 73 bytes -> 400', async () => {
     await request(app.getHttpServer())
       .post('/auth/login')
+      .set(CLIENTE_API)
       .send({ email: a.email, senha: SENHA, extra: 1 })
       .expect(400);
     await login(a.email, 'a'.repeat(73)).expect(400);
@@ -140,7 +148,9 @@ describe('GET /eu e JwtAuthGuard', () => {
     const jwt = new JwtService({ secret: segredo });
     const outro = new JwtService({ secret: 'outro-segredo-'.repeat(4) });
     const agora = Math.floor(Date.now() / 1000);
-    const claims = { sub: a.psicologoId, clinicaId: a.clinicaId, tv: 0 };
+    // `sid` de uma sessao REAL do `a`: so assim cada caso abaixo falha pelo motivo que o nome diz.
+    const { sid } = jwt.decode<{ sid: string }>(await tokenDe(a));
+    const claims = { sub: a.psicologoId, clinicaId: a.clinicaId, tv: 0, sid };
     const b64 = (o: object) =>
       Buffer.from(JSON.stringify(o)).toString('base64url');
 
@@ -167,7 +177,21 @@ describe('GET /eu e JwtAuthGuard', () => {
       [
         'sem tv',
         jwt.sign(
-          { sub: a.psicologoId, clinicaId: a.clinicaId },
+          { sub: a.psicologoId, clinicaId: a.clinicaId, sid },
+          { algorithm: 'HS256', expiresIn: '1h' },
+        ),
+      ],
+      [
+        'sem sid',
+        jwt.sign(
+          { sub: a.psicologoId, clinicaId: a.clinicaId, tv: 0 },
+          { algorithm: 'HS256', expiresIn: '1h' },
+        ),
+      ],
+      [
+        'sid de sessao que nao existe',
+        jwt.sign(
+          { ...claims, sid: randomUUID() },
           { algorithm: 'HS256', expiresIn: '1h' },
         ),
       ],
@@ -178,21 +202,21 @@ describe('GET /eu e JwtAuthGuard', () => {
       [
         'clinicaId de outra clinica com sub valido',
         jwt.sign(
-          { sub: a.psicologoId, clinicaId: b.clinicaId },
+          { sub: a.psicologoId, clinicaId: b.clinicaId, sid },
           { algorithm: 'HS256', expiresIn: '1h' },
         ),
       ],
       [
         'sub nao-UUID',
         jwt.sign(
-          { sub: 'nao-uuid', clinicaId: a.clinicaId },
+          { sub: 'nao-uuid', clinicaId: a.clinicaId, sid },
           { algorithm: 'HS256', expiresIn: '1h' },
         ),
       ],
       [
         'clinicaId nao-UUID',
         jwt.sign(
-          { sub: a.psicologoId, clinicaId: 'x' },
+          { sub: a.psicologoId, clinicaId: 'x', sid },
           { algorithm: 'HS256', expiresIn: '1h' },
         ),
       ],
@@ -215,10 +239,16 @@ describe('GET /eu e JwtAuthGuard', () => {
     const c = await cadastrar('apagado');
     const token = await tokenDe(c);
     await eu(token).expect(200);
-    await comoOwner(c.clinicaId, (tx) =>
-      tx.psicologo.deleteMany({
-        where: { id: c.psicologoId, clinicaId: c.clinicaId },
-      }),
+    // Sessao tem FK RESTRICT para Psicologo: sai antes.
+    await comoOwner(
+      c.clinicaId,
+      async (tx) => {
+        await tx.sessao.deleteMany({ where: { psicologoId: c.psicologoId } });
+        await tx.psicologo.deleteMany({
+          where: { id: c.psicologoId, clinicaId: c.clinicaId },
+        });
+      },
+      { psicologoId: c.psicologoId },
     );
     await eu(token).expect(401);
   });
@@ -271,24 +301,29 @@ describe('logs', () => {
     try {
       const cad = await request(http)
         .post('/clinicas')
+        .set(CLIENTE_API)
         .send(corpoClinica(e, { senha }))
         .expect(201);
       criadas.push((cad.body as { clinicaId: string }).clinicaId);
       await request(http)
         .post('/clinicas')
+        .set(CLIENTE_API)
         .send(corpoClinica(e, { senha }))
         .expect(409);
       await request(http)
         .post('/clinicas')
+        .set(CLIENTE_API)
         .send(corpoClinica(email('log2'), { senha: 'a'.repeat(80) }))
         .expect(400);
       const ok = await request(http)
         .post('/auth/login')
+        .set(CLIENTE_API)
         .send({ email: e, senha })
         .expect(200);
       const token = (ok.body as { token: string }).token;
       await request(http)
         .post('/auth/login')
+        .set(CLIENTE_API)
         .send({ email: e, senha: `${senha}-errada` })
         .expect(401);
       await request(http)
@@ -305,6 +340,7 @@ describe('logs', () => {
         .mockRejectedValueOnce(new Error(`falha com ${senha}`));
       await request(http)
         .post('/clinicas')
+        .set(CLIENTE_API)
         .send(corpoClinica(email('log3'), { senha }))
         .expect(500);
 

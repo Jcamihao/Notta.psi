@@ -7,6 +7,7 @@ import {
   criarApp,
   criarAppSemLimite,
 } from './criar-app-sem-limite';
+import { CLIENTE_API } from './cliente-api';
 
 // App REAL (com os throttles). Cada teste cria o proprio app: armazenamento em memoria novo.
 const sufixo = randomUUID().slice(0, 8);
@@ -19,6 +20,7 @@ let cadastrada: { clinicaId: string; email: string };
 const login = (emailLogin: string, senha = 'senha-errada-1', ip?: string) => {
   const r = request(app.getHttpServer())
     .post('/auth/login')
+    .set(CLIENTE_API)
     .send({ email: emailLogin, senha });
   return ip ? r.set('X-Forwarded-For', ip) : r;
 };
@@ -40,6 +42,7 @@ beforeAll(async () => {
   const setup = await criarAppSemLimite();
   const res = await request(setup.getHttpServer())
     .post('/clinicas')
+    .set(CLIENTE_API)
     .send(corpoClinica(email('ok'), { senha: SENHA }))
     .expect(201);
   cadastrada = {
@@ -100,9 +103,18 @@ describe('limite de tentativas', () => {
 
   it('/clinicas: 6o no mesmo IP = 429 (conta antes da validacao)', async () => {
     for (let i = 0; i < 5; i++) {
-      await request(app.getHttpServer()).post('/clinicas').send({}).expect(400);
+      await request(app.getHttpServer())
+        .post('/clinicas')
+        .set(CLIENTE_API)
+        .send({})
+        .expect(400);
     }
-    esperar429(await request(app.getHttpServer()).post('/clinicas').send({}));
+    esperar429(
+      await request(app.getHttpServer())
+        .post('/clinicas')
+        .set(CLIENTE_API)
+        .send({}),
+    );
   });
 
   it('/saude nao tem limite de tentativas', async () => {
@@ -165,6 +177,7 @@ describe('IPv6: todos os limites por IP agrupam o /64', () => {
     const post = (ip: string) =>
       request(app.getHttpServer())
         .post('/clinicas')
+        .set(CLIENTE_API)
         .set('X-Forwarded-For', ip)
         .send({});
     for (let i = 0; i < 5; i++) await post(mesmo64[i % 3]).expect(400);

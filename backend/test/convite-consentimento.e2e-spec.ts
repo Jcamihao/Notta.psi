@@ -17,14 +17,22 @@ import {
   criarApp,
   criarAppSemLimite,
 } from './criar-app-sem-limite';
+import { CLIENTE_API } from './cliente-api';
 
 // Item 22 ponta a ponta: convite por link (psicologo) e aceite/recusa publicos (paciente, sem
 // login). Postgres real, RLS real, sem mocks de banco.
 const sufixo = randomUUID().slice(0, 8);
 const SENHA = 'senha-forte-123';
 const APP_URL = 'https://app.teste.local';
+// NOTTA_APP_URL desta suite e a origem aceita no CSRF do login e do cadastro.
+const CLIENTE = { ...CLIENTE_API, Origin: APP_URL };
 const NOME_PACIENTE = `Paciente Secreto ${sufixo}`;
-type Usuario = { clinicaId: string; psicologoId: string; token: string };
+type Usuario = {
+  clinicaId: string;
+  psicologoId: string;
+  token: string;
+  email: string;
+};
 type Resumo = {
   estado: string;
   historico: {
@@ -46,6 +54,7 @@ const com = (u: { token: string } | undefined, r: request.Test) =>
 async function login(email: string) {
   const res = await http()
     .post('/auth/login')
+    .set(CLIENTE)
     .send({ email, senha: SENHA })
     .expect(200);
   return (res.body as { token: string }).token;
@@ -56,6 +65,7 @@ async function novoUsuario(): Promise<Usuario> {
   const email = `conv-${++n}-${sufixo}@teste.local`;
   const res = await http()
     .post('/clinicas')
+    .set(CLIENTE)
     .send(corpoClinica(email, { senha: SENHA }))
     .expect(201);
   const { clinicaId, psicologoId } = res.body as {
@@ -63,7 +73,7 @@ async function novoUsuario(): Promise<Usuario> {
     psicologoId: string;
   };
   criadas.push(clinicaId);
-  return { clinicaId, psicologoId, token: await login(email) };
+  return { clinicaId, psicologoId, email, token: await login(email) };
 }
 
 async function novoPaciente(u: Usuario, nome = NOME_PACIENTE) {
@@ -205,7 +215,8 @@ describe('POST /pacientes/:id/convites-consentimento', () => {
     jest
       .spyOn(relogio, 'agora')
       .mockReturnValue(new Date(Date.now() + 8 * 24 * 3600 * 1000));
-    const novo = await novoConvite(u, p);
+    // A sessao do login vale 7 dias: com o relogio 8 dias adiante ela venceu, entao entra de novo.
+    const novo = await novoConvite({ ...u, token: await login(u.email) }, p);
     jest.restoreAllMocks();
     expect(velho.id).not.toBe(novo.id);
     await abrir(novo.token).expect(200);
@@ -251,7 +262,10 @@ describe('POST /pacientes/:id/convites-consentimento', () => {
     const colega = { token: await login(email) } as Usuario;
     await criarConvite(colega, p).expect(403);
     await listar(colega, p).expect(403);
-    const nova = await com(colega, http().post('/auth/trocar-senha'))
+    const nova = await com(
+      colega,
+      http().post('/auth/trocar-senha').set(CLIENTE),
+    )
       .send({ senhaAtual: SENHA, novaSenha: 'outra-senha-456' })
       .expect(200);
     const livre = { token: (nova.body as { token: string }).token } as Usuario;
@@ -298,7 +312,9 @@ describe('GET e cancelar', () => {
     jest
       .spyOn(relogio, 'agora')
       .mockReturnValue(new Date(Date.now() + 8 * 24 * 3600 * 1000));
-    const depois = (await listar(u, p).expect(200)).body as {
+    // (login de novo: a sessao anterior passou dos 7 dias com o relogio adiantado)
+    const u2 = { ...u, token: await login(u.email) };
+    const depois = (await listar(u2, p).expect(200)).body as {
       id: string;
       estado: string;
       expirado: boolean;
@@ -464,7 +480,10 @@ describe('rotas publicas: GET /publico/consentimento/:token', () => {
       .expect(201);
     const colegaId = (criado.body as { psicologoId: string }).psicologoId;
     const t1 = await login(email);
-    const nova = await com({ token: t1 }, http().post('/auth/trocar-senha'))
+    const nova = await com(
+      { token: t1 },
+      http().post('/auth/trocar-senha').set(CLIENTE),
+    )
       .send({ senhaAtual: SENHA, novaSenha: 'outra-senha-456' })
       .expect(200);
     const colega = {

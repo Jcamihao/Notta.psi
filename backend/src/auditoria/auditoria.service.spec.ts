@@ -42,7 +42,7 @@ describe('AuditoriaService.registrar', () => {
       service.registrar(tx, user, 'APAGOU' as never, 'Paciente'),
     ).rejects.toThrow('invalido');
     await expect(
-      service.registrar(tx, user, 'LEU', 'Sessao' as never),
+      service.registrar(tx, user, 'LEU', 'Inexistente' as never),
     ).rejects.toThrow('invalido');
     expect(create).not.toHaveBeenCalled();
   });

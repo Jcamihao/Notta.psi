@@ -1,0 +1,68 @@
+# Exemplo de nginx para o Notta.psi (item 49). NAO e usado pelo app; e o modelo para a VPS.
+# Front (Angular, build de producao) em /var/www/notta e API (NestJS) em 127.0.0.1:3000, MESMA origem.
+# Back: NOTTA_APP_URL=https://app.exemplo.com  NOTTA_TRUST_PROXY=1  (NOTTA_API_PREFIXO=/api e o padrao)
+
+server {
+    listen 80;
+    server_name app.exemplo.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name app.exemplo.com;
+
+    ssl_certificate     /etc/letsencrypt/live/app.exemplo.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.exemplo.com/privkey.pem;
+
+    root /var/www/notta;
+    index index.html;
+
+    # Cabecalhos do FRONT (ver docs/SEGURANCA-HEADERS.md): repetidos em cada `location` do front de
+    # proposito. O nginx NAO herda `add_header` do `server` para um `location` que tenha o proprio, e
+    # aqui a API (/api/) fica sem eles (a resposta dela ja traz os do helmet). `always` = tambem em
+    # 404/500. A CSP nao tem 'unsafe-inline' nem 'unsafe-eval': se o build tiver script inline, use
+    # nonce/hash (nao afrouxe a CSP).
+
+    # API: o prefixo /api e tirado antes de chegar no back (o cookie de refresh e restrito a /api/auth).
+    location ^~ /api/ {
+        proxy_pass http://127.0.0.1:3000/;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 300k;   # o back recusa acima de 256 kb
+    }
+
+    # Pagina publica do termo de consentimento: fora do indice de buscadores.
+    location ^~ /termo/ {
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" always;
+        add_header Referrer-Policy "no-referrer" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Robots-Tag "noindex" always;
+        add_header Cache-Control "no-store" always;
+        try_files /index.html =404;
+    }
+
+    # Arquivos com hash no nome (JS, CSS, fontes): cache longo.
+    location ~* \.(?:js|css|woff2|svg|png|ico)$ {
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" always;
+        add_header Referrer-Policy "no-referrer" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # Todo o resto e o app (SPA): HTML autenticado nunca em cache.
+    location / {
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" always;
+        add_header Referrer-Policy "no-referrer" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header Cache-Control "no-store" always;
+        try_files $uri /index.html;
+    }
+}

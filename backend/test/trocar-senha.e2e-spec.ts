@@ -12,6 +12,7 @@ import {
   criarAppSemLimite,
 } from './criar-app-sem-limite';
 import { portaoBcrypt } from './portao-bcrypt';
+import { CLIENTE_API } from './cliente-api';
 
 // Item 62/57: senha provisoria criada pelo ADMIN, troca obrigatoria e voluntaria,
 // versao do token (`tv`). Postgres real.
@@ -44,6 +45,7 @@ type Admin = { clinicaId: string; id: string; token: string };
 function login(e: string, senha = SENHA, a = app) {
   return request(a.getHttpServer())
     .post('/auth/login')
+    .set(CLIENTE_API)
     .send({ email: e, senha });
 }
 
@@ -56,6 +58,7 @@ async function tokenDe(e: string, senha = SENHA, a = app) {
 async function novaClinica(e: string): Promise<Admin> {
   const res = await request(app.getHttpServer())
     .post('/clinicas')
+    .set(CLIENTE_API)
     .send(corpoClinica(e, { senha: SENHA }))
     .expect(201);
   const { clinicaId, psicologoId } = res.body as {
@@ -81,7 +84,10 @@ const get = (rota: string, token: string, a = app) =>
   comToken(request(a.getHttpServer()).get(rota), token);
 const trocar = (token: string, corpo: object, a = app) =>
   comToken(
-    request(a.getHttpServer()).post('/auth/trocar-senha').send(corpo),
+    request(a.getHttpServer())
+      .post('/auth/trocar-senha')
+      .set(CLIENTE_API)
+      .send(corpo),
     token,
   );
 
@@ -158,7 +164,7 @@ describe('senha provisoria: fluxo completo', () => {
       senhaAtual: SENHA,
       novaSenha: NOVA,
     }).expect(200);
-    expect(Object.keys(ok.body as object)).toEqual(['token']);
+    expect(Object.keys(ok.body as object).sort()).toEqual(['ok', 'token']);
     const novo = (ok.body as { token: string }).token;
     expect(decodificar(novo)).toMatchObject({
       sub: colegaId,
@@ -230,9 +236,11 @@ describe('troca voluntaria e versao do token (tv)', () => {
 
   it('tv desatualizado, sem tv e tv texto = 401; tv certo = 200', async () => {
     const jwt = new JwtService({ secret: process.env.NOTTA_JWT_SECRET });
+    // sessao REAL do admin: so o `tv` muda entre os casos
+    const { sid } = jwt.decode<{ sid: string }>(admin.token);
     const assinar = (extra: object) =>
       jwt.sign(
-        { sub: admin.id, clinicaId: admin.clinicaId, ...extra },
+        { sub: admin.id, clinicaId: admin.clinicaId, sid, ...extra },
         { algorithm: 'HS256', expiresIn: '1h' },
       );
     await get('/eu', assinar({ tv: 0 })).expect(200);
@@ -251,6 +259,7 @@ describe('troca voluntaria e versao do token (tv)', () => {
   it('sem token = 401; ADMIN nao troca a senha do colega (so a propria, pelo token)', async () => {
     await request(app.getHttpServer())
       .post('/auth/trocar-senha')
+      .set(CLIENTE_API)
       .send({ senhaAtual: SENHA, novaSenha: NOVA })
       .expect(401);
     // o corpo nao aceita alvo: so a conta do token muda

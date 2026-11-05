@@ -8,6 +8,7 @@ import {
   corpoClinica,
   criarAppSemLimite,
 } from './criar-app-sem-limite';
+import { CLIENTE_API } from './cliente-api';
 
 // Item 11 ponta a ponta: cada rota de paciente grava EXATAMENTE 1 linha na trilha, na mesma
 // transacao, sem nenhum dado do paciente.
@@ -34,6 +35,7 @@ async function novoUsuario(): Promise<Usuario> {
   const email = `aud-${++n}-${sufixo}@teste.local`;
   const res = await http()
     .post('/clinicas')
+    .set(CLIENTE_API)
     .send(corpoClinica(email, { senha: SENHA }))
     .expect(201);
   const { clinicaId, psicologoId } = res.body as {
@@ -43,6 +45,7 @@ async function novoUsuario(): Promise<Usuario> {
   criadas.push(clinicaId);
   const login = await http()
     .post('/auth/login')
+    .set(CLIENTE_API)
     .send({ email, senha: SENHA })
     .expect(200);
   return {

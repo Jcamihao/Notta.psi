@@ -11,6 +11,7 @@ import {
   corpoClinica,
   criarAppSemLimite,
 } from './criar-app-sem-limite';
+import { CLIENTE_API } from './cliente-api';
 
 // Controllers SO deste teste (nao existem no AppModule).
 @Controller('teste-papeis')
@@ -45,6 +46,7 @@ let tokenPsi: string;
 async function token(email: string) {
   const res = await request(app.getHttpServer())
     .post('/auth/login')
+    .set(CLIENTE_API)
     .send({ email, senha: SENHA })
     .expect(200);
   return (res.body as { token: string }).token;
@@ -59,6 +61,7 @@ beforeAll(async () => {
   app = await criarAppSemLimite({ controllers: [TestePapeisController] });
   const res = await request(app.getHttpServer())
     .post('/clinicas')
+    .set(CLIENTE_API)
     .send(corpoClinica(emailAdmin, { senha: SENHA }))
     .expect(201);
   clinicaId = (res.body as { clinicaId: string }).clinicaId;

@@ -8,6 +8,7 @@ import {
   corpoClinica,
   criarAppSemLimite,
 } from './criar-app-sem-limite';
+import { CLIENTE_API } from './cliente-api';
 
 const sufixo = randomUUID().slice(0, 8);
 const email = (n: string) => `pac-${n}-${sufixo}@teste.local`;
@@ -40,6 +41,7 @@ const patch = (u: Usuario | undefined, id: string, corpo: object) =>
 async function login(e: string, senha = SENHA) {
   const res = await http()
     .post('/auth/login')
+    .set(CLIENTE_API)
     .send({ email: e, senha })
     .expect(200);
   return (res.body as { token: string }).token;
@@ -48,6 +50,7 @@ async function login(e: string, senha = SENHA) {
 async function novaClinica(e: string): Promise<Usuario> {
   const res = await http()
     .post('/clinicas')
+    .set(CLIENTE_API)
     .send(corpoClinica(e, { senha: SENHA }))
     .expect(201);
   const { clinicaId, psicologoId } = res.body as {
@@ -68,6 +71,7 @@ async function novoColega(admin: Usuario, e: string): Promise<Usuario> {
   const provisorio = await login(e);
   const troca = await http()
     .post('/auth/trocar-senha')
+    .set(CLIENTE_API)
     .set('Authorization', `Bearer ${provisorio}`)
     .send({ senhaAtual: SENHA, novaSenha: 'senha-definitiva-1' })
     .expect(200);

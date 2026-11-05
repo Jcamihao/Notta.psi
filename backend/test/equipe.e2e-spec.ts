@@ -11,6 +11,7 @@ import {
   criarApp,
   criarAppSemLimite,
 } from './criar-app-sem-limite';
+import { CLIENTE_API } from './cliente-api';
 
 const sufixo = randomUUID().slice(0, 8);
 const email = (n: string) => `eq-${n}-${sufixo}@teste.local`;
@@ -29,6 +30,7 @@ const criadas: string[] = [];
 async function login(e: string, senha = SENHA, a = app) {
   const res = await request(a.getHttpServer())
     .post('/auth/login')
+    .set(CLIENTE_API)
     .send({ email: e, senha })
     .expect(200);
   return (res.body as { token: string }).token;
@@ -37,6 +39,7 @@ async function login(e: string, senha = SENHA, a = app) {
 async function novaClinica(e: string, a = app): Promise<Clinica> {
   const res = await request(a.getHttpServer())
     .post('/clinicas')
+    .set(CLIENTE_API)
     .send(corpoClinica(e, { senha: SENHA }))
     .expect(201);
   const { clinicaId, psicologoId } = res.body as {
@@ -79,6 +82,7 @@ beforeAll(async () => {
   const provisorio = await login(email('psi-a'));
   const troca = await request(app.getHttpServer())
     .post('/auth/trocar-senha')
+    .set(CLIENTE_API)
     .set('Authorization', `Bearer ${provisorio}`)
     .send({ senhaAtual: SENHA, novaSenha: 'senha-definitiva-1' })
     .expect(200);
@@ -149,6 +153,7 @@ describe('POST /psicologos', () => {
     expect(n).toBe(0);
     await request(app.getHttpServer())
       .post('/auth/login')
+      .set(CLIENTE_API)
       .send({ email: e, senha: SENHA })
       .expect(401);
   });
@@ -245,8 +250,14 @@ describe('GET /psicologos', () => {
   it('token valido de psicologo apagado = 401', async () => {
     const c = await novaClinica(email('apagado'));
     await get(c.token).expect(200);
-    await comoOwner(c.clinicaId, (tx) =>
-      tx.psicologo.deleteMany({ where: { clinicaId: c.clinicaId } }),
+    // Sessao tem FK RESTRICT para Psicologo: sai antes.
+    await comoOwner(
+      c.clinicaId,
+      async (tx) => {
+        await tx.sessao.deleteMany({ where: { clinicaId: c.clinicaId } });
+        await tx.psicologo.deleteMany({ where: { clinicaId: c.clinicaId } });
+      },
+      { psicologoId: c.adminId },
     );
     await get(c.token).expect(401);
     await post(c.token, corpoPsi(email('apagado-2'))).expect(401);
@@ -359,12 +370,17 @@ describe('limite de tentativas da equipe (20/hora por psicologo)', () => {
     for (let i = 0; i < 5; i++) await login(email('admin-a'), SENHA, real);
     await request(http)
       .post('/auth/login')
+      .set(CLIENTE_API)
       .send({ email: email('admin-a'), senha: SENHA })
       .expect(429);
     for (let i = 0; i < 5; i++) {
-      await request(http).post('/clinicas').send({}).expect(400);
+      await request(http)
+        .post('/clinicas')
+        .set(CLIENTE_API)
+        .send({})
+        .expect(400);
     }
-    await request(http).post('/clinicas').send({}).expect(429);
+    await request(http).post('/clinicas').set(CLIENTE_API).send({}).expect(429);
     // e a equipe nao herda os deles: 20 POSTs passam do 5 do cadastro e do login
     for (let i = 0; i < 20; i++) await post(b.token, {}, real).expect(400);
   });

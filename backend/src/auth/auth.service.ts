@@ -6,11 +6,13 @@ import {
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import type { Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { relogio } from '../comum/relogio';
 import { normalizarEmail } from '../comum/validacao';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { UsuarioAutenticado } from './jwt-auth.guard';
+import { SessaoAtual, SessaoService } from './sessao.service';
 
 // Fixo em codigo (nao vem de env). Usado no cadastro e no hash falso do login.
 export const CUSTO_BCRYPT = 12;
@@ -21,7 +23,7 @@ export class AuthService implements OnModuleInit {
 
   constructor(
     private readonly tenant: TenantPrismaService,
-    private readonly jwt: JwtService,
+    private readonly sessoes: SessaoService,
   ) {}
 
   // Hash falso com o MESMO custo: e-mail inexistente gasta o mesmo tempo de bcrypt.
@@ -55,22 +57,30 @@ export class AuthService implements OnModuleInit {
     if (!psicologo || !psicologo.ativo || !ok) {
       throw new UnauthorizedException('Credenciais invalidas');
     }
-    return { token: await this.token(psicologo) };
-  }
-
-  // Papel NAO vai no token: o guard le do banco a cada requisicao.
-  // `tv` = tokenVersao: o guard confere com o banco (trocar a senha revoga os antigos).
-  private token(p: { id: string; clinicaId: string; tokenVersao: number }) {
-    return this.jwt.signAsync({
-      sub: p.id,
-      clinicaId: p.clinicaId,
-      tv: p.tokenVersao,
-    });
+    // Sessao nova (familia nova, 7 dias) + os dados do usuario, na mesma transacao.
+    const { usuario, sessao } = await this.tenant.run(
+      psicologo.clinicaId,
+      async (tx) => ({
+        sessao: await this.sessoes.criar(tx, {
+          clinicaId: psicologo.clinicaId,
+          psicologoId: psicologo.id,
+        }),
+        usuario: await this.perfil(tx, psicologo.clinicaId, psicologo.id),
+      }),
+      { psicologoId: psicologo.id },
+    );
+    return {
+      usuario,
+      acesso: await this.sessoes.assinar(psicologo, sessao.sessaoId),
+      refresh: sessao.refresh,
+      absolutaAte: sessao.absolutaAte,
+    };
   }
 
   // Troca da PROPRIA senha (obrigatoria com senha provisoria, voluntaria nos outros casos).
   async trocarSenha(
     user: UsuarioAutenticado,
+    sessao: SessaoAtual,
     senhaAtual: string,
     novaSenha: string,
   ) {
@@ -103,32 +113,56 @@ export class AuthService implements OnModuleInit {
         },
       });
       if (count !== 1) return null;
+      // Todas as OUTRAS sessoes do psicologo caem (a senha mudou: quem a tinha perde o acesso).
+      // A atual segue: mesmo sid, JWT novo com o `tv` novo.
+      await tx.sessao.updateMany({
+        where: {
+          clinicaId,
+          psicologoId: id,
+          familia: { not: sessao.familia },
+          revogadaEm: null,
+        },
+        data: { revogadaEm: relogio.agora(), motivoRevogacao: 'SENHA_TROCADA' },
+      });
       return tx.psicologo.findFirstOrThrow({
         where: { id, clinicaId },
         select: { id: true, clinicaId: true, tokenVersao: true },
       });
     });
     if (!p) throw incorreta();
-    return { token: await this.token(p) };
+    return this.sessoes.assinar(p, sessao.id);
   }
 
-  async eu({ psicologoId, clinicaId }: UsuarioAutenticado) {
-    const p = await this.tenant.run(clinicaId, (tx) =>
-      tx.psicologo.findFirst({
-        where: { id: psicologoId, clinicaId },
-        select: {
-          id: true,
-          nome: true,
-          email: true,
-          papel: true,
-          abordagemPadrao: true,
-          senhaProvisoria: true,
-          clinica: { select: { id: true, nome: true } },
-        },
-      }),
-    );
+  // Dados do usuario logado: GET /eu e o `usuario` do login.
+  private async perfil(
+    tx: Prisma.TransactionClient,
+    clinicaId: string,
+    psicologoId: string,
+  ) {
+    const p = await tx.psicologo.findFirst({
+      where: { id: psicologoId, clinicaId },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        papel: true,
+        abordagemPadrao: true,
+        senhaProvisoria: true,
+        clinica: { select: { id: true, nome: true } },
+      },
+    });
     if (!p) throw new UnauthorizedException();
     const { id, ...resto } = p;
     return { psicologoId: id, ...resto };
+  }
+
+  eu({ psicologoId, clinicaId }: UsuarioAutenticado) {
+    return this.tenant.run(clinicaId, (tx) =>
+      this.perfil(tx, clinicaId, psicologoId),
+    );
+  }
+
+  renovar(refreshCru: string) {
+    return this.sessoes.renovar(refreshCru);
   }
 }

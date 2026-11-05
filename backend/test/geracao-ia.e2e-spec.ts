@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { LoggerService } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { AuditoriaService } from '../src/auditoria/auditoria.service';
@@ -16,6 +17,7 @@ import {
   status,
   subirSelahiaFalso,
 } from './selahia-falso';
+import { CLIENTE_API, reassinar } from './cliente-api';
 
 // Itens 19, 20, 21 (back) e a fiacao do 51 ponta a ponta, com um SelahIA FALSO em node:http.
 const sufixo = randomUUID().slice(0, 8);
@@ -87,13 +89,17 @@ const corpo = <T>(r: { body: unknown }) => r.body as T;
 const dormir = (ms: number) => new Promise((f) => setTimeout(f, ms));
 
 async function login(e: string, senha = SENHA) {
-  const res = await http().post('/auth/login').send({ email: e, senha });
+  const res = await http()
+    .post('/auth/login')
+    .set(CLIENTE_API)
+    .send({ email: e, senha });
   return (res.body as { token: string }).token;
 }
 
 async function novaClinica(e: string): Promise<Usuario> {
   const res = await http()
     .post('/clinicas')
+    .set(CLIENTE_API)
     .send(corpoClinica(e, { senha: SENHA }))
     .expect(201);
   const { clinicaId, psicologoId } = corpo<{
@@ -110,7 +116,10 @@ async function novoColega(admin: Usuario, e: string): Promise<Usuario> {
   const res = await com(admin.token, http().post('/psicologos'))
     .send({ nome: 'Colega', email: e, senha: SENHA, abordagemPadrao: 'ACT' })
     .expect(201);
-  const troca = await com(await login(e), http().post('/auth/trocar-senha'))
+  const troca = await com(
+    await login(e),
+    http().post('/auth/trocar-senha').set(CLIENTE_API),
+  )
     .send({ senhaAtual: SENHA, novaSenha: 'senha-definitiva-1' })
     .expect(200);
   const u = {
@@ -732,6 +741,7 @@ describe('POST confirmar -> executor (itens 20 e 21)', () => {
     const c = await cenario();
     const p = await previaOk(c);
     relogio(31 * 60_000);
+    c.u.token = await reassinar(app.get(JwtService), c.u.token);
     const r = await confirmar(c.u, p.id).expect(409);
     expect(corpo<{ message: string }>(r).message).toBe(
       'Previa expirada, gere outra',
@@ -742,6 +752,7 @@ describe('POST confirmar -> executor (itens 20 e 21)', () => {
     expect((await crua(c.u, p.id)).estado).toBe('PREVIA');
     // dentro do prazo ainda vale
     relogio(29 * 60_000);
+    c.u.token = await reassinar(app.get(JwtService), c.u.token);
     await confirmar(c.u, p.id).expect(202);
   });
 

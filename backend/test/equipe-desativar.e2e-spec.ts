@@ -9,6 +9,7 @@ import {
   corpoClinica,
   criarAppSemLimite,
 } from './criar-app-sem-limite';
+import { CLIENTE_API } from './cliente-api';
 
 // Item 58 ponta a ponta: ADMIN desativa colega; token cai na hora, login fecha, dados ficam
 // guardados sem leitura por ninguem, auditoria na mesma transacao.
@@ -39,6 +40,7 @@ const desativar = (token: string | undefined, id: string) =>
 async function login(email: string, senha = SENHA) {
   const res = await http()
     .post('/auth/login')
+    .set(CLIENTE_API)
     .send({ email, senha })
     .expect(200);
   return (res.body as { token: string }).token;
@@ -48,6 +50,7 @@ async function novaClinica(): Promise<Usuario> {
   const email = `d58-admin-${++n}-${sufixo}@teste.local`;
   const res = await http()
     .post('/clinicas')
+    .set(CLIENTE_API)
     .send(corpoClinica(email, { senha: SENHA }))
     .expect(201);
   const { clinicaId, psicologoId } = res.body as {
@@ -64,7 +67,10 @@ async function novoColega(admin: Usuario): Promise<Usuario> {
   const res = await com(admin.token, http().post('/psicologos'))
     .send({ nome: 'Colega', email, senha: SENHA, abordagemPadrao: 'ACT' })
     .expect(201);
-  const troca = await com(await login(email), http().post('/auth/trocar-senha'))
+  const troca = await com(
+    await login(email),
+    http().post('/auth/trocar-senha').set(CLIENTE_API),
+  )
     .send({ senhaAtual: SENHA, novaSenha: SENHA_NOVA })
     .expect(200);
   return {
@@ -133,10 +139,12 @@ describe('POST /psicologos/:id/desativar', () => {
     }
     const inativo = await http()
       .post('/auth/login')
+      .set(CLIENTE_API)
       .send({ email: c.email, senha: SENHA_NOVA })
       .expect(401);
     const inexistente = await http()
       .post('/auth/login')
+      .set(CLIENTE_API)
       .send({ email: `nao-existe-${sufixo}@teste.local`, senha: SENHA_NOVA })
       .expect(401);
     expect(inativo.body).toEqual(inexistente.body);

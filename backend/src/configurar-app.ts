@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { NextFunction, Request, Response } from 'express';
 import helmet from 'helmet';
+import { prefixoApi } from './auth/cookies';
 import { BancoIndisponivelFilter } from './prisma/banco-indisponivel.filter';
 
 // A API e so JSON: sem os parsers padrao do Nest (json + urlencoded). main.ts e TODO teste que
@@ -131,6 +132,9 @@ export function configurarApp(app: NestExpressApplication): void {
     }
     app.set('trust proxy', Number(proxy));
   }
+
+  // Prefixo da API para o cookie de refresh: invalido derruba o boot.
+  prefixoApi();
 
   // CORS so com UMA origem exata. Ausente = desligado (o front usa proxy, mesma origem).
   // Lista com 1 item: o cors compara a origem recebida e so responde se for igual

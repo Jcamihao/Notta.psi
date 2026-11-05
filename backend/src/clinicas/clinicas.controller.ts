@@ -1,5 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { IsString, Length } from 'class-validator';
+import { OrigemApenas } from '../auth/csrf.guard';
 import { Publico } from '../auth/jwt-auth.guard';
 import { TetoHash } from '../auth/teto-hash';
 import { NovoPsicologoDto } from '../comum/novo-psicologo';
@@ -25,6 +26,7 @@ export class ClinicasController {
   constructor(private readonly clinicas: ClinicasService) {}
 
   @Publico()
+  @OrigemApenas()
   @LimiteCadastroClinica()
   @TetoHash()
   @Post()

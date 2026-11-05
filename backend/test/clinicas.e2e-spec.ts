@@ -8,6 +8,7 @@ import {
   corpoClinica,
   criarAppSemLimite,
 } from './criar-app-sem-limite';
+import { CLIENTE_API } from './cliente-api';
 
 const sufixo = randomUUID().slice(0, 8);
 const email = (n: string) => `${n}-${sufixo}@teste.local`;
@@ -18,7 +19,10 @@ let tenant: TenantPrismaService;
 const criadas: string[] = [];
 
 async function cadastrar(corpo: object) {
-  const res = await request(app.getHttpServer()).post('/clinicas').send(corpo);
+  const res = await request(app.getHttpServer())
+    .post('/clinicas')
+    .set(CLIENTE_API)
+    .send(corpo);
   if (res.status === 201) {
     criadas.push((res.body as { clinicaId: string }).clinicaId);
   }
