@@ -8,7 +8,7 @@ Por que importa: a sessao agora e cookie `httpOnly` (o JS nao le o JWT), mas um 
 
 | Cabecalho | Valor | Por que |
 |---|---|---|
-| `Content-Security-Policy` | `default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'` | Sem `'unsafe-inline'` e sem `'unsafe-eval'`: script injetado nao roda. `connect-src 'self'`: a API e `/api` na mesma origem. |
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self'; style-src 'self' 'nonce-<NONCE>'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'` | Sem `'unsafe-inline'` e sem `'unsafe-eval'`: script injetado nao roda. `connect-src 'self'`: a API e `/api` na mesma origem. `style-src` leva um nonce por resposta (ver abaixo). `base-uri 'self'` (e NAO `'none'`): o `index.html` tem `<base href="/">` e o navegador bloqueia com `'none'`. |
 | `frame-ancestors 'none'` (dentro da CSP) | `none` | Ninguem embute o app em iframe (clickjacking). |
 | `Referrer-Policy` | `no-referrer` | O link do termo (`/termo/<token>`) e uma credencial na URL: nao pode vazar por Referer. |
 | `X-Content-Type-Options` | `nosniff` | O navegador nao adivinha tipo de arquivo. |
@@ -16,15 +16,16 @@ Por que importa: a sessao agora e cookie `httpOnly` (o JS nao le o JWT), mas um 
 | `X-Robots-Tag` | `noindex` em `/termo/*` | A pagina do termo nao entra em buscador. |
 | `Cache-Control` | `no-store` no HTML do app | Pagina autenticada nao fica em cache compartilhado nem no botao "voltar". Os arquivos com hash no nome (`*.js`, `*.css`) podem ter cache longo. |
 
-## Como o Angular entra nessa CSP (sem `unsafe-inline`)
+## Como o Angular entra nessa CSP (verificado no build real, item 46/49 front)
 
-As opcoes abaixo sao a receita conhecida; NAO foram verificadas contra o build real nesta task (o front so muda na etapa seguinte, que roda o teste automatico e confirma).
+Verificado em 2026-11-05 com o build de producao servido com esta CSP e aberto no Chrome (violacoes pelo evento `securitypolicyviolation` e pelo console): `/login`, `/cadastro` e `/termo/abc` com **0 violacoes**. Duas coisas SAIRAM DIFERENTES do que se supunha e estao resolvidas:
 
-- Build de producao com `"optimization": { "styles": { "inlineCritical": false } }` no `angular.json`: o Angular, por padrao, injeta CSS critico inline e troca o `<link>` por um `onload="this.media='all'"` (handler inline, bloqueado pela CSP). Desligue o `inlineCritical`.
-- Fontes e icones auto-hospedados (decisao ja tomada: DM Sans e Lucide por npm, nada de CDN). Sem `style-src` externo.
-- Se o build gerar `<script>` inline (ex.: `ngsw`/registro do service worker), use nonce por resposta (`ngCspNonce` no `<app-root>`, injetado pelo nginx com `sub_filter`) ou hash. Preferir remover o script inline.
-- Estilos dinamicos do Angular (`[style.x]`) usam o CSSOM e passam; `style="..."` literal no template vira atributo e e bloqueado: se aparecer violacao, mover para classe.
-- Teste automatico (script do front, rodado no fim da etapa do front): le o build de producao e FALHA se achar `eval(`, `new Function(`, handler inline (`onclick=` e afins) ou `<script>` inline sem nonce/hash. Isso e do front; esta task so entrega o contrato.
+1. **Estilo dos componentes.** O Angular injeta o CSS de cada componente como `<style>` em tempo de execucao. Com `style-src 'self'` puro o navegador bloqueia todos (tela sem o estilo dos componentes). Solucao adotada: `ngCspNonce="NOTTA_CSP_NONCE"` no `<app-root>` do `src/index.html` (o Angular poe esse nonce nos `<style>` que injeta) e o servidor, a cada resposta de HTML, **troca `NOTTA_CSP_NONCE` por um valor novo** e manda o mesmo valor em `style-src 'nonce-...'`. No nginx: `sub_filter 'NOTTA_CSP_NONCE' $request_id;` + `'nonce-$request_id'` no header (ver `deploy/nginx-notta.conf.example`; o `$request_id` do nginx tem 128 bits aleatorios). A receita do nginx NAO foi rodada (sem nginx no ambiente de desenvolvimento): o comportamento do navegador foi provado com um servidor Node que faz a mesma troca. Teste na VPS antes de ligar. Em `ng serve` (sem CSP) o texto `NOTTA_CSP_NONCE` fica como valor do atributo e nao faz nada.
+2. **`<base href="/">`** exige `base-uri 'self'`; com `'none'` o navegador recusa a base e quebra as rotas.
+
+O que ja estava certo: `optimization.styles.inlineCritical: false` no `angular.json` (build de producao) deixa o `index.html` sem CSS inline e sem o `onload` do CSS critico; o build nao tem `<script>` inline, `eval(`, `new Function(`, handler inline nem `style=""`. `[style.x]` do Angular usa o CSSOM e passa; `style="..."` literal em template viraria atributo e seria bloqueado (o verificador pega no HTML, e a CSP pegaria no navegador).
+
+Teste automatico (item 49): em `frontend/`, depois do build de producao, `npm run verificar:csp` le o `dist` e FALHA (codigo 1) se achar `eval(`, `new Function(`, `setTimeout`/`setInterval` com texto, handler inline (`onclick=` e afins), `javascript:` em URL, `<script>` inline sem hash esperado (lista `HASHES_PERMITIDOS` em `frontend/scripts/csp.mjs`, vazia), `<style>` ou `style=""` no HTML, ou `index.html` sem o `ngCspNonce="NOTTA_CSP_NONCE"`. `npm run test:csp` prova que a verificacao falha de verdade (build falso com cada violacao).
 
 ## Cookies e proxy (como o back espera)
 

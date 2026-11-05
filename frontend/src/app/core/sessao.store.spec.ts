@@ -173,6 +173,28 @@ describe('SessaoStore', () => {
     });
   });
 
+  describe('sair de todos', () => {
+    it('POST /api/auth/sair-de-todos e limpa o estado', async () => {
+      const s = configurar();
+      s.entrar(EU);
+      const p = s.sairDeTodos();
+      const r = ctrl.expectOne('/api/auth/sair-de-todos');
+      expect(r.request.method).toBe('POST');
+      r.flush({ ok: true });
+      await p;
+      expect(s.autenticado()).toBeFalse();
+    });
+
+    it('se o servidor falhar, o erro sobe e a sessao continua', async () => {
+      const s = configurar();
+      s.entrar(EU);
+      const p = s.sairDeTodos();
+      ctrl.expectOne('/api/auth/sair-de-todos').flush({}, { status: 503, statusText: 'x' });
+      await expectAsync(p).toBeRejected();
+      expect(s.autenticado()).toBeTrue();
+    });
+  });
+
   describe('renovar', () => {
     it('acesso ja valido (outra aba renovou): confere pelo /eu e NAO chama renovar', async () => {
       const s = configurar();

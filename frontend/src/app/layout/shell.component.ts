@@ -1,4 +1,12 @@
-import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import {
@@ -8,6 +16,7 @@ import {
   LogOut,
   LucideAngularModule,
   Menu,
+  MonitorOff,
   UserRound,
   Users,
   X,
@@ -23,7 +32,7 @@ import { NavItemComponent } from '../ui/nav-item.component';
 // navegacao: sobra o logo e o Sair (o guard trava as rotas do mesmo jeito).
 @Component({
   selector: 'app-shell',
-  host: { '(document:keydown.escape)': 'fecharMenu()' },
+  host: { '(document:keydown.escape)': 'escape()' },
   imports: [
     RouterOutlet,
     RouterLink,
@@ -107,6 +116,49 @@ import { NavItemComponent } from '../ui/nav-item.component';
                 <span class="quem-clinica">{{ u.clinica.nome }}</span>
               </div>
             </div>
+          }
+          @if (confirmandoTodos()) {
+            <div class="confirma" role="group" aria-labelledby="confirma-titulo">
+              <p id="confirma-titulo">
+                Sair de todos os aparelhos? Você precisará entrar de novo em cada um.
+              </p>
+              <p class="confirma-erro" role="alert" data-teste="erro-sair-todos">
+                @if (erroTodos()) {
+                  Não deu para sair agora. Tente de novo.
+                }
+              </p>
+              <div class="confirma-acoes">
+                <button
+                  #cancelar
+                  type="button"
+                  class="acao acao-neutra"
+                  data-teste="cancelar-sair-todos"
+                  (click)="cancelarSairTodos()"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  class="acao"
+                  data-teste="confirmar-sair-todos"
+                  [disabled]="saindoTodos()"
+                  (click)="sairDeTodos()"
+                >
+                  {{ saindoTodos() ? 'Saindo…' : 'Sair de todos' }}
+                </button>
+              </div>
+            </div>
+          } @else {
+            <button
+              #pedir
+              app-nav-item
+              type="button"
+              data-teste="sair-todos"
+              [icon]="icones.MonitorOff"
+              (click)="pedirSairTodos()"
+            >
+              Sair de todos os aparelhos
+            </button>
           }
           <button
             app-nav-item
@@ -196,6 +248,53 @@ import { NavItemComponent } from '../ui/nav-item.component';
       font-size: var(--fs-day);
       overflow-wrap: anywhere;
     }
+    .confirma {
+      display: grid;
+      gap: var(--space-3);
+      padding: var(--space-5);
+      background: var(--ink-700);
+      border-radius: var(--radius-card);
+      font-size: var(--fs-day);
+      line-height: var(--lh-body);
+    }
+    .confirma p {
+      margin: 0;
+    }
+    .confirma-erro {
+      color: var(--pink-200);
+    }
+    .confirma-erro:empty {
+      display: none;
+    }
+    .confirma-acoes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+    }
+    .acao {
+      min-height: 32px;
+      padding: 0 var(--space-6);
+      font: inherit;
+      font-size: var(--fs-day);
+      font-weight: var(--fw-medium);
+      color: var(--ink-900);
+      background: var(--pink-300);
+      border: 0;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+    }
+    .acao:hover:not(:disabled) {
+      background: var(--pink-200);
+    }
+    .acao:disabled {
+      cursor: progress;
+    }
+    .acao-neutra {
+      background: var(--cream-200);
+    }
+    .acao-neutra:hover:not(:disabled) {
+      background: var(--cream-50);
+    }
     .shell-conteudo {
       min-width: 0;
       padding-top: var(--space-3);
@@ -248,12 +347,19 @@ import { NavItemComponent } from '../ui/nav-item.component';
 export class ShellComponent {
   private readonly sessao = inject(SessaoStore);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
   private readonly alternar = viewChild('alternar', { read: ElementRef });
+  private readonly cancelar = viewChild('cancelar', { read: ElementRef });
+  private readonly pedir = viewChild('pedir', { read: ElementRef });
 
-  readonly icones = { CircleCheck, House, KeyRound, LogOut, Menu, UserRound, Users, X };
+  readonly icones = { CircleCheck, House, KeyRound, LogOut, Menu, MonitorOff, UserRound, Users, X };
   readonly usuario = this.sessao.usuario;
   readonly ehAdmin = this.sessao.ehAdmin;
   readonly obrigatoria = this.sessao.senhaProvisoria;
+  // "Sair de todos os aparelhos" pede confirmacao ali mesmo (foco em Cancelar, Esc cancela).
+  readonly confirmandoTodos = signal(false);
+  readonly saindoTodos = signal(false);
+  readonly erroTodos = signal(false);
   // So conta na barra superior (abaixo de 832px); no desktop a sidebar fica sempre aberta.
   readonly menuAberto = signal(false);
   // Confirmacao leve da troca de senha: vem no state da navegacao e some na proxima.
@@ -275,6 +381,12 @@ export class ShellComponent {
       .subscribe(() => this.menuAberto.set(false));
   }
 
+  // Esc cancela a confirmacao aberta; sem ela, fecha o menu do celular.
+  escape(): void {
+    if (this.confirmandoTodos()) this.cancelarSairTodos();
+    else this.fecharMenu();
+  }
+
   // Esc fecha o menu do celular e devolve o foco ao botao que o abriu.
   fecharMenu(): void {
     if (!this.menuAberto()) return;
@@ -285,5 +397,35 @@ export class ShellComponent {
   async sair(): Promise<void> {
     await this.sessao.sair();
     void this.router.navigateByUrl('/login');
+  }
+
+  pedirSairTodos(): void {
+    this.erroTodos.set(false);
+    this.confirmandoTodos.set(true);
+    afterNextRender(() => (this.cancelar()?.nativeElement as HTMLElement | undefined)?.focus(), {
+      injector: this.injector,
+    });
+  }
+
+  cancelarSairTodos(): void {
+    if (this.saindoTodos()) return;
+    this.confirmandoTodos.set(false);
+    afterNextRender(() => (this.pedir()?.nativeElement as HTMLElement | undefined)?.focus(), {
+      injector: this.injector,
+    });
+  }
+
+  async sairDeTodos(): Promise<void> {
+    if (this.saindoTodos()) return;
+    this.saindoTodos.set(true);
+    this.erroTodos.set(false);
+    try {
+      await this.sessao.sairDeTodos();
+      void this.router.navigateByUrl('/login');
+    } catch {
+      this.erroTodos.set(true);
+    } finally {
+      this.saindoTodos.set(false);
+    }
   }
 }

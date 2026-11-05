@@ -22,7 +22,11 @@ server {
     # proposito. O nginx NAO herda `add_header` do `server` para um `location` que tenha o proprio, e
     # aqui a API (/api/) fica sem eles (a resposta dela ja traz os do helmet). `always` = tambem em
     # 404/500. A CSP nao tem 'unsafe-inline' nem 'unsafe-eval': se o build tiver script inline, use
-    # nonce/hash (nao afrouxe a CSP).
+    # hash (nao afrouxe a CSP).
+    # Nonce de estilo: o Angular injeta o CSS dos componentes como <style>, que precisa de nonce. O
+    # index.html traz ngCspNonce="NOTTA_CSP_NONCE"; o sub_filter abaixo troca o texto por $request_id
+    # (aleatorio, novo por requisicao) e o MESMO valor vai em style-src. Por isso o HTML (location /
+    # e /termo/) nunca fica em cache. Receita nao rodada em nginx real: teste na VPS (docs/SEGURANCA-HEADERS.md).
 
     # API: o prefixo /api e tirado antes de chegar no back (o cookie de refresh e restrito a /api/auth).
     location ^~ /api/ {
@@ -37,7 +41,10 @@ server {
 
     # Pagina publica do termo de consentimento: fora do indice de buscadores.
     location ^~ /termo/ {
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" always;
+        sub_filter_once off;
+        sub_filter_types text/html;
+        sub_filter 'NOTTA_CSP_NONCE' $request_id;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'nonce-$request_id'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
         add_header Referrer-Policy "no-referrer" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
@@ -48,7 +55,7 @@ server {
 
     # Arquivos com hash no nome (JS, CSS, fontes): cache longo.
     location ~* \.(?:js|css|woff2|svg|png|ico)$ {
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'nonce-$request_id'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
         add_header Referrer-Policy "no-referrer" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
@@ -58,7 +65,10 @@ server {
 
     # Todo o resto e o app (SPA): HTML autenticado nunca em cache.
     location / {
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" always;
+        sub_filter_once off;
+        sub_filter_types text/html;
+        sub_filter 'NOTTA_CSP_NONCE' $request_id;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'nonce-$request_id'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
         add_header Referrer-Policy "no-referrer" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;

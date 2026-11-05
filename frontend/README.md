@@ -28,7 +28,9 @@ Em producao, um proxy reverso faz o mesmo.
 ## Ver as telas sem o backend (servidor falso)
 
 Com o backend real rodando na porta 3000, `npm start` ja basta (o proxy aponta para ele).
-Sem o backend, rode um servidor falso que segue `contrato.md`. Ele fica FORA do repo, por
+Sem o backend, rode um servidor falso que segue `contrato.md` (ATENCAO: este exemplo e anterior a
+sessao por cookie; o login dele devolve `token` e o front agora nao o le. Ajuste-o para cookies
+ou use o back real). Ele fica FORA do repo, por
 exemplo em `/tmp/notta-falso/falso.mjs` (so Node, sem dependencia):
 
 ```js
@@ -213,21 +215,41 @@ icones do `lucide-angular` (importados um a um): nenhuma requisicao sai de local
 
 ## Sessao
 
-`SessaoStore` guarda o JWT em `sessionStorage` (chave `notta.token`): some ao fechar a aba.
-Cookie httpOnly fica como decisao futura. O `authInterceptor` anexa `Authorization: Bearer`
-so em URLs `/api/` e, em 401 (exceto `POST /api/auth/login`), limpa a sessao e vai para `/login`.
-`UsuarioStore` segue o token: ao entrar ou ao restaurar a sessao busca `GET /api/eu` (nome,
-papel, clinica) para o menu lateral; ao sair, limpa. `ehAdmin()` vem do papel; `pronto()` diz que o
-`/eu` do token atual ja respondeu. O `adminGuard` (rota `/equipe`) espera `pronto()` antes de
-decidir: ADMIN entra, outro papel vai para `/`, sem sessao vai para `/login`. O servidor continua
-sendo a autoridade (403).
+A sessao vive em cookies `httpOnly` (acesso de 15 min, refresh de ate 7 dias, parado ate 30 min);
+o JS nao le o token e nada de sessao fica em `sessionStorage`/`localStorage` (itens 46 e 49). O
+front so le o cookie `notta_csrf` (nao httpOnly de proposito) e nunca manda `Authorization` nem
+`x-notta-cliente`. Back e front ficam na mesma origem (proxy `/api`); em dev o back precisa de
+`NOTTA_APP_URL=http://localhost:4200` (Origin do CSRF) e `NOTTA_CORS_ORIGIN` igual.
 
-Senha provisoria (itens 62 e 57): `UsuarioStore.senhaProvisoria()` vem do `/eu`. O
-`senhaProvisoriaGuard` (`canActivateChild` do shell) espera o `/eu` e manda qualquer rota do
-shell para `/trocar-senha` (ela mesma passa). Se o servidor responder 403 `"Troca de senha
-obrigatoria"` em qualquer chamada, o interceptor recarrega o `/eu` (`recarregar()`) e vai para
-`/trocar-senha`; ele so desloga em 401. Trocar a senha devolve um token novo: `sessao.entrar`
-com ele, e o `UsuarioStore` busca o `/eu` de novo sozinho.
+- `SessaoStore` e o estado da sessao: o que `GET /api/eu` diz (`usuario`, `ehAdmin()`,
+  `senhaProvisoria()`, `autenticado()`). `garantir()` consulta o `/eu` UMA vez (o primeiro guard
+  que rodar); 401 = visitante, sem erro. O login devolve `{usuario}` e `entrar(usuario)` o guarda.
+  Rota publica (`/termo/:token`) nao tem guard, entao nao consulta o `/eu`.
+- Guards (`auth`, `visitante`, `admin`, `senhaProvisoria`) esperam `garantir()` e decidem pelo
+  estado. `adminGuard`: ADMIN entra, outro papel vai para `/`, sem sessao vai para `/login`. O
+  servidor continua sendo a autoridade (403).
+- `authInterceptor` (so `/api/`, nunca `/api/publico/`): anexa `X-CSRF-Token` em POST/PUT/PATCH/
+  DELETE (menos `login`, `clinicas` e `renovar`, que ainda nao tem sessao). Em 401 de rota
+  autenticada chama `POST /api/auth/renovar` UMA vez e repete a chamada; chamadas concorrentes
+  dividem a mesma renovacao e abas diferentes se serializam por Web Locks (dentro da trava, um
+  `GET /eu` confere se outra aba ja renovou). Renovacao negada (401) ou repeticao com 401: limpa o
+  estado e vai ao login com "Sua sessao expirou, entre de novo." (so se havia sessao: visitante
+  abrindo o app nao ve aviso). 503, 429, rede e 403 nao derrubam a sessao. Sem renovar em 401 de
+  login/cadastro/renovar nem no "sair".
+- Senha provisoria (itens 62 e 57): o `senhaProvisoriaGuard` manda qualquer rota do shell para
+  `/trocar-senha`. 403 `"Troca de senha obrigatoria"` em qualquer chamada: o interceptor refaz o
+  `/eu` e vai para `/trocar-senha`. Trocar a senha mantem a sessao (o servidor so reemite o cookie
+  de acesso): `sessao.senhaTrocada()` tira a marca provisoria.
+- "Sair" chama `POST /api/auth/sair` e vai ao login (limpa o estado mesmo se o servidor falhar).
+  "Sair de todos os aparelhos" (menu da conta, com confirmacao inline) chama
+  `POST /api/auth/sair-de-todos`.
+
+## CSP do build (item 49)
+
+Depois do build de producao: `npm run build && npm run verificar:csp` (falha se o `dist` tiver
+`eval(`, `new Function(`, handler inline, `<script>`/`<style>` inline sem hash ou o `<app-root>` sem
+`ngCspNonce`); `npm run test:csp` prova que a verificacao falha de verdade. Cabecalhos que o
+servidor precisa mandar: `docs/SEGURANCA-HEADERS.md`.
 
 ## Estrutura
 

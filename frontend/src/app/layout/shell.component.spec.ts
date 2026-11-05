@@ -77,6 +77,106 @@ describe('ShellComponent', () => {
     expect(navegar).toHaveBeenCalledWith('/login');
   });
 
+  describe('sair de todos os aparelhos', () => {
+    const pedir = () => el().querySelector('header [data-teste="sair-todos"]') as HTMLButtonElement;
+    const confirmar = () =>
+      el().querySelector('[data-teste="confirmar-sair-todos"]') as HTMLButtonElement | null;
+    const cancelar = () =>
+      el().querySelector('[data-teste="cancelar-sair-todos"]') as HTMLButtonElement | null;
+    // Karma roda estreito (barra do celular): o menu precisa estar aberto para o foco pegar.
+    const abrir = async () => {
+      (el().querySelector('button[aria-controls="lateral-corpo"]') as HTMLButtonElement).click();
+      await fixture.whenStable();
+      pedir().click();
+      await fixture.whenStable();
+      await tick();
+    };
+
+    it('o item existe no menu da conta, com texto claro', () => {
+      expect(pedir().textContent?.trim()).toBe('Sair de todos os aparelhos');
+      expect(confirmar()).toBeNull();
+    });
+
+    it('clicar NAO sai: abre a confirmacao inline com o foco em Cancelar', async () => {
+      await abrir();
+      ctrl.expectNone('/api/auth/sair-de-todos');
+      expect(sessao.autenticado()).toBeTrue();
+      expect(confirmar()?.textContent?.trim()).toBe('Sair de todos');
+      expect(cancelar()?.textContent?.trim()).toBe('Cancelar');
+      expect(el().querySelector('[role="group"]')?.textContent).toContain(
+        'Você precisará entrar de novo em cada um.',
+      );
+      expect(document.activeElement).toBe(cancelar());
+    });
+
+    it('Cancelar fecha a confirmacao, nao chama o servidor e devolve o foco ao item', async () => {
+      await abrir();
+      cancelar()!.click();
+      await fixture.whenStable();
+      await tick();
+      expect(confirmar()).toBeNull();
+      ctrl.expectNone('/api/auth/sair-de-todos');
+      expect(sessao.autenticado()).toBeTrue();
+      expect(document.activeElement).toBe(pedir());
+    });
+
+    it('Escape cancela a confirmacao (e nao so fecha o menu)', async () => {
+      await abrir();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      await fixture.whenStable();
+      await tick();
+      expect(confirmar()).toBeNull();
+      ctrl.expectNone('/api/auth/sair-de-todos');
+      expect(document.activeElement).toBe(pedir());
+      // primeiro Esc so cancela a confirmacao: o menu segue aberto
+      expect(
+        el().querySelector('button[aria-controls="lateral-corpo"]')?.getAttribute('aria-expanded'),
+      ).toBe('true');
+    });
+
+    it('confirmar: POST /api/auth/sair-de-todos, limpa a sessao e vai ao login', async () => {
+      await abrir();
+      confirmar()!.click();
+      await fixture.whenStable();
+      expect(confirmar()!.disabled).toBeTrue();
+      expect(confirmar()!.textContent?.trim()).toBe('Saindo…');
+      const r = ctrl.expectOne('/api/auth/sair-de-todos');
+      expect(r.request.method).toBe('POST');
+      r.flush({ ok: true });
+      await tick();
+      expect(sessao.autenticado()).toBeFalse();
+      expect(navegar).toHaveBeenCalledWith('/login');
+    });
+
+    it('clique duplo no confirmar envia uma vez so', async () => {
+      await abrir();
+      const c = confirmar()!;
+      c.click();
+      c.click();
+      ctrl.expectOne('/api/auth/sair-de-todos').flush({ ok: true });
+      await fixture.whenStable();
+    });
+
+    it('se falhar, avisa, mantem a sessao e deixa tentar de novo', async () => {
+      await abrir();
+      confirmar()!.click();
+      await fixture.whenStable();
+      ctrl.expectOne('/api/auth/sair-de-todos').flush({}, { status: 503, statusText: 'x' });
+      await tick();
+      await fixture.whenStable();
+      expect(sessao.autenticado()).toBeTrue();
+      expect(navegar).not.toHaveBeenCalled();
+      expect(el().querySelector('[data-teste="erro-sair-todos"]')?.textContent?.trim()).toBe(
+        'Não deu para sair agora. Tente de novo.',
+      );
+      expect(confirmar()!.disabled).toBeFalse();
+      confirmar()!.click();
+      ctrl.expectOne('/api/auth/sair-de-todos').flush({ ok: true });
+      await tick();
+      expect(sessao.autenticado()).toBeFalse();
+    });
+  });
+
   it('PSICOLOGO ve o link Pacientes', () => {
     const link = el().querySelector('header a[href="/pacientes"]');
     expect(link?.textContent?.trim()).toBe('Pacientes');
@@ -169,13 +269,13 @@ describe('ShellComponent (troca de senha)', () => {
     );
   });
 
-  it('modo obrigatorio esconde a navegacao: sobra so o botao Sair', async () => {
+  it('modo obrigatorio esconde a navegacao: sobram Sair de todos e Sair', async () => {
     await montar(true);
     const topo = el().querySelector('header')!;
     expect(topo.querySelectorAll('a').length).toBe(0);
     expect(topo.querySelector('nav')).toBeNull();
     const botoes = Array.from(topo.querySelectorAll('button')).map((b) => b.textContent?.trim());
-    expect(botoes).toEqual(['Sair']);
+    expect(botoes).toEqual(['Sair de todos os aparelhos', 'Sair']);
     expect(topo.textContent).toContain('Notta.psi');
   });
 

@@ -94,6 +94,13 @@ export class SessaoStore {
     this._expirada.set(false);
   }
 
+  // Erro de verdade (rede, 5xx) sobe para a tela avisar: a sessao continua valendo no servidor.
+  async sairDeTodos(): Promise<void> {
+    await firstValueFrom(this.http.post('/api/auth/sair-de-todos', {}));
+    this.limpar();
+    this._expirada.set(false);
+  }
+
   // Uma renovacao por vez: chamadas concorrentes da aba esperam a mesma; entre abas, o Web Lock.
   renovar(): Promise<ResultadoRenovacao> {
     if (this.renovacao) return this.renovacao;

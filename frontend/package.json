@@ -9,7 +9,9 @@
     "test": "ng test --watch=false --browsers=ChromeHeadlessNoSandbox",
     "lint": "ng lint",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "verificar:csp": "node scripts/verificar-csp.mjs",
+    "test:csp": "node --test scripts/"
   },
   "prettier": {
     "printWidth": 100,
