@@ -63,6 +63,9 @@ export async function apagarClinicas(ids: string[]) {
           // como. Consentimento (filha) antes de Paciente (FK RESTRICT).
           await tx.$executeRaw`SELECT set_config('app.limpeza_de_teste', '1', true)`;
           await tx.consentimento.deleteMany({ where: { psicologoId } });
+          // Convite de consentimento (item 22): Consentimento aponta para ele (FK RESTRICT), entao
+          // sai depois do Consentimento e antes de Paciente.
+          await tx.conviteConsentimento.deleteMany({ where: { psicologoId } });
           // Documento (filha de Paciente, sem DELETE para o app): so o dono apaga, sob a policy. Aprovado
           // so sai com o desvio acima (trigger documento_imutavel).
           // GeracaoIa (pedido de IA) aponta para Documento (FK RESTRICT): sai antes.

@@ -46,6 +46,40 @@ export class TenantPrismaService {
     return this.run(user.clinicaId, fn, { psicologoId: user.psicologoId });
   }
 
+  // Fluxo PUBLICO do convite de consentimento (item 22): o paciente nao tem login. A transacao
+  // abre a policy `convite_por_token` com o SHA-256 do token (so a linha desse hash). Para gravar
+  // o evento e a trilha em nome do dono, `fn` chama `assumirDono` com a clinica e o psicologo LIDOS
+  // DO CONVITE (nunca do cliente): so entao valem as policies de clinica/psicologo. Mesmas regras
+  // de `run`: so banco dentro de `fn`, sem rede e sem transacao aninhada.
+  runConvite<T>(
+    tokenHash: string,
+    fn: (
+      tx: Prisma.TransactionClient,
+      assumirDono: (dono: {
+        clinicaId: string;
+        psicologoId: string;
+      }) => Promise<void>,
+    ) => Promise<T>,
+  ): Promise<T> {
+    if (!/^[0-9a-f]{64}$/.test(tokenHash)) {
+      return Promise.reject(new Error('tokenHash invalido'));
+    }
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT set_config('app.convite_hash', ${tokenHash}, true)`;
+      const assumirDono = async (dono: {
+        clinicaId: string;
+        psicologoId: string;
+      }) => {
+        if (!isUUID(dono.clinicaId) || !isUUID(dono.psicologoId)) {
+          throw new Error('dono do convite invalido');
+        }
+        await tx.$queryRaw`SELECT set_config('app.current_clinica_id', ${dono.clinicaId}, true)`;
+        await tx.$queryRaw`SELECT set_config('app.current_psicologo_id', ${dono.psicologoId}, true)`;
+      };
+      return fn(tx, assumirDono);
+    }, OPCOES_TX);
+  }
+
   // So para o login: abre a policy login_lookup (SELECT em Psicologo pelo e-mail).
   // O e-mail ja chega normalizado (trim + lowercase) por quem chama.
   runLogin<T>(email: string, fn: Fn<T>): Promise<T> {

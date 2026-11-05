@@ -134,6 +134,7 @@ describe('Consentimento: estrutura no banco', () => {
     expect(p.map((x) => x.policyname)).toEqual([
       'consentimento_dono_delete',
       'consentimento_dono_update',
+      'consentimento_origem_paciente', // item 22, RESTRITIVA (origem PACIENTE so no fluxo publico)
       'psicologo_proprio',
     ]);
     const g = await owner.$queryRaw<{ tgname: string }[]>`
@@ -152,7 +153,8 @@ describe('Consentimento: estrutura no banco', () => {
   it('seq unico por paciente e CHECK de evento e de seq existem no banco', async () => {
     const u = await owner.$queryRaw<{ indexdef: string }[]>`
       SELECT indexdef FROM pg_indexes
-      WHERE tablename = 'Consentimento' AND indexdef LIKE 'CREATE UNIQUE%' AND indexname <> 'Consentimento_pkey'`;
+      WHERE tablename = 'Consentimento' AND indexdef LIKE 'CREATE UNIQUE%' AND indexname <> 'Consentimento_pkey'
+        AND indexname NOT LIKE '%conviteId%'`;
     expect(u).toHaveLength(1);
     expect(u[0].indexdef).toContain('("pacienteId", "psicologoId", seq)');
     const k = await owner.$queryRaw<{ conname: string }[]>`
@@ -160,6 +162,8 @@ describe('Consentimento: estrutura no banco', () => {
       WHERE conrelid = '"Consentimento"'::regclass AND contype = 'c' ORDER BY conname`;
     expect(k.map((x) => x.conname)).toEqual([
       'Consentimento_evento_check',
+      'Consentimento_origem_check',
+      'Consentimento_origem_convite_check',
       'Consentimento_seq_check',
     ]);
   });
