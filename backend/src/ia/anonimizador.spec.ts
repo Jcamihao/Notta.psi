@@ -12,6 +12,26 @@ const an = (t: string, extra: string[] = []) =>
   anonimizar(t, { ...paciente, termosExtras: extra }).textoAnonimizado;
 
 describe('anonimizar: nome do paciente', () => {
+  it('partes coladas do nome viram UM codigo e reidentificar nao duplica o nome', () => {
+    const r = anonimizar('Joana Souza relatou cansaco. Joana voltou.', {
+      nomesPaciente: ['Joana Ficticia Souza'],
+    });
+    expect(r.textoAnonimizado).toBe(
+      '[PACIENTE] relatou cansaco. [PACIENTE] voltou.',
+    );
+    expect(reidentificar(r.textoAnonimizado, r.mapa)).toBe(
+      'Joana Ficticia Souza relatou cansaco. Joana Ficticia Souza voltou.',
+    );
+  });
+
+  it('une partes ligadas por particula (da, de, dos) mas nao por outras palavras nem por quebra de linha', () => {
+    expect(an('Maria da Silva chegou')).toBe('[PACIENTE] chegou');
+    expect(an('Maria e Silva chegaram')).toBe(
+      '[PACIENTE] e [PACIENTE] chegaram',
+    );
+    expect(an('Maria\nSilva chegou')).toBe('[PACIENTE]\n[PACIENTE] chegou');
+  });
+
   it('troca nome completo e cada parte com 3+ letras', () => {
     expect(
       an('Maria da Silva Oliveira chegou. Maria falou. Oliveira calou.'),

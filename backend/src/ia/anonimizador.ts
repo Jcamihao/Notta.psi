@@ -243,6 +243,27 @@ function termosDoNome(nome: string): string[] {
 const nomeCompleto = (nome: string) =>
   preparar(nome).replace(/\s+/g, ' ').trim();
 
+// Partes do nome do paciente coladas ("Joana Souza", "Maria da Silva") viram UM codigo so:
+// com um codigo por parte, reidentificar() poria o nome completo em cada um e o repetiria.
+const LIGACAO_NOME = /^[ \t]+(?:(?:d[aeo]s?|del|van|von|der|den)[ \t]+)?$/i;
+function juntarNomes(spans: Span[], texto: string): Span[] {
+  const saida: Span[] = [];
+  for (const s of spans) {
+    const ant = saida[saida.length - 1];
+    if (
+      ant &&
+      ant.tipo === 'PACIENTE' &&
+      s.tipo === 'PACIENTE' &&
+      LIGACAO_NOME.test(texto.slice(ant.fim, s.ini))
+    ) {
+      ant.fim = s.fim;
+    } else {
+      saida.push({ ...s });
+    }
+  }
+  return saida;
+}
+
 export function anonimizar(
   texto: string,
   { nomesPaciente, termosExtras = [] }: OpcoesAnonimizar,
@@ -294,7 +315,7 @@ export function anonimizar(
   }
   let saida = '';
   let pos = 0;
-  for (const s of resolver(spans, limpo.length)) {
+  for (const s of juntarNomes(resolver(spans, limpo.length), limpo)) {
     let codigo = s.codigo;
     if (!codigo) {
       const porChave = porTipo.get(s.tipo) ?? new Map<string, string>();
