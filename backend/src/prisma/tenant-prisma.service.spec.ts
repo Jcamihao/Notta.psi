@@ -53,4 +53,71 @@ describe('TenantPrismaService (sem banco)', () => {
       maxWait: 2000,
     });
   });
+
+  describe('runConvite (fluxo publico do convite de consentimento)', () => {
+    const HASH = 'a'.repeat(64);
+    const OWNER = {
+      clinicaId: UUID,
+      psicologoId: '0b1c2d3e-4f50-4a6b-8c7d-9e0f1a2b3c4d',
+    };
+
+    // tx falso que guarda cada set_config chamado.
+    function comTx() {
+      const { tenant, $transaction } = criar();
+      const sets: unknown[][] = [];
+      const tx = {
+        $queryRaw: jest.fn((_s: TemplateStringsArray, ...v: unknown[]) => {
+          sets.push([_s.join('?'), ...v]);
+          return Promise.resolve([]);
+        }),
+      };
+      $transaction.mockImplementation((f: (t: typeof tx) => unknown) => f(tx));
+      return { tenant, $transaction, sets };
+    }
+
+    it.each([
+      '',
+      'nao-e-hash',
+      'A'.repeat(64),
+      'a'.repeat(63),
+      `${'a'.repeat(63)}'`,
+    ])('hash invalido %j lanca sem abrir transacao', async (hash) => {
+      const { tenant, $transaction } = criar();
+      await expect(
+        tenant.runConvite(hash, () => Promise.resolve(1)),
+      ).rejects.toThrow('tokenHash invalido');
+      expect($transaction).not.toHaveBeenCalled();
+    });
+
+    it('poe so o hash no contexto (app.convite_hash) e usa os mesmos timeouts', async () => {
+      const { tenant, $transaction, sets } = comTx();
+      await tenant.runConvite(HASH, () => Promise.resolve('ok'));
+      expect(sets).toEqual([
+        [expect.stringContaining('app.convite_hash'), HASH],
+      ]);
+      expect($transaction).toHaveBeenCalledWith(expect.any(Function), {
+        timeout: 5000,
+        maxWait: 2000,
+      });
+    });
+
+    it('assumirDono poe clinica e psicologo DEPOIS do hash; ids invalidos lancam sem set_config', async () => {
+      const { tenant, sets } = comTx();
+      await tenant.runConvite(HASH, async (_tx, assumirDono) => {
+        await assumirDono(OWNER);
+      });
+      expect(sets.map((s) => s[1])).toEqual([
+        HASH,
+        OWNER.clinicaId,
+        OWNER.psicologoId,
+      ]);
+      const outro = comTx();
+      await expect(
+        outro.tenant.runConvite(HASH, (_tx, assumirDono) =>
+          assumirDono({ clinicaId: 'x', psicologoId: OWNER.psicologoId }),
+        ),
+      ).rejects.toThrow('dono do convite invalido');
+      expect(outro.sets).toHaveLength(1);
+    });
+  });
 });

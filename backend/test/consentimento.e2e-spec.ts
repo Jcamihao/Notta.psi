@@ -3,6 +3,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { AuditoriaService } from '../src/auditoria/auditoria.service';
 import { ConsentimentoService } from '../src/consentimento/consentimento.service';
+import { TERMO_VIGENTE } from '../src/consentimento/termo-consentimento';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import {
   apagarClinicas,
@@ -18,7 +19,13 @@ type Usuario = { clinicaId: string; psicologoId: string; token: string };
 type Resumo = {
   estado: string;
   desde: string | null;
-  historico: { seq: number; evento: string; termoVersao: string; em: string }[];
+  historico: {
+    seq: number;
+    evento: string;
+    termoVersao: string;
+    origem: string;
+    em: string;
+  }[];
 };
 
 let app: NestExpressApplication;
@@ -110,7 +117,10 @@ describe('POST /pacientes/:id/consentimento: fluxo completo', () => {
     expect(r1.historico).toHaveLength(1);
     expect(r1.desde).toBe(r1.historico[0].em);
     const primeira = (await linhas(u))[0];
-    expect(primeira.termoVersao).toBe('provisorio-1');
+    expect(primeira.termoVersao).toBe(TERMO_VIGENTE.versao);
+    expect(primeira.termoTexto).toBe(TERMO_VIGENTE.texto);
+    expect(primeira.origem).toBe('PSICOLOGO');
+    expect(primeira.conviteId).toBeNull();
     expect(primeira.termoTexto.length).toBeGreaterThan(40);
 
     const r2 = (await evento(u, id, 'REVOGADO').expect(201)).body as Resumo;
@@ -118,10 +128,12 @@ describe('POST /pacientes/:id/consentimento: fluxo completo', () => {
     const r3 = (await evento(u, id, 'CONCEDIDO').expect(201)).body as Resumo;
     expect(r3.estado).toBe('CONCEDIDO');
 
-    expect(r3.historico.map((h) => [h.seq, h.evento, h.termoVersao])).toEqual([
-      [1, 'CONCEDIDO', 'provisorio-1'],
-      [2, 'REVOGADO', 'provisorio-1'],
-      [3, 'CONCEDIDO', 'provisorio-1'],
+    expect(
+      r3.historico.map((h) => [h.seq, h.evento, h.termoVersao, h.origem]),
+    ).toEqual([
+      [1, 'CONCEDIDO', TERMO_VIGENTE.versao, 'PSICOLOGO'],
+      [2, 'REVOGADO', TERMO_VIGENTE.versao, 'PSICOLOGO'],
+      [3, 'CONCEDIDO', TERMO_VIGENTE.versao, 'PSICOLOGO'],
     ]);
     expect(r3.desde).toBe(r3.historico[2].em);
     // GET devolve o mesmo corpo do ultimo POST

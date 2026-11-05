@@ -9,9 +9,10 @@ import { AuditoriaService } from '../auditoria/auditoria.service';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import type { Evento } from './consentimento.dto';
-import { TERMO_V1 } from './termo';
+import { TERMO_VIGENTE } from './termo-consentimento';
 
 export type Estado = 'NENHUM' | Evento;
+export type Origem = 'PSICOLOGO' | 'PACIENTE';
 type Dono = Pick<UsuarioAutenticado, 'clinicaId' | 'psicologoId'>;
 
 const NAO_ENCONTRADO = 'Paciente nao encontrado';
@@ -65,7 +66,7 @@ export class ConsentimentoService {
         // REVOGADO guarda o termo vigente do ultimo CONCEDIDO; CONCEDIDO grava o termo atual.
         const termo =
           evento === 'CONCEDIDO' || !ultimo
-            ? TERMO_V1
+            ? TERMO_VIGENTE
             : { versao: ultimo.termoVersao, texto: ultimo.termoTexto };
         await tx.consentimento.create({
           data: {
@@ -134,6 +135,35 @@ export class ConsentimentoService {
     return new Map(linhas.map((l) => [l.pacienteId, l.evento as Estado]));
   }
 
+  // Aceite do paciente pelo link (item 22), DENTRO da transacao publica, com o contexto do dono do
+  // convite ja assumido e o convite ja ACEITO (a policy restritiva exige os dois). Devolve false
+  // (sem gravar) se o consentimento ja esta CONCEDIDO, por exemplo registrado a mao no meio do
+  // caminho: o convite fica ACEITO sem evento novo. Termo = o vigente (o convite so vale se a
+  // versao dele e a vigente).
+  async concederPorConvite(
+    tx: Prisma.TransactionClient,
+    dono: Dono,
+    pacienteId: string,
+    conviteId: string,
+  ): Promise<boolean> {
+    const ultimo = await this.ultimo(tx, dono, pacienteId);
+    if (ultimo?.evento === 'CONCEDIDO') return false;
+    await tx.consentimento.create({
+      data: {
+        clinicaId: dono.clinicaId,
+        psicologoId: dono.psicologoId,
+        pacienteId,
+        seq: (ultimo?.seq ?? 0) + 1,
+        evento: 'CONCEDIDO',
+        origem: 'PACIENTE',
+        conviteId,
+        termoVersao: TERMO_VIGENTE.versao,
+        termoTexto: TERMO_VIGENTE.texto,
+      },
+    });
+    return true;
+  }
+
   async estadoDe(
     tx: Prisma.TransactionClient,
     user: Dono,
@@ -177,7 +207,13 @@ export class ConsentimentoService {
         psicologoId: user.psicologoId,
       },
       orderBy: { seq: 'asc' },
-      select: { seq: true, evento: true, termoVersao: true, criadoEm: true },
+      select: {
+        seq: true,
+        evento: true,
+        termoVersao: true,
+        origem: true,
+        criadoEm: true,
+      },
     });
     const ultima = linhas[linhas.length - 1];
     return {
@@ -187,6 +223,7 @@ export class ConsentimentoService {
         seq: l.seq,
         evento: l.evento as Evento,
         termoVersao: l.termoVersao,
+        origem: l.origem as Origem,
         em: l.criadoEm.toISOString(),
       })),
     };

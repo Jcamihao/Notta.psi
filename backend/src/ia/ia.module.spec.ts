@@ -10,6 +10,9 @@ describe('AppModule + IaModule no boot', () => {
     process.env.NOTTA_JWT_SECRET = 'segredo-jwt-de-teste-unitario-'.repeat(2);
     process.env.NOTTA_MASTER_KEY = '0123456789abcdef'.repeat(4);
     process.env.NODE_ENV = 'production';
+    // Item 22: producao exige o termo revisado e a URL do app (convite de consentimento).
+    process.env.NOTTA_TERMO_REVISADO = '1';
+    process.env.NOTTA_APP_URL = 'https://app.exemplo.com';
     delete process.env.NOTTA_IA_HABILITADA;
     delete process.env.SELAHIA_URL;
     delete process.env.SELAHIA_API_KEY;

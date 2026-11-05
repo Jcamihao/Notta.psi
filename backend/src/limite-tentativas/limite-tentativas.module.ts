@@ -43,6 +43,10 @@ export const THROTTLERS = [
     getTracker: (req: Record<string, any>) =>
       (req.user as { psicologoId: string }).psicologoId,
   },
+  // Rotas PUBLICAS do termo de consentimento (item 22): por IP (/64 no IPv6), tracker padrao.
+  // Sem login nao ha outra chave; 20/min cobre o uso humano (abrir, aceitar) e barra varredura de token.
+  // O contador e por rota + IP (chave do throttler): GET, aceitar e recusar contam separado.
+  { name: 'consentimento-publico', ttl: MINUTO, limit: 20 },
   // Uso normal da API por psicologo (somado entre TODAS as rotas autenticadas).
   { name: 'api', ttl: MINUTO, limit: 300 },
 ];

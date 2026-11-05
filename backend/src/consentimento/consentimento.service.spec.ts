@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ConsentimentoService, transicaoValida } from './consentimento.service';
 import type { TenantPrismaService } from '../prisma/tenant-prisma.service';
-import { TERMO_V1 } from './termo';
+import { TERMO_VIGENTE } from './termo-consentimento';
 
 const user = {
   psicologoId: randomUUID(),
@@ -86,8 +86,8 @@ describe('ConsentimentoService.registrar', () => {
         pacienteId,
         seq: 1,
         evento: 'CONCEDIDO',
-        termoVersao: TERMO_V1.versao,
-        termoTexto: TERMO_V1.texto,
+        termoVersao: TERMO_VIGENTE.versao,
+        termoTexto: TERMO_VIGENTE.texto,
       },
     });
     expect(registrar).toHaveBeenCalledWith(
@@ -225,5 +225,48 @@ describe('ConsentimentoService.exigirConcedido', () => {
     await expect(
       service.exigirConcedido(tx as never, user, pacienteId),
     ).rejects.toEqual(new ForbiddenException('Consentimento nao concedido'));
+  });
+});
+
+describe('ConsentimentoService.concederPorConvite (aceite do paciente pelo link)', () => {
+  const conviteId = randomUUID();
+
+  it('NENHUM: grava CONCEDIDO seq 1, origem PACIENTE, conviteId e o termo vigente, com o dono dado', async () => {
+    const { tx, service } = montar();
+    await expect(
+      service.concederPorConvite(tx as never, user, pacienteId, conviteId),
+    ).resolves.toBe(true);
+    expect(tx.consentimento.create).toHaveBeenCalledWith({
+      data: {
+        clinicaId: user.clinicaId,
+        psicologoId: user.psicologoId,
+        pacienteId,
+        seq: 1,
+        evento: 'CONCEDIDO',
+        origem: 'PACIENTE',
+        conviteId,
+        termoVersao: TERMO_VIGENTE.versao,
+        termoTexto: TERMO_VIGENTE.texto,
+      },
+    });
+  });
+
+  it('REVOGADO: seq+1 (re-concede)', async () => {
+    const { tx, service } = montar([
+      concedido(1),
+      { ...concedido(2), evento: 'REVOGADO' },
+    ]);
+    await service.concederPorConvite(tx as never, user, pacienteId, conviteId);
+    expect(tx.consentimento.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ seq: 3, origem: 'PACIENTE' }) as object,
+    });
+  });
+
+  it('ja CONCEDIDO (registro manual no meio do caminho): nao grava evento novo', async () => {
+    const { tx, service } = montar([concedido(1)]);
+    await expect(
+      service.concederPorConvite(tx as never, user, pacienteId, conviteId),
+    ).resolves.toBe(false);
+    expect(tx.consentimento.create).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { ClinicasModule } from './clinicas/clinicas.module';
 import { ConsentimentoModule } from './consentimento/consentimento.module';
+import { ConviteConsentimentoModule } from './convite-consentimento/convite-consentimento.module';
 import { CriptografiaModule } from './criptografia/criptografia.module';
 import { DocumentosModule } from './documentos/documentos.module';
 import { EquipeModule } from './equipe/equipe.module';
@@ -21,6 +22,7 @@ import { SaudeController } from './saude/saude.controller';
     ClinicasModule,
     EquipeModule,
     ConsentimentoModule,
+    ConviteConsentimentoModule,
     PacientesModule,
     DocumentosModule,
     IaModule,
