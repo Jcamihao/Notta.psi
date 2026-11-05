@@ -72,6 +72,8 @@ export async function apagarClinicas(ids: string[]) {
           await tx.geracaoIa.deleteMany({ where: { psicologoId } });
           await tx.documento.deleteMany({ where: { psicologoId } });
           await tx.paciente.deleteMany({ where: { psicologoId } });
+          // Sessao (item 46): FK RESTRICT para Psicologo, sem DELETE para o app.
+          await tx.sessao.deleteMany({ where: { psicologoId } });
           await tx.auditoria.deleteMany({ where: { psicologoId } });
         },
         { psicologoId },

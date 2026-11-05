@@ -80,6 +80,40 @@ export class TenantPrismaService {
     }, OPCOES_TX);
   }
 
+  // RENOVACAO da sessao (item 46): o refresh vem de um cookie, sem sessao viva. A transacao abre a
+  // policy `sessao_por_hash` com o SHA-256 do refresh (so a linha desse hash, so leitura). Achada a
+  // linha, `fn` chama `assumirDono` com clinica e psicologo LIDOS DELA (nunca do cliente): so ai valem
+  // as policies proprias (revogar a familia, criar a proxima linha, auditar). Mesmas regras de `run`:
+  // so banco dentro de `fn`, sem rede e sem transacao aninhada.
+  runRefresh<T>(
+    refreshHash: string,
+    fn: (
+      tx: Prisma.TransactionClient,
+      assumirDono: (dono: {
+        clinicaId: string;
+        psicologoId: string;
+      }) => Promise<void>,
+    ) => Promise<T>,
+  ): Promise<T> {
+    if (!/^[0-9a-f]{64}$/.test(refreshHash)) {
+      return Promise.reject(new Error('refreshHash invalido'));
+    }
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT set_config('app.refresh_hash', ${refreshHash}, true)`;
+      const assumirDono = async (dono: {
+        clinicaId: string;
+        psicologoId: string;
+      }) => {
+        if (!isUUID(dono.clinicaId) || !isUUID(dono.psicologoId)) {
+          throw new Error('dono da sessao invalido');
+        }
+        await tx.$queryRaw`SELECT set_config('app.current_clinica_id', ${dono.clinicaId}, true)`;
+        await tx.$queryRaw`SELECT set_config('app.current_psicologo_id', ${dono.psicologoId}, true)`;
+      };
+      return fn(tx, assumirDono);
+    }, OPCOES_TX);
+  }
+
   // So para o login: abre a policy login_lookup (SELECT em Psicologo pelo e-mail).
   // O e-mail ja chega normalizado (trim + lowercase) por quem chama.
   runLogin<T>(email: string, fn: Fn<T>): Promise<T> {

@@ -48,6 +48,7 @@ model Psicologo {
   createdAt       DateTime    @default(now())
   pacientes       Paciente[]
   auditorias      Auditoria[]
+  sessoes         Sessao[]
 
   // Alvo das FKs compostas (x, clinicaId) das fases futuras.
   @@unique([id, clinicaId])
@@ -210,4 +211,24 @@ model GeracaoIa {
 
   @@index([clinicaId, psicologoId, pacienteId, criadoEm])
   @@index([clinicaId, psicologoId, estado, finalizadoEm])
+}
+
+// Sessao segura (itens 46 e 49): uma linha por geracao do refresh; `familia` = um login. So o
+// SHA-256 do refresh e gravado. Datas vem SEMPRE do relogio do app (sem default do banco).
+model Sessao {
+  id              String    @id @default(uuid())
+  clinicaId       String
+  psicologoId     String
+  psicologo       Psicologo @relation(fields: [psicologoId, clinicaId], references: [id, clinicaId])
+  familia         String
+  refreshHash     String    @unique
+  criadoEm        DateTime
+  ultimoUsoEm     DateTime
+  absolutaAte     DateTime
+  usadoEm         DateTime?
+  revogadaEm      DateTime?
+  motivoRevogacao String?
+
+  @@index([clinicaId, psicologoId])
+  @@index([familia])
 }

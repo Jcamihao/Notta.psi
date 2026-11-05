@@ -120,4 +120,66 @@ describe('TenantPrismaService (sem banco)', () => {
       expect(outro.sets).toHaveLength(1);
     });
   });
+  describe('runRefresh (renovacao da sessao, item 46)', () => {
+    const HASH = 'b'.repeat(64);
+    const DONO = {
+      clinicaId: UUID,
+      psicologoId: '0b1c2d3e-4f50-4a6b-8c7d-9e0f1a2b3c4d',
+    };
+
+    function comTx() {
+      const { tenant, $transaction } = criar();
+      const sets: unknown[][] = [];
+      const tx = {
+        $queryRaw: jest.fn((_s: TemplateStringsArray, ...v: unknown[]) => {
+          sets.push([_s.join('?'), ...v]);
+          return Promise.resolve([]);
+        }),
+      };
+      $transaction.mockImplementation((f: (t: typeof tx) => unknown) => f(tx));
+      return { tenant, $transaction, sets };
+    }
+
+    it.each(['', 'nao-e-hash', 'A'.repeat(64), 'b'.repeat(63)])(
+      'hash invalido %j lanca sem abrir transacao',
+      async (hash) => {
+        const { tenant, $transaction } = criar();
+        await expect(
+          tenant.runRefresh(hash, () => Promise.resolve(1)),
+        ).rejects.toThrow('refreshHash invalido');
+        expect($transaction).not.toHaveBeenCalled();
+      },
+    );
+
+    it('poe so o hash no contexto (app.refresh_hash) e usa os mesmos timeouts', async () => {
+      const { tenant, $transaction, sets } = comTx();
+      await tenant.runRefresh(HASH, () => Promise.resolve('ok'));
+      expect(sets).toEqual([
+        [expect.stringContaining('app.refresh_hash'), HASH],
+      ]);
+      expect($transaction).toHaveBeenCalledWith(expect.any(Function), {
+        timeout: 5000,
+        maxWait: 2000,
+      });
+    });
+
+    it('assumirDono poe clinica e psicologo DEPOIS do hash; ids invalidos lancam sem set_config', async () => {
+      const { tenant, sets } = comTx();
+      await tenant.runRefresh(HASH, async (_tx, assumirDono) => {
+        await assumirDono(DONO);
+      });
+      expect(sets.map((s) => s[1])).toEqual([
+        HASH,
+        DONO.clinicaId,
+        DONO.psicologoId,
+      ]);
+      const outro = comTx();
+      await expect(
+        outro.tenant.runRefresh(HASH, (_tx, assumirDono) =>
+          assumirDono({ clinicaId: 'x', psicologoId: DONO.psicologoId }),
+        ),
+      ).rejects.toThrow('dono da sessao invalido');
+      expect(outro.sets).toHaveLength(1);
+    });
+  });
 });
