@@ -34,7 +34,7 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 - [x] 21. [M] Plano B quando a IA falha e "tentar de novo" sem limite de tentativas (pedido do dono, 2026-11-05): falha da IA, timeout ou queda de conexão (inclusive no celular) nunca perde a nota; o pedido fica salvo com o motivo (sem texto clínico no log), a tela mostra "Tentar de novo" quantas vezes precisar (a nota segue em rascunho para escrever à mão), retentativa é idempotente (não cria rascunho duplicado), e quem fechar o app e voltar vê o pedido onde parou
 
 ## Fase 4 — Confiança e segurança
-- [ ] 22. [M] Termo de consentimento do paciente (obrigatório antes de qualquer dado real)
+- [x] 22. [M] Termo de consentimento do paciente (obrigatório antes de qualquer dado real)
 - [ ] 23. [F] Página de transparência de segurança
 - [ ] 24. [M] Recuperar senha e confirmar e-mail
 - [ ] 25. [B] Backup e rotação da chave mestra
