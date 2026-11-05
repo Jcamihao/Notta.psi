@@ -2,9 +2,20 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { SessaoStore } from '../core/sessao.store';
-import { UsuarioStore } from '../core/usuario.store';
+import { Eu, SessaoStore } from '../core/sessao.store';
 import { ShellComponent } from './shell.component';
+
+const EU: Eu = {
+  psicologoId: 'p1',
+  nome: 'Ana Souza',
+  email: 'ana@clinica.com',
+  papel: 'PSICOLOGO',
+  abordagemPadrao: 'TCC',
+  clinica: { id: 'c1', nome: 'Clinica Horizonte' },
+  senhaProvisoria: false,
+};
+
+const tick = () => new Promise((r) => setTimeout(r));
 
 describe('ShellComponent', () => {
   let fixture: ComponentFixture<ShellComponent>;
@@ -21,17 +32,8 @@ describe('ShellComponent', () => {
     sessao = TestBed.inject(SessaoStore);
     ctrl = TestBed.inject(HttpTestingController);
     navegar = spyOn(TestBed.inject(Router), 'navigateByUrl').and.resolveTo(true);
-    sessao.entrar('t');
+    sessao.entrar(EU);
     fixture = TestBed.createComponent(ShellComponent);
-    await fixture.whenStable();
-    ctrl.expectOne('/api/eu').flush({
-      psicologoId: 'p1',
-      nome: 'Ana Souza',
-      email: 'ana@clinica.com',
-      papel: 'PSICOLOGO',
-      abordagemPadrao: 'TCC',
-      clinica: { id: 'c1', nome: 'Clinica Horizonte' },
-    });
     await fixture.whenStable();
   });
 
@@ -53,12 +55,25 @@ describe('ShellComponent', () => {
     expect(topo).toContain('Ana Souza');
   });
 
-  it('botao Sair limpa sessao e usuario e navega para /login', () => {
+  it('botao Sair chama POST /api/auth/sair, limpa a sessao e navega para /login', async () => {
     const botao = el().querySelector('header [data-teste="sair"]') as HTMLButtonElement;
     expect(botao.textContent?.trim()).toBe('Sair');
     botao.click();
+    const r = ctrl.expectOne('/api/auth/sair');
+    expect(r.request.method).toBe('POST');
+    expect(sessao.autenticado()).toBeTrue(); // so limpa depois da resposta
+    r.flush({ ok: true });
+    await tick();
     expect(sessao.autenticado()).toBeFalse();
-    expect(TestBed.inject(UsuarioStore).usuario()).toBeNull();
+    expect(sessao.usuario()).toBeNull();
+    expect(navegar).toHaveBeenCalledWith('/login');
+  });
+
+  it('Sair limpa e vai ao login mesmo se o servidor nao responder', async () => {
+    (el().querySelector('header [data-teste="sair"]') as HTMLButtonElement).click();
+    ctrl.expectOne('/api/auth/sair').error(new ProgressEvent('error'));
+    await tick();
+    expect(sessao.autenticado()).toBeFalse();
     expect(navegar).toHaveBeenCalledWith('/login');
   });
 
@@ -105,17 +120,8 @@ describe('ShellComponent (ADMIN)', () => {
       ],
     }).compileComponents();
     ctrl = TestBed.inject(HttpTestingController);
-    TestBed.inject(SessaoStore).entrar('t');
+    TestBed.inject(SessaoStore).entrar({ ...EU, papel: 'ADMIN' });
     const fixture = TestBed.createComponent(ShellComponent);
-    await fixture.whenStable();
-    ctrl.expectOne('/api/eu').flush({
-      psicologoId: 'p1',
-      nome: 'Ana Souza',
-      email: 'ana@clinica.com',
-      papel: 'ADMIN',
-      abordagemPadrao: 'TCC',
-      clinica: { id: 'c1', nome: 'Clinica Horizonte' },
-    });
     await fixture.whenStable();
     const link = () =>
       (fixture.nativeElement as HTMLElement).querySelector('header a[href="/equipe"]');
@@ -145,18 +151,8 @@ describe('ShellComponent (troca de senha)', () => {
       ],
     }).compileComponents();
     ctrl = TestBed.inject(HttpTestingController);
-    TestBed.inject(SessaoStore).entrar('t');
+    TestBed.inject(SessaoStore).entrar({ ...EU, papel: papel as Eu['papel'], senhaProvisoria });
     fixture = TestBed.createComponent(ShellComponent);
-    await fixture.whenStable();
-    ctrl.expectOne('/api/eu').flush({
-      psicologoId: 'p1',
-      nome: 'Ana Souza',
-      email: 'ana@clinica.com',
-      papel,
-      abordagemPadrao: 'TCC',
-      clinica: { id: 'c1', nome: 'Clinica Horizonte' },
-      senhaProvisoria,
-    });
     await fixture.whenStable();
   };
   const el = () => fixture.nativeElement as HTMLElement;

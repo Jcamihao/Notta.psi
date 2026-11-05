@@ -10,6 +10,11 @@
             erroGeral()
           }}
         </p>
+      } @else if (sessaoExpirada()) {
+        <p class="aviso-erro" data-teste="sessao-expirada">
+          <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />Sua sessão
+          expirou, entre de novo.
+        </p>
       }
     </div>
 

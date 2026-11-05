@@ -7,9 +7,19 @@ import {
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { authInterceptor } from '../core/auth.interceptor';
-import { SessaoStore } from '../core/sessao.store';
+import { Eu, SessaoStore } from '../core/sessao.store';
 import { TermoPage } from './termo.page';
 import { TermoPublico } from './termo.service';
+
+const PSICOLOGO_LOGADO: Eu = {
+  psicologoId: 'p1',
+  nome: 'Ana Souza',
+  email: 'ana@clinica.com',
+  papel: 'PSICOLOGO',
+  abordagemPadrao: 'TCC',
+  clinica: { id: 'c1', nome: 'Clinica Horizonte' },
+  senhaProvisoria: false,
+};
 
 const TOKEN = 'tok3n-publico-0123456789abcdefghijklmnopqrstu';
 const BASE = `/api/publico/consentimento/${TOKEN}`;
@@ -87,12 +97,13 @@ describe('TermoPage', () => {
     expect(bloco.querySelector('b')).toBeNull();
   });
 
-  it('pagina sem dado do paciente e sem sessao: GET sem Authorization', async () => {
-    TestBed.inject(SessaoStore).entrar('tok-de-psicologo-logado');
+  it('pagina sem dado do paciente e sem sessao: GET sem Authorization nem CSRF', async () => {
+    TestBed.inject(SessaoStore).entrar(PSICOLOGO_LOGADO);
     await fixture.whenStable();
     const r = ctrl.expectOne(BASE);
     expect(r.request.method).toBe('GET');
     expect(r.request.headers.has('Authorization')).toBeFalse();
+    expect(r.request.headers.has('X-CSRF-Token')).toBeFalse();
     await flush(r, TERMO);
   });
 
@@ -116,7 +127,7 @@ describe('TermoPage', () => {
   describe('aceitar', () => {
     it('"Li e aceito": POST {aceito:true} sem Authorization, mostra o agradecimento e foca o titulo', async () => {
       await abrir();
-      TestBed.inject(SessaoStore).entrar('tok-de-psicologo-logado');
+      TestBed.inject(SessaoStore).entrar(PSICOLOGO_LOGADO);
       await clicar('Li e aceito');
       const r = ctrl.expectOne(`${BASE}/aceitar`);
       expect(r.request.method).toBe('POST');
@@ -239,7 +250,7 @@ describe('TermoPage', () => {
     });
 
     it('401 NAO desloga nem redireciona (nem aparece erro tecnico)', async () => {
-      TestBed.inject(SessaoStore).entrar('tok-de-psicologo-logado');
+      TestBed.inject(SessaoStore).entrar(PSICOLOGO_LOGADO);
       await abrir({}, 401);
       expect(TestBed.inject(SessaoStore).autenticado()).toBeTrue();
       expect(el().textContent).not.toMatch(/401|Unauthorized/);

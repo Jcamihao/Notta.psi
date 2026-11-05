@@ -13,7 +13,7 @@ import {
   X,
 } from 'lucide-angular';
 import { filter, map } from 'rxjs';
-import { UsuarioStore } from '../core/usuario.store';
+import { SessaoStore } from '../core/sessao.store';
 import { AvatarComponent } from '../ui/avatar.component';
 import { IconButtonComponent } from '../ui/icon-button.component';
 import { NavItemComponent } from '../ui/nav-item.component';
@@ -246,14 +246,14 @@ import { NavItemComponent } from '../ui/nav-item.component';
   `,
 })
 export class ShellComponent {
-  private readonly usuarios = inject(UsuarioStore);
+  private readonly sessao = inject(SessaoStore);
   private readonly router = inject(Router);
   private readonly alternar = viewChild('alternar', { read: ElementRef });
 
   readonly icones = { CircleCheck, House, KeyRound, LogOut, Menu, UserRound, Users, X };
-  readonly usuario = this.usuarios.usuario;
-  readonly ehAdmin = this.usuarios.ehAdmin;
-  readonly obrigatoria = this.usuarios.senhaProvisoria;
+  readonly usuario = this.sessao.usuario;
+  readonly ehAdmin = this.sessao.ehAdmin;
+  readonly obrigatoria = this.sessao.senhaProvisoria;
   // So conta na barra superior (abaixo de 832px); no desktop a sidebar fica sempre aberta.
   readonly menuAberto = signal(false);
   // Confirmacao leve da troca de senha: vem no state da navegacao e some na proxima.
@@ -282,8 +282,8 @@ export class ShellComponent {
     (this.alternar()?.nativeElement as HTMLElement | undefined)?.focus();
   }
 
-  sair(): void {
-    this.usuarios.sair();
+  async sair(): Promise<void> {
+    await this.sessao.sair();
     void this.router.navigateByUrl('/login');
   }
 }

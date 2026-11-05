@@ -2,8 +2,18 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { SessaoStore } from '../core/sessao.store';
+import { Eu, SessaoStore } from '../core/sessao.store';
 import { LoginPage } from './login.page';
+
+const EU: Eu = {
+  psicologoId: 'p1',
+  nome: 'Ana Souza',
+  email: 'ana@clinica.com',
+  papel: 'ADMIN',
+  abordagemPadrao: 'TCC',
+  clinica: { id: 'c1', nome: 'Clinica Horizonte' },
+  senhaProvisoria: false,
+};
 
 describe('LoginPage', () => {
   let fixture: ComponentFixture<LoginPage>;
@@ -45,15 +55,18 @@ describe('LoginPage', () => {
   };
   const alerta = () => el().querySelector('[data-teste="erro-geral"]')?.textContent?.trim() ?? '';
 
-  it('200 guarda o token e navega para /', async () => {
+  it('200 guarda o usuario (sem token em lugar nenhum) e navega para /', async () => {
     preencher();
     await enviar();
     const r = ctrl.expectOne('/api/auth/login');
     expect(r.request.method).toBe('POST');
     expect(r.request.body).toEqual({ email: 'Ana@Clinica.com', senha: 'senha-forte-1' });
-    r.flush({ token: 'jwt-1' });
+    expect(r.request.headers.has('x-notta-cliente')).toBeFalse();
+    r.flush({ usuario: EU });
     await fixture.whenStable();
-    expect(TestBed.inject(SessaoStore).token()).toBe('jwt-1');
+    expect(TestBed.inject(SessaoStore).usuario()).toEqual(EU);
+    expect(sessionStorage.length).toBe(0);
+    expect(localStorage.length).toBe(0);
     expect(navegar).toHaveBeenCalledWith('/');
   });
 
@@ -72,6 +85,25 @@ describe('LoginPage', () => {
     expect(input('login-email').value).toBe('Ana@Clinica.com');
     expect(TestBed.inject(SessaoStore).autenticado()).toBeFalse();
     expect(navegar).not.toHaveBeenCalled();
+  });
+
+  it('sessao que expirou: o login avisa "Sua sessão expirou, entre de novo."', async () => {
+    expect(el().querySelector('[data-teste="sessao-expirada"]')).toBeNull();
+    TestBed.inject(SessaoStore).expirou();
+    await fixture.whenStable();
+    expect(el().querySelector('[data-teste="sessao-expirada"]')?.textContent?.trim()).toBe(
+      'Sua sessão expirou, entre de novo.',
+    );
+  });
+
+  it('o aviso de sessao expirada some depois de entrar', async () => {
+    const sessao = TestBed.inject(SessaoStore);
+    sessao.expirou();
+    preencher();
+    await enviar();
+    ctrl.expectOne('/api/auth/login').flush({ usuario: EU });
+    await fixture.whenStable();
+    expect(sessao.expirada()).toBeFalse();
   });
 
   it('429 com Retry-After mostra os segundos', async () => {

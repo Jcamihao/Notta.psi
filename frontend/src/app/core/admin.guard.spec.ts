@@ -8,9 +8,8 @@ import {
   RouterStateSnapshot,
   UrlTree,
 } from '@angular/router';
-import { Observable } from 'rxjs';
 import { adminGuard } from './admin.guard';
-import { Eu } from './usuario.store';
+import { Eu } from './sessao.store';
 
 const EU: Eu = {
   psicologoId: 'p1',
@@ -26,61 +25,59 @@ describe('adminGuard', () => {
   let ctrl: HttpTestingController;
   let router: Router;
 
-  const configurar = (token: string | null) => {
-    sessionStorage.clear();
-    if (token) sessionStorage.setItem('notta.token', token);
+  beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
     });
     ctrl = TestBed.inject(HttpTestingController);
     router = TestBed.inject(Router);
-  };
+  });
+
+  afterEach(() => ctrl.verify());
 
   // Roda o guard e devolve o que ele decidiu (undefined = ainda esperando).
   const rodar = () => {
     let decisao: unknown;
-    const r = TestBed.runInInjectionContext(() =>
-      adminGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
-    ) as Observable<boolean | UrlTree>;
-    r.subscribe((v) => (decisao = v));
-    TestBed.tick();
+    void (
+      TestBed.runInInjectionContext(() =>
+        adminGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
+      ) as Promise<boolean | UrlTree>
+    ).then((v) => (decisao = v));
     return () => decisao;
   };
   const destino = (r: unknown) => router.serializeUrl(r as UrlTree);
+  const tick = () => new Promise((r) => setTimeout(r));
+  const responder = async (corpo: object | null, status = 200) => {
+    await tick();
+    const r = ctrl.expectOne('/api/eu');
+    if (status === 0) r.error(new ProgressEvent('error'));
+    else r.flush(corpo, { status, statusText: 'x' });
+    await tick();
+  };
 
-  afterEach(() => {
-    ctrl.verify();
-    sessionStorage.clear();
-  });
-
-  it('espera o /eu e deixa ADMIN entrar', () => {
-    configurar('tok');
+  it('espera o /eu e deixa ADMIN entrar', async () => {
     const decisao = rodar();
+    await tick();
     expect(decisao()).toBeUndefined();
-    ctrl.expectOne('/api/eu').flush(EU);
-    TestBed.tick();
+    await responder(EU);
     expect(decisao()).toBeTrue();
   });
 
-  it('PSICOLOGO vai para /', () => {
-    configurar('tok');
+  it('PSICOLOGO vai para /', async () => {
     const decisao = rodar();
-    ctrl.expectOne('/api/eu').flush({ ...EU, papel: 'PSICOLOGO' });
-    TestBed.tick();
+    await responder({ ...EU, papel: 'PSICOLOGO' });
     expect(destino(decisao())).toBe('/');
   });
 
-  it('sem sessao vai para /login', () => {
-    configurar(null);
+  it('sem sessao (401) vai para /login', async () => {
     const decisao = rodar();
+    await responder({}, 401);
     expect(destino(decisao())).toBe('/login');
   });
 
-  it('/eu falhou (rede) vai para /', () => {
-    configurar('tok');
+  it('/eu falhou (rede) vai para /login: sem sessao confirmada nao ha tela de ADMIN', async () => {
     const decisao = rodar();
-    ctrl.expectOne('/api/eu').error(new ProgressEvent('error'));
-    TestBed.tick();
-    expect(destino(decisao())).toBe('/');
+    await responder(null, 0);
+    expect(destino(decisao())).toBe('/login');
   });
 });

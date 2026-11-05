@@ -2,8 +2,18 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { SessaoStore } from '../core/sessao.store';
+import { Eu, SessaoStore } from '../core/sessao.store';
 import { CadastroPage } from './cadastro.page';
+
+const EU: Eu = {
+  psicologoId: 'p1',
+  nome: 'Ana Souza',
+  email: 'ana@clinica.com',
+  papel: 'ADMIN',
+  abordagemPadrao: 'SISTEMICA',
+  clinica: { id: 'c1', nome: 'Clinica Horizonte' },
+  senhaProvisoria: false,
+};
 
 describe('CadastroPage', () => {
   let fixture: ComponentFixture<CadastroPage>;
@@ -73,9 +83,10 @@ describe('CadastroPage', () => {
     c.flush({ clinicaId: 'c1', psicologoId: 'p1' }, { status: 201, statusText: 'Created' });
     const l = ctrl.expectOne('/api/auth/login');
     expect(l.request.body).toEqual({ email: 'ana@clinica.com', senha: 'senha-forte-1' });
-    l.flush({ token: 'jwt-novo' });
+    l.flush({ usuario: EU });
     await fixture.whenStable();
-    expect(TestBed.inject(SessaoStore).token()).toBe('jwt-novo');
+    expect(TestBed.inject(SessaoStore).usuario()).toEqual(EU);
+    expect(sessionStorage.length).toBe(0);
     expect(navegar).toHaveBeenCalledWith('/');
   });
 

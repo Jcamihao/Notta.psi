@@ -8,9 +8,8 @@ import {
   RouterStateSnapshot,
   UrlTree,
 } from '@angular/router';
-import { Observable } from 'rxjs';
 import { senhaProvisoriaGuard } from './senha-provisoria.guard';
-import { Eu } from './usuario.store';
+import { Eu, SessaoStore } from './sessao.store';
 
 const EU: Eu = {
   psicologoId: 'p1',
@@ -27,8 +26,6 @@ describe('senhaProvisoriaGuard', () => {
   let router: Router;
 
   beforeEach(() => {
-    sessionStorage.clear();
-    sessionStorage.setItem('notta.token', 'tok');
     TestBed.configureTestingModule({
       providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
     });
@@ -36,50 +33,61 @@ describe('senhaProvisoriaGuard', () => {
     router = TestBed.inject(Router);
   });
 
-  afterEach(() => {
-    ctrl.verify();
-    sessionStorage.clear();
-  });
+  afterEach(() => ctrl.verify());
 
   // Roda o guard para a rota filha `path` e devolve a decisao (undefined = ainda esperando).
   const rodar = (path: string) => {
     let decisao: unknown;
     const rota = { routeConfig: { path } } as ActivatedRouteSnapshot;
-    const r = TestBed.runInInjectionContext(() =>
-      senhaProvisoriaGuard(rota, {} as RouterStateSnapshot),
-    ) as Observable<boolean | UrlTree>;
-    r.subscribe((v) => (decisao = v));
-    TestBed.tick();
+    void (
+      TestBed.runInInjectionContext(() =>
+        senhaProvisoriaGuard(rota, {} as RouterStateSnapshot),
+      ) as Promise<boolean | UrlTree>
+    ).then((v) => (decisao = v));
     return () => decisao;
   };
   const destino = (r: unknown) => router.serializeUrl(r as UrlTree);
+  const tick = () => new Promise((r) => setTimeout(r));
+  const responder = async (corpo: object | null, erro = false) => {
+    await tick();
+    const r = ctrl.expectOne('/api/eu');
+    if (erro) r.error(new ProgressEvent('error'));
+    else r.flush(corpo);
+    await tick();
+  };
 
-  it('espera o /eu; senha provisoria leva qualquer rota para /trocar-senha', () => {
+  it('espera o /eu; senha provisoria leva qualquer rota para /trocar-senha', async () => {
     const decisao = rodar('equipe');
+    await tick();
     expect(decisao()).toBeUndefined();
-    ctrl.expectOne('/api/eu').flush(EU);
-    TestBed.tick();
+    await responder(EU);
     expect(destino(decisao())).toBe('/trocar-senha');
   });
 
-  it('a propria /trocar-senha passa (sem laco)', () => {
+  it('a propria /trocar-senha passa (sem laco)', async () => {
     const decisao = rodar('trocar-senha');
-    ctrl.expectOne('/api/eu').flush(EU);
-    TestBed.tick();
+    await responder(EU);
     expect(decisao()).toBeTrue();
   });
 
-  it('sem senha provisoria deixa passar', () => {
+  it('sem senha provisoria deixa passar', async () => {
     const decisao = rodar('');
-    ctrl.expectOne('/api/eu').flush({ ...EU, senhaProvisoria: false });
-    TestBed.tick();
+    await responder({ ...EU, senhaProvisoria: false });
     expect(decisao()).toBeTrue();
   });
 
-  it('/eu falhou (rede) deixa passar: o servidor bloqueia com 403', () => {
+  it('/eu falhou (rede) deixa passar: o servidor bloqueia com 403', async () => {
     const decisao = rodar('');
-    ctrl.expectOne('/api/eu').error(new ProgressEvent('error'));
-    TestBed.tick();
+    await responder(null, true);
+    expect(decisao()).toBeTrue();
+  });
+
+  it('depois de trocar a senha o guard ja libera as rotas', async () => {
+    const sessao = TestBed.inject(SessaoStore);
+    sessao.entrar(EU);
+    sessao.senhaTrocada();
+    const decisao = rodar('');
+    await tick();
     expect(decisao()).toBeTrue();
   });
 });

@@ -2,8 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { SessaoStore } from '../core/sessao.store';
-import { Eu } from '../core/usuario.store';
+import { Eu, SessaoStore } from '../core/sessao.store';
 import { TrocarSenhaPage } from './trocar-senha.page';
 
 const EU: Eu = {
@@ -29,10 +28,8 @@ describe('TrocarSenhaPage', () => {
     });
     ctrl = TestBed.inject(HttpTestingController);
     navegar = spyOn(TestBed.inject(Router), 'navigateByUrl').and.resolveTo(true);
-    TestBed.inject(SessaoStore).entrar('tok');
+    TestBed.inject(SessaoStore).entrar({ ...EU, senhaProvisoria });
     fixture = TestBed.createComponent(TrocarSenhaPage);
-    await fixture.whenStable();
-    ctrl.expectOne('/api/eu').flush({ ...EU, senhaProvisoria });
     await fixture.whenStable();
   };
 
@@ -93,15 +90,15 @@ describe('TrocarSenhaPage', () => {
       }
     });
 
-    it('200 envia o corpo do contrato, troca o token, recarrega o /eu e vai para /', async () => {
+    it('200 envia o corpo do contrato, mantem a sessao (sem token) e vai para /', async () => {
       preencher();
       await enviar();
       const r = post();
       expect(r.request.body).toEqual({ senhaAtual: 'provisoria-1', novaSenha: 'so-minha-senha' });
-      r.flush({ token: 'tok-novo' });
+      r.flush({ ok: true });
       await fixture.whenStable();
-      expect(TestBed.inject(SessaoStore).token()).toBe('tok-novo');
-      ctrl.expectOne('/api/eu').flush(EU);
+      expect(TestBed.inject(SessaoStore).autenticado()).toBeTrue();
+      expect(sessionStorage.length).toBe(0);
       expect(navegar).toHaveBeenCalledWith('/', { state: { senhaTrocada: true } });
       expect(camposVazios()).toBeTrue();
     });
@@ -117,7 +114,7 @@ describe('TrocarSenhaPage', () => {
       expect(camposVazios()).toBeTrue();
       expect(alerta()).toBe('');
       expect(campo('ts-confirmar').getAttribute('aria-invalid')).toBeNull();
-      expect(TestBed.inject(SessaoStore).token()).toBe('tok');
+      expect(TestBed.inject(SessaoStore).autenticado()).toBeTrue();
       expect(navegar).not.toHaveBeenCalled();
     });
 
@@ -165,9 +162,8 @@ describe('TrocarSenhaPage', () => {
       preencher('provisoria-1', 'so-minha-senha', 'so-minha-senhaX');
       digitar('ts-novaSenha', 'so-minha-senhaX');
       await enviar();
-      post().flush({ token: 'tok-novo' });
+      post().flush({ ok: true });
       await fixture.whenStable();
-      ctrl.expectOne('/api/eu').flush(EU);
     });
 
     it('nova senha igual a atual bloqueia no cliente', async () => {
@@ -210,9 +206,8 @@ describe('TrocarSenhaPage', () => {
       const r = post();
       const botao = el().querySelector('button[type="submit"]') as HTMLButtonElement;
       expect(botao.disabled).toBeTrue();
-      r.flush({ token: 'tok-novo' });
+      r.flush({ ok: true });
       await fixture.whenStable();
-      ctrl.expectOne('/api/eu').flush(EU);
     });
   });
 
@@ -224,13 +219,15 @@ describe('TrocarSenhaPage', () => {
       expect(el().querySelector('h1')?.textContent?.trim()).not.toBe('Trocar senha');
     });
 
-    it('200 tambem troca o token e vai para /', async () => {
+    it('200 tira a marca de senha provisoria, mantem a sessao e vai para /', async () => {
+      const sessao = TestBed.inject(SessaoStore);
+      expect(sessao.senhaProvisoria()).toBeTrue();
       preencher();
       await enviar();
-      post().flush({ token: 'tok-novo' });
+      post().flush({ ok: true });
       await fixture.whenStable();
-      ctrl.expectOne('/api/eu').flush(EU);
-      expect(TestBed.inject(SessaoStore).token()).toBe('tok-novo');
+      expect(sessao.senhaProvisoria()).toBeFalse();
+      expect(sessao.autenticado()).toBeTrue();
       expect(navegar).toHaveBeenCalledWith('/', { state: { senhaTrocada: true } });
     });
   });

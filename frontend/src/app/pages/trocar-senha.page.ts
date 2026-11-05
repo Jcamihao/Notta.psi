@@ -11,7 +11,6 @@ import {
   senhaBytes,
 } from '../core/formulario';
 import { SessaoStore } from '../core/sessao.store';
-import { UsuarioStore } from '../core/usuario.store';
 import { CircleAlert, LucideAngularModule } from 'lucide-angular';
 import { ButtonComponent } from '../ui/button.component';
 
@@ -35,7 +34,7 @@ export class TrocarSenhaPage {
   private readonly sessao = inject(SessaoStore);
   private readonly router = inject(Router);
 
-  readonly obrigatoria = inject(UsuarioStore).senhaProvisoria;
+  readonly obrigatoria = this.sessao.senhaProvisoria;
   readonly enviando = signal(false);
   readonly erroGeral = signal('');
   readonly form = new FormGroup({
@@ -71,28 +70,27 @@ export class TrocarSenhaPage {
     }
     this.enviando.set(true);
     const { senhaAtual, novaSenha } = this.form.getRawValue();
-    this.http
-      .post<{ token: string }>('/api/auth/trocar-senha', { senhaAtual, novaSenha })
-      .subscribe({
-        next: ({ token }) => {
-          this.form.reset();
-          // Token novo: os antigos deixam de valer. O UsuarioStore recarrega o /eu sozinho.
-          this.sessao.entrar(token);
-          void this.router.navigateByUrl('/', { state: { senhaTrocada: true } });
-        },
-        error: (e: HttpErrorResponse) => {
-          this.enviando.set(false);
-          // Senha nunca fica na tela depois do envio. Foca antes de limpar, senao o blur do campo
-          // de onde saiu acende "obrigatorio" antes da pessoa agir.
-          document.getElementById('ts-senhaAtual')?.focus();
-          this.form.reset();
-          if (e.status === 422) {
-            c.senhaAtual.setErrors({ senhaAtualIncorreta: true });
-            c.senhaAtual.markAsTouched();
-          } else {
-            this.erroGeral.set(mensagemHttp(e));
-          }
-        },
-      });
+    this.http.post('/api/auth/trocar-senha', { senhaAtual, novaSenha }).subscribe({
+      next: () => {
+        this.form.reset();
+        // A sessao continua (o servidor so reemite o cookie de acesso). O guard da senha
+        // provisoria decide pelo estado local, entao ele muda antes de navegar.
+        this.sessao.senhaTrocada();
+        void this.router.navigateByUrl('/', { state: { senhaTrocada: true } });
+      },
+      error: (e: HttpErrorResponse) => {
+        this.enviando.set(false);
+        // Senha nunca fica na tela depois do envio. Foca antes de limpar, senao o blur do campo
+        // de onde saiu acende "obrigatorio" antes da pessoa agir.
+        document.getElementById('ts-senhaAtual')?.focus();
+        this.form.reset();
+        if (e.status === 422) {
+          c.senhaAtual.setErrors({ senhaAtualIncorreta: true });
+          c.senhaAtual.markAsTouched();
+        } else {
+          this.erroGeral.set(mensagemHttp(e));
+        }
+      },
+    });
   }
 }

@@ -12,7 +12,7 @@ import {
   preenchido,
   senhaBytes,
 } from '../core/formulario';
-import { SessaoStore } from '../core/sessao.store';
+import { Eu, SessaoStore } from '../core/sessao.store';
 import { AcessoComponent } from '../layout/acesso.component';
 import { ChevronDown, CircleAlert, LucideAngularModule } from 'lucide-angular';
 import { ButtonComponent } from '../ui/button.component';
@@ -79,12 +79,12 @@ export class CadastroPage {
       .pipe(
         switchMap(() => {
           criada = true;
-          return this.http.post<{ token: string }>('/api/auth/login', { email, senha: v.senha });
+          return this.http.post<{ usuario: Eu }>('/api/auth/login', { email, senha: v.senha });
         }),
       )
       .subscribe({
-        next: ({ token }) => {
-          this.sessao.entrar(token);
+        next: ({ usuario }) => {
+          this.sessao.entrar(usuario);
           void this.router.navigateByUrl('/');
         },
         error: (e: HttpErrorResponse) => {

@@ -1,23 +1,17 @@
 import { inject } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
 import { CanActivateChildFn, Router } from '@angular/router';
-import { filter, map, take } from 'rxjs';
-import { UsuarioStore } from './usuario.store';
+import { SessaoStore } from './sessao.store';
 
 // Senha provisoria (item 62): toda rota do shell leva para /trocar-senha, menos ela mesma.
-// Espera o /eu (pronto). /eu com erro deixa passar: o servidor bloqueia com 403 e o interceptor
-// traz a pessoa para ca do mesmo jeito.
-export const senhaProvisoriaGuard: CanActivateChildFn = (rota) => {
-  const usuarios = inject(UsuarioStore);
+// Espera o /eu. /eu com erro deixa passar: o servidor bloqueia com 403 e o interceptor traz a
+// pessoa para ca do mesmo jeito.
+export const senhaProvisoriaGuard: CanActivateChildFn = async (rota) => {
+  const sessao = inject(SessaoStore);
   const router = inject(Router);
-  return toObservable(usuarios.pronto).pipe(
-    filter(Boolean),
-    take(1),
-    map(
-      () =>
-        rota.routeConfig?.path === 'trocar-senha' ||
-        !usuarios.senhaProvisoria() ||
-        router.createUrlTree(['/trocar-senha']),
-    ),
+  await sessao.garantir();
+  return (
+    rota.routeConfig?.path === 'trocar-senha' ||
+    !sessao.senhaProvisoria() ||
+    router.createUrlTree(['/trocar-senha'])
   );
 };

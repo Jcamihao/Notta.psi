@@ -10,7 +10,7 @@ import {
   preenchido,
   senhaBytes,
 } from '../core/formulario';
-import { SessaoStore } from '../core/sessao.store';
+import { Eu, SessaoStore } from '../core/sessao.store';
 import { AcessoComponent } from '../layout/acesso.component';
 import { CircleAlert, LucideAngularModule } from 'lucide-angular';
 import { ButtonComponent } from '../ui/button.component';
@@ -28,6 +28,8 @@ export class LoginPage {
   private readonly sessao = inject(SessaoStore);
   private readonly router = inject(Router);
 
+  // A sessao caiu sozinha (acesso e renovacao falharam): o aviso vem do store, nao de URL.
+  readonly sessaoExpirada = this.sessao.expirada;
   readonly enviando = signal(false);
   readonly erroGeral = signal('');
   readonly form = new FormGroup({
@@ -52,9 +54,9 @@ export class LoginPage {
     }
     this.enviando.set(true);
     const { email, senha } = this.form.getRawValue();
-    this.http.post<{ token: string }>('/api/auth/login', { email: email.trim(), senha }).subscribe({
-      next: ({ token }) => {
-        this.sessao.entrar(token);
+    this.http.post<{ usuario: Eu }>('/api/auth/login', { email: email.trim(), senha }).subscribe({
+      next: ({ usuario }) => {
+        this.sessao.entrar(usuario);
         void this.router.navigateByUrl('/');
       },
       error: (e: HttpErrorResponse) => {
