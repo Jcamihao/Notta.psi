@@ -30,8 +30,8 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 - [x] 17. [B] Anonimização antes da IA
 - [x] 18. [B] Cliente do SelahIA (adapter `psicologia` já existe no SelahIA v2.7.9)
 - [x] 19. [B] Limite de gerações por psicólogo (só gerações que deram certo gastam o limite; tentativa que falhou por erro da IA ou de conexão não conta)
-- [ ] 20. [M] Rascunho por IA na abordagem (a nota bruta é salva no servidor ANTES de chamar a IA; a geração é um pedido com estado PENDENTE, PRONTO ou FALHOU, e o resultado entra como rascunho do item 14)
-- [ ] 21. [M] Plano B quando a IA falha e "tentar de novo" sem limite de tentativas (pedido do dono, 2026-11-05): falha da IA, timeout ou queda de conexão (inclusive no celular) nunca perde a nota; o pedido fica salvo com o motivo (sem texto clínico no log), a tela mostra "Tentar de novo" quantas vezes precisar (a nota segue em rascunho para escrever à mão), retentativa é idempotente (não cria rascunho duplicado), e quem fechar o app e voltar vê o pedido onde parou
+- [x] 20. [M] Rascunho por IA na abordagem (a nota bruta é salva no servidor ANTES de chamar a IA; a geração é um pedido com estado PENDENTE, PRONTO ou FALHOU, e o resultado entra como rascunho do item 14)
+- [x] 21. [M] Plano B quando a IA falha e "tentar de novo" sem limite de tentativas (pedido do dono, 2026-11-05): falha da IA, timeout ou queda de conexão (inclusive no celular) nunca perde a nota; o pedido fica salvo com o motivo (sem texto clínico no log), a tela mostra "Tentar de novo" quantas vezes precisar (a nota segue em rascunho para escrever à mão), retentativa é idempotente (não cria rascunho duplicado), e quem fechar o app e voltar vê o pedido onde parou
 
 ## Fase 4 — Confiança e segurança
 - [ ] 22. [M] Termo de consentimento do paciente (obrigatório antes de qualquer dado real)
@@ -42,19 +42,16 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 
 ## Fase 5 — Uso diário
 - [ ] 27. [M] Linha do tempo do paciente
-- [ ] 28. [M] Busca e filtros (só metadados; o texto é cifrado)
+- [ ] 28. [M] Busca e filtros (só metadados; o texto é cifrado) (a psicóloga pediu busca por palavra-chave nos registros; com o texto cifrado isso exige decifrar no app só os documentos do próprio psicólogo; decisão do dono, ver item 28 nas decisões abertas)
 - [ ] 29. [M] Ajuste de linguagem técnica
 - [ ] 30. [M] Exportar em PDF ou Word
 
 ## Fase 6 — Comercial
 - [ ] 31. [F] Landing page
 - [ ] 32. [M] Lista de early access (9 contatos do Forms)
-- [ ] 33. [M] Planos e cobrança
+- [ ] 33. [M] Planos e cobrança (proposta de uma psicóloga, 2026-11-04: 3 planos. Individual (1 profissional); Plus (alto fluxo, 2 a 3 psicólogos atuantes); Premium (clínicas e centros multidisciplinares). O que entra em cada plano é decisão do dono; ver itens 68 a 77)
 
 ## Fase 7 — Futuro (fora do escopo atual)
-- [ ] 34. [M] Link do paciente e check-ins
-- [ ] 35. [M] Resumo semanal
-- [ ] 36. [M] Alerta de risco
 - [ ] 37. [M] Áudio e transcrição
 - [ ] 38. [M] Documentos formais do CFP
 - [ ] 39. [B] Bucket externo
@@ -98,3 +95,49 @@ Relatório completo em `.superpowers/sdd/fase-1/review-fase-1.md`. 0 críticos, 
 ## Fase 1.6 — Correções da 2ª revisão (feita e verificada em 2026-10-31)
 Commits ef7836a (app), 20c4860 e 8b3f537 (banco e testes). Back: 191 unit + 159 e2e verdes. Risco I-1 aceito e documentado em docs/ACESSO.md; o item 65 o fecha. A migration nova exige rodar `backend/prisma/bootstrap/endurecer-banco.sql` uma vez por banco como superuser (revoke de lo_create).
 - [ ] 67. [M] Transferir pacientes de um psicólogo desativado para outro da clínica (sem isso o prontuário de quem sai fica preso; decisão do dono: quem autoriza e como fica o registro) — antes de abrir para clínicas
+
+## Fase 8 — Pedidos de uma psicóloga (feedback de 2026-11-04; só a decisão do Google Agenda e Meet foi tomada pelo dono)
+Reúne tudo o que uma psicóloga pediu. O que já existe ou já tem lugar em outra fase fica só referenciado aqui; o que é novo ganhou item. Os itens 34, 35 e 36 saíram da Fase 7 para cá, com o mesmo número.
+
+### Registro e IA (o núcleo que ela descreveu)
+Já existe: registro rápido da nota pós-sessão, rascunho por IA com linguagem técnica e abordagem do psicólogo, revisão, edição e aprovação, e a regra de não inventar informação, interpretação, sintoma nem hipótese (prompt do SelahIA e saneamento da saída). Em outras fases: histórico cronológico (27), busca por palavra-chave (28), ajuste de linguagem técnica (29), documentos formais (38).
+- [ ] 68. [M] Estilo de escrita do psicólogo: preferências (tom, tamanho, termos) e, opcionalmente, exemplos de registros anteriores para a IA imitar. Atenção: exemplo é texto clínico; só pode ir à IA anonimizado pelo mesmo caminho do item 17 e com prévia, e exige mudança no adapter do SelahIA
+- [ ] 69. [M] Comparar registros anteriores e atuais do mesmo paciente (só entre documentos aprovados do próprio psicólogo)
+- [ ] 70. [M] Resumo pré-sessão: o que ficou combinado e o que mudou desde a última sessão, a partir dos documentos aprovados (sempre com revisão humana)
+
+### Acompanhamento entre sessões e alertas
+- [ ] 34. [M] Link do paciente e check-ins (movido da Fase 7 por pedido de uma psicóloga, que o chamou de diferencial)
+- [ ] 35. [M] Resumo semanal
+- [ ] 36. [M] Alerta de risco
+
+### Gestão do consultório (psicólogo solo que faz tudo)
+- [ ] 71. [M] Agenda: marcar, confirmação automática e lembretes ao paciente (WhatsApp ou e-mail), controle de falta, cancelamento e reagendamento (o Hora H, outro app do dono, já tem agenda, lembretes e WhatsApp: avaliar reaproveitar). DECISÃO DO DONO (2026-11-04): integrar com Google Agenda (espelho de mão única, Notta -> Google; evento com título genérico, paciente fora do evento) e gerar o link do Google Meet no evento; o link é enviado ao paciente pelo próprio Notta.psi. Pontos a verificar: escopo OAuth e verificação do app no Google, tokens expiram em 7 dias enquanto o app está em modo de teste, e o vídeo passa a ficar sob o Google (contar no termo do item 22 e na página do item 23)
+- [ ] 72. [M] Teleatendimento (DECISÃO DO DONO 2026-11-04: adotar Google Agenda e Google Meet; vídeo próprio fica como opção futura): fase 1 = link do Google Meet criado no evento do Google Agenda, enviado ao paciente pelo Notta.psi (ver item 71); fase 2 chamada de vídeo e voz DENTRO do app (viabilidade analisada em 2026-11-04: viável com SDK gerenciado ou LiveKit; custo por minuto, sem gravação por padrão, sala com link de uso único para o paciente sem login, depende dos itens 71, 34 e 22). Sobre a regra do CFP: fontes secundárias dizem que a Resolução CFP 9/2024 revogou a 11/2018 e que o cadastro no e-Psi deixou de ser exigido; conferir o texto oficial antes de decidir. Se for hospedado por nós (tudo centralizado no Notta.psi): recomendação inicial P2P 1:1 com TURN próprio (coturn) em servidor separado, sem SFU e sem gravação; LiveKit próprio só se houver terapia de grupo. Fazer uma prova de conceito de 1 semana antes de comprometer (2 navegadores em Wi-Fi e 4G, medir qualidade e taxa de uso do relay)
+- [ ] 73. [M] Financeiro do psicólogo: pagamentos e recebimentos, mensalidade, pacote ou sessão avulsa, sessões realizadas ou pendentes, inadimplência (o Hora H já integra Asaas: avaliar reaproveitar)
+- [ ] 74. [M] Recibos, atestados e encaminhamentos emitidos pelo app (junto do item 38; regras do CFP a conferir)
+- [ ] 75. [M] Relatório financeiro simples e indicadores (pacientes ativos, atendimentos, taxa de faltas e cancelamentos, receita mensal, inadimplentes)
+- [ ] 76. [M] Repasse a profissionais (clínica com vários psicólogos)
+
+### Planos
+- [ ] 77. [processo] Planos: a proposta abaixo veio de uma psicóloga e foi organizada em 2026-11-04. Preços, limites e a lista final de cada plano são decisão do dono; nada aqui está implementado
+- [ ] 78. [B] Aplicar o plano no sistema: limite de psicólogos ativos por clínica, limite diário de gerações de IA por plano (hoje `NOTTA_IA_LIMITE_DIARIO` vale para todos) e liberação de funcionalidades por plano (depende do item 33)
+
+### Proposta dos 3 planos (rascunho para o dono decidir)
+Cada clínica é um cliente; o plano Individual é uma clínica de um psicólogo só. Funcionalidades não existentes ainda ficam marcadas com o número do item.
+
+| | Individual | Plus | Premium |
+|---|---|---|---|
+| Para quem | 1 profissional | alto fluxo, 2 a 3 psicólogos atuantes | clínicas e centros multidisciplinares |
+| Psicólogos ativos | 1 | até 3 | acima de 3 (limite a definir) |
+| Núcleo clínico (pacientes, consentimento, notas, documentos, aprovação, prontuário, histórico 27, busca 28) | sim | sim | sim |
+| Rascunho por IA com prévia e retentativa | sim, limite diário menor | limite diário maior | limite diário maior, por psicólogo |
+| Agenda com Google Agenda e Meet (71, 72), lembretes ao paciente | sim | sim | sim |
+| Estilo de escrita personalizado (68), comparar registros (69), resumo pré-sessão (70) | não | sim | sim |
+| Acompanhamento entre sessões por link (34), alerta de risco com revisão humana (36) | não | sim | sim |
+| Financeiro: pagamentos e recibos (73, 74) | básico | completo (mensalidade e pacotes, indicadores 75) | completo |
+| Gestão da equipe: adicionar e desativar psicólogos, transferir pacientes (67) | n/a | sim | sim |
+| Repasse a profissionais (76), relatório consolidado da clínica (sem ler prontuário), trilha de auditoria consultável pelo ADMIN | não | não | sim |
+| Outras profissões na mesma clínica (psiquiatria, nutrição, etc.) | não | não | a decidir: o produto hoje é só para psicologia (a IA e os documentos são clínicos de psicologia) |
+| Suporte | padrão | padrão | prioritário |
+
+Pontos para o dono decidir: preços; limite diário de IA de cada plano (cada geração custa e o Gemini precisa do plano pago); se "multidisciplinar" significa outras profissões (muda o produto); se o financeiro básico do Individual inclui recibo; se o acompanhamento entre sessões é recurso Plus ou vai para todos (a psicóloga o chamou de diferencial).
