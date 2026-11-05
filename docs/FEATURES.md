@@ -66,10 +66,10 @@ Numeração separada para não quebrar as referências da Fase 1 em andamento. A
 - [x] 44. [B] Trigger no banco: documento APROVADO imutável — Fase 2 (com o item 15)
 - [x] 51. [B] Defesa contra prompt injection e saída insegura da IA (o texto da sessão vira instrução; validar o rascunho) — Fase 3
 - [ ] 45. [M] Senha forte, checagem de senha vazada e anti-enumeração de e-mail — Fase 4
-- [ ] 46. [M] Sessões revogáveis: refresh token rotativo, expiração curta, "sair de todos os aparelhos" — Fase 4
+- [x] 46. [M] Sessões revogáveis: refresh token rotativo, expiração curta, "sair de todos os aparelhos" — Fase 4
 - [ ] 47. [M] MFA para psicólogos (TOTP ou código por e-mail; decisão do dono) — Fase 4
 - [ ] 48. [B] Bloqueio de conta após falhas e aviso por e-mail de novo login — Fase 4
-- [ ] 49. [F] Sessão em cookie httpOnly com proteção CSRF, CSP e nada de innerHTML — Fase 4
+- [x] 49. [F] Sessão em cookie httpOnly com proteção CSRF, CSP e nada de innerHTML — Fase 4
 - [ ] 50. [B] Cifrar identificadores do paciente em repouso (nome, CPF, telefone, e-mail, endereço; decisão do dono) — Fase 4, antes de dado real
 - [ ] 52. [B] Retenção e descarte: expirar rascunhos antigos, apagar nota bruta, limpar backup e WAL — Fase 4
 - [ ] 54. [processo] Plano de incidente e notificação de vazamento (LGPD/ANPD) — antes de dado real
