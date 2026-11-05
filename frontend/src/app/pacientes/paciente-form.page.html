@@ -148,7 +148,14 @@
     @if (id) {
       <app-consentimento-card [pacienteId]="id" (estadoMudou)="consentimento.set($event)" />
       @if (consentimento(); as c) {
-        <app-documentos-secao [pacienteId]="id" [consentimento]="c" />
+        <app-documentos-secao
+          [pacienteId]="id"
+          [consentimento]="c"
+          (carregada)="documentosCarregados.set(true)"
+        />
+        @if (documentosCarregados()) {
+          <app-pedidos-ia-secao [pacienteId]="id" />
+        }
       }
     }
   }

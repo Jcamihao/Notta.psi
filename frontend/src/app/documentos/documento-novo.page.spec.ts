@@ -390,6 +390,7 @@ describe('DocumentoNovoPage (correcao, ?corrige=)', () => {
     atualizadoEm: '2026-10-20T10:00:00.000Z',
     aprovadoEm: '2026-10-21T10:00:00.000Z',
     substituiId: null,
+    geradoPorIa: false,
   };
   let fixture: ComponentFixture<DocumentoNovoPage>;
   let ctrl: HttpTestingController;

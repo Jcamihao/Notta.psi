@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnInit, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { dataHoraBr } from '../core/datas';
 import { EstadoConsentimento } from '../pacientes/consentimento.service';
@@ -26,6 +26,8 @@ import {
 export class DocumentosSecaoComponent implements OnInit {
   readonly pacienteId = input.required<string>();
   readonly consentimento = input.required<EstadoConsentimento>();
+  // As duas listas terminaram (com ou sem erro): a pagina pode pedir a proxima secao.
+  readonly carregada = output<void>();
   private readonly servico = inject(DocumentosService);
 
   readonly dataBr = dataBr;
@@ -39,7 +41,7 @@ export class DocumentosSecaoComponent implements OnInit {
   readonly erroRascunhos = signal(false);
 
   ngOnInit(): void {
-    this.carregar('APROVADO', () => this.carregar('RASCUNHO'));
+    this.carregar('APROVADO', () => this.carregar('RASCUNHO', () => this.carregada.emit()));
   }
 
   carregar(status: StatusDocumento, depois?: () => void): void {

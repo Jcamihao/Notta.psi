@@ -21,6 +21,11 @@
       }
     </div>
 
+    @if (d.geradoPorIa && d.status === 'RASCUNHO') {
+      <p class="leitura-faixa leitura-faixa-ia" data-teste="faixa-ia">
+        Rascunho gerado por IA. Revise antes de aprovar.
+      </p>
+    }
     @if (d.status === 'APROVADO' && d.aprovadoEm; as aprovadoEm) {
       <p id="de-faixa" class="leitura-faixa" tabindex="-1" data-teste="faixa">
         Aprovado em <time [attr.datetime]="aprovadoEm">{{ dataHora(aprovadoEm) }}</time
@@ -47,6 +52,11 @@
             <dt>Status</dt>
             <dd>
               <app-pill [tone]="tom[d.status]">{{ status[d.status] }}</app-pill>
+              @if (d.geradoPorIa) {
+                <app-pill tone="pink"
+                  >IA<span class="so-leitor">, gerado por inteligência artificial</span></app-pill
+                >
+              }
             </dd>
           </div>
           <div>

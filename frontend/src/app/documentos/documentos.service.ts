@@ -15,6 +15,8 @@ export interface DocumentoResumo {
   aprovadoEm: string | null;
   // Id do aprovado que este documento corrige (item 15); null se nao e correcao.
   substituiId: string | null;
+  // Rascunho criado pela IA (itens 20 e 21): marca fixa, nunca muda.
+  geradoPorIa: boolean;
 }
 
 export interface Documento extends DocumentoResumo {

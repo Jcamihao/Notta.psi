@@ -27,6 +27,7 @@ const RASCUNHO: Documento = {
   atualizadoEm: '2026-11-03T13:00:00.000Z',
   aprovadoEm: null,
   substituiId: null,
+  geradoPorIa: false,
 };
 const APROVADO: Documento = {
   ...RASCUNHO,
@@ -405,6 +406,66 @@ describe('DocumentoLeituraPage', () => {
       await montar(RASCUNHO);
       await abrirEdicao();
       expect(campo('conteudo')).not.toBeNull();
+    });
+  });
+
+  describe('marcas de IA e cartao "Gerar com IA" (itens 20 e 21)', () => {
+    const IA = { ...RASCUNHO, geradoPorIa: true };
+
+    it('rascunho gerado por IA: faixa "Revise antes de aprovar" e pill IA com nome para leitor de tela', async () => {
+      await montar(IA);
+      expect(texto('[data-teste="faixa-ia"]')).toBe(
+        'Rascunho gerado por IA. Revise antes de aprovar.',
+      );
+      const pills = Array.from(el().querySelectorAll('app-pill')).map((p) =>
+        p.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+      expect(pills).toEqual(['Rascunho', 'IA, gerado por inteligência artificial']);
+      expect(el().querySelector('app-pill .so-leitor')).not.toBeNull();
+    });
+
+    it('a faixa continua durante a edicao', async () => {
+      await montar(IA);
+      await abrirEdicao();
+      expect(el().querySelector('[data-teste="faixa-ia"]')).not.toBeNull();
+    });
+
+    it('documento comum: sem faixa nem pill IA', async () => {
+      await montar(RASCUNHO);
+      expect(el().querySelector('[data-teste="faixa-ia"]')).toBeNull();
+      expect(texto('dl')).not.toContain('IA');
+    });
+
+    it('aprovado gerado por IA: sem a faixa de revisao (ja foi revisado), pill IA fica', async () => {
+      await montar({ ...APROVADO, geradoPorIa: true });
+      expect(el().querySelector('[data-teste="faixa-ia"]')).toBeNull();
+      expect(el().querySelectorAll('app-pill').length).toBe(2);
+    });
+
+    it('nota bruta mostra o cartao Gerar com IA (que consulta o uso); outros tipos nao', async () => {
+      await montar({ ...RASCUNHO, tipo: 'NOTA_BRUTA' });
+      expect(el().querySelector('app-ia-cartao')).not.toBeNull();
+      ctrl
+        .expectOne('/api/ia/uso')
+        .flush({ habilitada: false, limite: 20, usadas: 0, renovaEm: '2026-11-05T03:00:00.000Z' });
+      await fixture.whenStable();
+      expect(texto('app-ia-cartao')).toContain('A IA está desligada neste ambiente.');
+    });
+
+    it('evolucao nao mostra o cartao nem chama /ia/uso', async () => {
+      await montar(RASCUNHO);
+      expect(el().querySelector('app-ia-cartao')).toBeNull();
+      ctrl.expectNone('/api/ia/uso');
+    });
+
+    it('o cartao some durante a edicao da nota', async () => {
+      await montar({ ...RASCUNHO, tipo: 'NOTA_BRUTA' });
+      ctrl
+        .expectOne('/api/ia/uso')
+        .flush({ habilitada: false, limite: 20, usadas: 0, renovaEm: 'x' });
+      await fixture.whenStable();
+      await abrirEdicao();
+      expect(el().querySelector('app-ia-cartao')).toBeNull();
     });
   });
 

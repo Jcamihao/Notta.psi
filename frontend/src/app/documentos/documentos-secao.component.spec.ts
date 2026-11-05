@@ -25,6 +25,7 @@ const APROVADOS: DocumentoResumo[] = [
     criadoEm: '2026-11-03T13:00:00.000Z',
     aprovadoEm: '2026-11-03T15:30:00.000Z',
     substituiId: null,
+    geradoPorIa: false,
   },
   {
     id: 'p2',
@@ -34,6 +35,7 @@ const APROVADOS: DocumentoResumo[] = [
     criadoEm: '2026-11-01T13:00:00.000Z',
     aprovadoEm: '2026-11-01T14:00:00.000Z',
     substituiId: 'p9',
+    geradoPorIa: false,
   },
 ];
 const RASCUNHOS: DocumentoResumo[] = [
@@ -45,6 +47,7 @@ const RASCUNHOS: DocumentoResumo[] = [
     criadoEm: '2026-10-31T13:00:00.000Z',
     aprovadoEm: null,
     substituiId: null,
+    geradoPorIa: false,
   },
   {
     id: 'r2',
@@ -54,6 +57,7 @@ const RASCUNHOS: DocumentoResumo[] = [
     criadoEm: '2026-10-30T13:00:00.000Z',
     aprovadoEm: null,
     substituiId: null,
+    geradoPorIa: false,
   },
 ];
 
@@ -98,6 +102,32 @@ describe('DocumentosSecaoComponent', () => {
     ).click();
     await fixture.whenStable();
   };
+
+  it('emite "carregada" so depois das duas listas (com erro tambem)', async () => {
+    await montar('CONCEDIDO');
+    const emitiu = jasmine.createSpy('carregada');
+    fixture.componentInstance.carregada.subscribe(emitiu);
+    await flush(ctrl.expectOne(URL_APROVADOS), []);
+    expect(emitiu).not.toHaveBeenCalled();
+    await flush(ctrl.expectOne(URL_RASCUNHOS), {}, 500);
+    expect(emitiu).toHaveBeenCalledTimes(1);
+  });
+
+  it('pill "IA" so nos documentos gerados por IA, nas duas listas', async () => {
+    await montar('CONCEDIDO');
+    await carregar(
+      [{ ...APROVADOS[0], geradoPorIa: true }, APROVADOS[1]],
+      [RASCUNHOS[0], { ...RASCUNHOS[1], geradoPorIa: true }],
+    );
+    const ia = (n: 0 | 1) =>
+      Array.from(secao(n).querySelectorAll('li')).map((li) =>
+        Array.from(li.querySelectorAll('app-pill')).map((p) =>
+          p.textContent?.replace(/\s+/g, ' ').trim(),
+        ),
+      );
+    expect(ia(0)).toEqual([['Aprovado', 'IA, gerado por inteligência artificial'], ['Aprovado']]);
+    expect(ia(1)).toEqual([['Rascunho'], ['Rascunho', 'IA, gerado por inteligência artificial']]);
+  });
 
   it('duas chamadas em sequencia: aprovados, e so depois rascunhos; mostra carregando nas duas', async () => {
     await montar('CONCEDIDO');

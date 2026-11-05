@@ -203,6 +203,16 @@ a:hover {
   background: var(--blue-200);
 }
 
+// Texto so para leitor de tela (a pill "IA" sozinha nao diz o que e).
+.so-leitor {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 // iOS amplia a pagina ao focar campo com menos de 16px.
 @media (pointer: coarse) {
   .campo input,

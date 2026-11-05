@@ -15,6 +15,7 @@ import {
   telefoneValido,
 } from '../core/formulario';
 import { DocumentosSecaoComponent } from '../documentos/documentos-secao.component';
+import { PedidosIaSecaoComponent } from '../ia/pedidos-ia-secao.component';
 import { ButtonComponent } from '../ui/button.component';
 import { ConsentimentoCardComponent } from './consentimento-card.component';
 import { EstadoConsentimento } from './consentimento.service';
@@ -51,6 +52,7 @@ const AVISOS_DETALHE: Record<AvisoDetalhe, { texto: string; ok: boolean }> = {
     ButtonComponent,
     ConsentimentoCardComponent,
     DocumentosSecaoComponent,
+    PedidosIaSecaoComponent,
   ],
   templateUrl: './paciente-form.page.html',
   styleUrl: './paciente-form.page.scss',
@@ -64,6 +66,8 @@ export class PacienteFormPage {
   readonly avisoDetalhe = this.lerAviso();
   // Estado do consentimento, vindo do cartao; a secao Documentos so nasce depois dele.
   readonly consentimento = signal<EstadoConsentimento | null>(null);
+  // "Pedidos de IA" so pede a lista depois das listas de documentos: tudo em sequencia.
+  readonly documentosCarregados = signal(false);
   readonly hoje = hojeLocal();
   readonly carregando = signal(this.id !== null);
   readonly erroCarga = signal(false);

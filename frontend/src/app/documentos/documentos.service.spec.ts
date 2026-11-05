@@ -17,6 +17,7 @@ const COMPLETO: Documento = {
   criadoEm: '2026-11-03T10:00:00.000Z',
   aprovadoEm: null,
   substituiId: null,
+  geradoPorIa: false,
   atualizadoEm: '2026-11-03T10:00:00.000Z',
 };
 
@@ -63,6 +64,7 @@ describe('DocumentosService', () => {
         criadoEm: 'x',
         aprovadoEm: 'y',
         substituiId: null,
+        geradoPorIa: false,
       },
     ];
     r.flush(lista);

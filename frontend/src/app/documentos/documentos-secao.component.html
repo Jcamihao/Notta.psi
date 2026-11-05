@@ -15,6 +15,11 @@
             </a>
             <span class="documentos-meta">
               <app-pill [tone]="tom[d.status]">{{ status[d.status] }}</app-pill>
+              @if (d.geradoPorIa) {
+                <app-pill tone="pink"
+                  >IA<span class="so-leitor">, gerado por inteligência artificial</span></app-pill
+                >
+              }
               @if (d.aprovadoEm; as a) {
                 <span
                   >Aprovado em <time [attr.datetime]="a">{{ dataHora(a) }}</time></span
@@ -73,6 +78,11 @@
             </a>
             <span class="documentos-meta">
               <app-pill [tone]="tom[d.status]">{{ status[d.status] }}</app-pill>
+              @if (d.geradoPorIa) {
+                <app-pill tone="pink"
+                  >IA<span class="so-leitor">, gerado por inteligência artificial</span></app-pill
+                >
+              }
               <span
                 >Criado em
                 <time [attr.datetime]="d.criadoEm">{{ dataHora(d.criadoEm) }}</time></span

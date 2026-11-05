@@ -21,17 +21,21 @@ const P: Paciente = {
 };
 
 const URL_DOCS = (id: string) => `/api/pacientes/${id}/documentos`;
-// Prontuario (aprovados) e rascunhos: duas chamadas, uma depois da outra.
+const URL_PEDIDOS = (id: string) => `/api/pacientes/${id}/geracoes-ia`;
+// Prontuario (aprovados), rascunhos e pedidos de IA: tres chamadas, uma depois da outra.
 const listas = async (
   ctrl: HttpTestingController,
   espera: () => Promise<unknown>,
   id: string,
   aprovados: object[] = [],
   rascunhos: object[] = [],
+  pedidos: object[] = [],
 ) => {
   ctrl.expectOne(`${URL_DOCS(id)}?status=APROVADO`).flush(aprovados);
   await espera();
   ctrl.expectOne(`${URL_DOCS(id)}?status=RASCUNHO`).flush(rascunhos);
+  await espera();
+  ctrl.expectOne(URL_PEDIDOS(id)).flush(pedidos);
   await espera();
 };
 
@@ -416,7 +420,7 @@ describe('PacienteFormPage', () => {
         await fixture.whenStable();
       };
 
-      it('nasce so depois do consentimento: paciente, consentimento, aprovados e rascunhos, nessa ordem (4 chamadas)', async () => {
+      it('nasce so depois do consentimento: paciente, consentimento, aprovados e rascunhos, nessa ordem (4 chamadas) e depois os pedidos de IA (5a)', async () => {
         expect(secao()).toBeNull();
         ctrl.expectOne(`/api/pacientes/${ID}`).flush(P);
         await fixture.whenStable();
@@ -431,7 +435,10 @@ describe('PacienteFormPage', () => {
         ctrl.expectNone(`${URL_DOCS(ID)}?status=RASCUNHO`);
         aprovados.flush([]);
         await fixture.whenStable();
+        ctrl.expectNone(URL_PEDIDOS(ID));
         ctrl.expectOne(`${URL_DOCS(ID)}?status=RASCUNHO`).flush([]);
+        await fixture.whenStable();
+        ctrl.expectOne(URL_PEDIDOS(ID)).flush([]);
         await fixture.whenStable();
       });
 

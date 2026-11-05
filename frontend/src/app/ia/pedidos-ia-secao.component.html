@@ -1,0 +1,39 @@
+@if (erro()) {
+  <section class="pedidos" aria-labelledby="pi-titulo">
+    <h2 id="pi-titulo">Pedidos de IA</h2>
+    <div class="aviso-erro pedidos-falha" role="alert" data-teste="erro-pedidos">
+      <p>Não foi possível carregar os pedidos de IA. Confira sua conexão.</p>
+      <button app-button type="button" variant="soft" (click)="carregar()">Tentar de novo</button>
+    </div>
+  </section>
+} @else if (pedidos(); as l) {
+  @if (l.length) {
+    <section class="pedidos" aria-labelledby="pi-titulo">
+      <h2 id="pi-titulo">Pedidos de IA</h2>
+      <ul class="pedidos-lista" aria-label="Pedidos de IA deste paciente">
+        @for (g of l; track g.id) {
+          <li>
+            @if (g.estado === 'PRONTO' && g.documentoId) {
+              <a [routerLink]="['/pacientes', pacienteId(), 'documentos', g.documentoId]"
+                >Abrir {{ tipo[g.tipoDocumento] }}</a
+              >
+            } @else {
+              <a
+                [routerLink]="['/pacientes', pacienteId(), 'documentos', g.origemId, 'ia']"
+                [queryParams]="{ geracao: g.id }"
+                >Acompanhar {{ tipo[g.tipoDocumento] }}</a
+              >
+            }
+            <span class="pedidos-meta">
+              <app-pill [tone]="tom[g.estado]">{{ rotulo[g.estado] }}</app-pill>
+              <span
+                >Pedido em
+                <time [attr.datetime]="g.criadoEm">{{ dataHora(g.criadoEm) }}</time></span
+              >
+            </span>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+}
