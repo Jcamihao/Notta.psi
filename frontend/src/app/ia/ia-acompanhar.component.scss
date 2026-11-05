@@ -1,0 +1,47 @@
+:host {
+  display: block;
+  width: 100%;
+  max-width: 44rem;
+}
+.ia-acomp {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-5);
+  padding: var(--space-8);
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
+  @media (max-width: 40rem) {
+    padding: var(--space-6);
+  }
+  h2,
+  p {
+    margin: 0;
+  }
+}
+.ia-acomp-status {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+  &:empty {
+    display: none;
+  }
+  .aviso-erro {
+    margin: 0;
+  }
+}
+.ia-acomp-titulo-pronto {
+  font-size: 20px;
+  font-weight: var(--fw-medium);
+}
+.ia-acomp-avisos {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ia-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}

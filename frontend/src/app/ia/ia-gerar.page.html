@@ -60,6 +60,12 @@
         </button>
       </div>
     </section>
+  } @else if (passo() === 'acompanhar') {
+    <app-ia-acompanhar
+      [pacienteId]="pacienteId"
+      [geracaoId]="geracaoId()"
+      (trocar)="acompanharOutra($event)"
+    />
   } @else {
     <section class="ia-cartao" aria-labelledby="ia-previa-titulo" data-teste="passo-previa">
       <h2 id="ia-previa-titulo" tabindex="-1">2. Prévia do que vai para a IA</h2>
@@ -88,17 +94,76 @@
         (adicionou)="adicionarTermoNaPrevia($event)"
       />
 
-      <div class="ia-acoes">
-        <button
-          app-button
-          type="button"
-          variant="soft"
-          [disabled]="gerando()"
-          (click)="voltarParaConfig()"
+      @if (precisaOutra()) {
+        <div class="ia-acoes">
+          <button
+            app-button
+            type="button"
+            [variant]="gerando() ? 'progress' : 'primary'"
+            [disabled]="gerando()"
+            (click)="gerarOutraPrevia()"
+          >
+            {{ gerando() ? 'Gerando a prévia…' : 'Gerar outra prévia' }}
+          </button>
+        </div>
+      } @else if (confirmando()) {
+        <div
+          class="ia-confirmacao"
+          role="group"
+          aria-labelledby="ia-confirmacao-titulo"
+          aria-describedby="ia-confirmacao-texto"
+          data-teste="confirmacao"
+          (keydown.escape)="cancelarEnvio()"
         >
-          Mudar tipo ou termos
-        </button>
-      </div>
+          <h3 id="ia-confirmacao-titulo">Enviar este texto para a IA?</h3>
+          <p id="ia-confirmacao-texto">
+            O texto sai do sistema exatamente como está na prévia. Cada envio fica registrado na
+            trilha de auditoria da clínica.
+          </p>
+          <div class="ia-acoes">
+            <button
+              id="ia-cancelar-envio"
+              app-button
+              type="button"
+              variant="soft"
+              [disabled]="enviando()"
+              (click)="cancelarEnvio()"
+            >
+              Cancelar
+            </button>
+            <button
+              app-button
+              type="button"
+              [variant]="enviando() ? 'progress' : 'primary'"
+              [disabled]="enviando()"
+              (click)="enviar()"
+            >
+              {{ enviando() ? 'Enviando…' : 'Confirmar envio' }}
+            </button>
+          </div>
+        </div>
+      } @else {
+        <div class="ia-acoes">
+          <button
+            app-button
+            type="button"
+            variant="soft"
+            [disabled]="gerando()"
+            (click)="voltarParaConfig()"
+          >
+            Mudar tipo ou termos
+          </button>
+          <button
+            id="ia-enviar"
+            app-button
+            type="button"
+            [disabled]="gerando()"
+            (click)="pedirEnvio()"
+          >
+            Enviar para a IA
+          </button>
+        </div>
+      }
     </section>
   }
 </div>

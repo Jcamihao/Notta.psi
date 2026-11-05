@@ -1,0 +1,80 @@
+<section class="ia-acomp" aria-labelledby="ia-acomp-titulo" data-teste="passo-acompanhar">
+  <h2 id="ia-acomp-titulo" tabindex="-1">3. Acompanhar o pedido</h2>
+
+  <div class="ia-acomp-status" aria-live="polite" data-teste="status">
+    @if (naoEncontrado()) {
+      <p class="aviso-erro">Este pedido não foi encontrado.</p>
+    } @else if (geracao(); as g) {
+      @switch (g.estado) {
+        @case ('PENDENTE') {
+          <p data-teste="pendente">Gerando… pode fechar esta tela, o pedido fica salvo.</p>
+        }
+        @case ('PRONTO') {
+          <p class="ia-acomp-titulo-pronto" data-teste="pronto">Rascunho pronto</p>
+          <p>O rascunho foi criado como novo documento. Revise o texto antes de aprovar.</p>
+          @if (g.avisos.length) {
+            <ul class="ia-acomp-avisos" data-teste="avisos">
+              @for (a of g.avisos; track a) {
+                <li class="aviso-erro">{{ avisosTexto[a] }}</li>
+              }
+            </ul>
+          }
+        }
+        @case ('FALHOU') {
+          <p data-teste="falhou">{{ motivo(g) }} A sua nota continua salva.</p>
+          @if (g.retentavel === false) {
+            <p class="aviso-erro" data-teste="sem-retentativa">
+              Esta é uma falha de configuração do sistema, não do seu texto. Avise o suporte.
+            </p>
+          }
+        }
+        @default {
+          <p data-teste="nao-enviado">Este pedido ainda não foi enviado para a IA.</p>
+        }
+      }
+    } @else if (!semRede()) {
+      <p>Consultando o pedido…</p>
+    }
+    @if (semRede()) {
+      <p class="aviso-erro" data-teste="sem-rede">
+        Não consegui atualizar o status agora.
+        @if (!parado()) {
+          Vou tentar de novo.
+        }
+      </p>
+    }
+    @if (erroEnvio()) {
+      <p class="aviso-erro" data-teste="erro-envio">{{ erroEnvio() }}</p>
+    }
+  </div>
+
+  @if (parado()) {
+    <div class="ia-acoes">
+      <button app-button type="button" variant="soft" (click)="atualizar()">Atualizar</button>
+    </div>
+  }
+  @if (geracao(); as g) {
+    @if (g.estado === 'PRONTO' && g.documentoId) {
+      <div class="ia-acoes">
+        <a
+          id="ia-abrir"
+          app-button
+          [routerLink]="['/pacientes', pacienteId(), 'documentos', g.documentoId]"
+          >Abrir o rascunho</a
+        >
+      </div>
+    } @else if (g.estado === 'FALHOU' && g.retentavel) {
+      <div class="ia-acoes">
+        <button
+          app-button
+          type="button"
+          [variant]="reenviando() ? 'progress' : 'primary'"
+          [disabled]="reenviando()"
+          (click)="tentarDeNovo()"
+        >
+          {{ reenviando() ? 'Enviando…' : 'Tentar de novo' }}
+        </button>
+      </div>
+    }
+  }
+</section>

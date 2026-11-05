@@ -19,7 +19,15 @@ import {
 import { mensagemHttp } from '../core/formulario';
 import { ROTULO_TIPO } from '../documentos/documentos.service';
 import { ButtonComponent } from '../ui/button.component';
-import { AVISO_PREVIA, IaService, Previa, TipoGerado } from './ia.service';
+import {
+  AVISO_PREVIA,
+  IaService,
+  Previa,
+  TEXTO_ANDAMENTO_OUTRO,
+  TipoGerado,
+  classificarErroConfirmar,
+} from './ia.service';
+import { IaAcompanharComponent } from './ia-acompanhar.component';
 import { IaTermosComponent } from './ia-termos.component';
 
 // Codigo do anonimizador: [PACIENTE], [CPF], [CPF_2], [TERMO_1]... (colchetes do texto original
@@ -31,14 +39,20 @@ const TIPOS: { valor: TipoGerado; rotulo: string }[] = [
   { valor: 'ANAMNESE', rotulo: 'Anamnese' },
 ];
 
-type Passo = 'config' | 'previa';
+type Passo = 'config' | 'previa' | 'acompanhar';
 
 // Gerar rascunho por IA a partir de uma nota bruta, em passos: escolher o tipo e os termos extras,
 // ver a previa EXATA do que sai do sistema. O texto anonimizado e os termos vivem so nos signals
 // desta pagina (mostrados por interpolacao, nunca innerHTML) e saem da memoria ao sair dela.
 @Component({
   selector: 'app-ia-gerar-page',
-  imports: [LucideAngularModule, RouterLink, ButtonComponent, IaTermosComponent],
+  imports: [
+    LucideAngularModule,
+    RouterLink,
+    ButtonComponent,
+    IaTermosComponent,
+    IaAcompanharComponent,
+  ],
   templateUrl: './ia-gerar.page.html',
   styleUrl: './ia-gerar.page.scss',
 })
@@ -54,11 +68,17 @@ export class IaGerarPage implements OnDestroy {
   readonly tipos = TIPOS;
   readonly rotuloTipo = ROTULO_TIPO;
   readonly avisoPrevia = AVISO_PREVIA;
-  readonly passo = signal<Passo>('config');
+  // ?geracao=<id> (link de "Pedidos de IA"): vai direto ao acompanhamento; so o id vai na URL.
+  readonly geracaoId = signal(this.rota.queryParamMap.get('geracao') ?? '');
+  readonly passo = signal<Passo>(this.geracaoId() ? 'acompanhar' : 'config');
   readonly tipo = signal<TipoGerado>('EVOLUCAO');
   readonly termos = signal<string[]>([]);
   readonly previa = signal<Previa | null>(null);
   readonly gerando = signal(false);
+  readonly confirmando = signal(false);
+  readonly enviando = signal(false);
+  // Previa vencida ou perdida: so resta gerar outra.
+  readonly precisaOutra = signal(false);
   readonly erro = signal('');
   readonly mensagem = signal('');
   readonly partes = computed(() =>
@@ -100,11 +120,92 @@ export class IaGerarPage implements OnDestroy {
     );
   }
 
+  // ---- passo 2: enviar (confirmacao inline, como aprovar) ----
+
+  pedirEnvio(): void {
+    this.erro.set('');
+    this.mensagem.set('');
+    this.confirmando.set(true);
+    this.foco('ia-cancelar-envio');
+  }
+
+  cancelarEnvio(): void {
+    if (this.enviando()) return;
+    this.confirmando.set(false);
+    this.foco('ia-enviar');
+  }
+
+  // So o id da previa vai ao back: o texto que sai e exatamente o que ele guardou.
+  enviar(): void {
+    const p = this.previa();
+    if (!p || this.enviando()) return;
+    this.enviando.set(true);
+    this.ia.confirmar(p.id).subscribe({
+      next: () => {
+        this.enviando.set(false);
+        this.acompanhar(p.id);
+      },
+      error: (e: HttpErrorResponse) => {
+        this.enviando.set(false);
+        this.confirmando.set(false);
+        this.falharEnvio(e);
+      },
+    });
+  }
+
+  // Outra geracao ja rodava (ou a retentativa achou uma): passa a acompanhar essa.
+  acompanharOutra(id: string): void {
+    this.mensagem.set('Já havia uma geração em andamento. Estou mostrando o andamento dela.');
+    this.geracaoId.set(id);
+  }
+
+  gerarOutraPrevia(): void {
+    this.gerarPrevia(() => this.foco('ia-previa-titulo'));
+  }
+
   voltarParaConfig(): void {
     this.erro.set('');
     this.mensagem.set('');
     this.passo.set('config');
     this.foco('ia-config-titulo');
+  }
+
+  private acompanhar(id: string): void {
+    // O texto ja saiu: nao precisa mais ficar na memoria desta tela.
+    this.limpar();
+    this.confirmando.set(false);
+    this.erro.set('');
+    this.mensagem.set('');
+    this.geracaoId.set(id);
+    this.passo.set('acompanhar');
+    this.foco('ia-acomp-titulo');
+  }
+
+  private falharEnvio(e: HttpErrorResponse): void {
+    const r = classificarErroConfirmar(e);
+    if (r.tipo === 'texto') this.erro.set(r.texto);
+    else if (r.tipo === 'expirada') {
+      this.precisaOutra.set(true);
+      this.erro.set('A prévia expirou (vale 30 minutos). Gere outra para continuar.');
+    } else if (r.tipo === 'sumiu') {
+      this.precisaOutra.set(true);
+      this.erro.set('Não encontrei esta prévia. Gere outra para continuar.');
+    } else this.buscarEmAndamento();
+  }
+
+  private buscarEmAndamento(): void {
+    this.ia.listar(this.pacienteId).subscribe({
+      next: (lista) => {
+        const outro = lista.find((g) => g.estado === 'PENDENTE');
+        if (outro) {
+          this.limpar();
+          this.passo.set('acompanhar');
+          this.acompanharOutra(outro.id);
+          this.foco('ia-acomp-titulo');
+        } else this.erro.set(TEXTO_ANDAMENTO_OUTRO);
+      },
+      error: () => this.erro.set(TEXTO_ANDAMENTO_OUTRO),
+    });
   }
 
   private gerarPrevia(depois?: () => void, aoFalhar?: () => void, aviso = ''): void {
@@ -117,6 +218,8 @@ export class IaGerarPage implements OnDestroy {
         this.gerando.set(false);
         this.previa.set(p);
         this.passo.set('previa');
+        this.confirmando.set(false);
+        this.precisaOutra.set(false);
         this.mensagem.set(aviso);
         depois?.();
       },

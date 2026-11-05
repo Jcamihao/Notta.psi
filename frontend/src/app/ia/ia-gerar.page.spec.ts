@@ -24,12 +24,12 @@ const previa = (id = GID, textoAnonimizado = TEXTO) => ({
   expiraEm: '2026-11-05T10:30:00.000Z',
 });
 
-describe('IaGerarPage: passos 1 e 2', () => {
+describe('IaGerarPage', () => {
   let fixture: ComponentFixture<IaGerarPage>;
   let ctrl: HttpTestingController;
   let navegar: jasmine.Spy;
 
-  const montar = async () => {
+  const montar = async (query: Record<string, string> = {}) => {
     TestBed.configureTestingModule({
       imports: [IaGerarPage],
       providers: [
@@ -41,7 +41,7 @@ describe('IaGerarPage: passos 1 e 2', () => {
           useValue: {
             snapshot: {
               paramMap: convertToParamMap({ id: PID, docId: DID }),
-              queryParamMap: convertToParamMap({}),
+              queryParamMap: convertToParamMap(query),
             },
           },
         },
@@ -238,6 +238,182 @@ describe('IaGerarPage: passos 1 e 2', () => {
       expect(navegar).toHaveBeenCalledWith(`/pacientes/${PID}`, {
         state: { aviso: 'documento-nao-encontrado' },
       });
+    });
+  });
+
+  describe('passo 2: enviar para a IA', () => {
+    const URL_CONF = `/api/geracoes-ia/${GID}/confirmar`;
+    const URL_G = `/api/geracoes-ia/${GID}`;
+    const pronto = () => ({
+      id: GID,
+      estado: 'PENDENTE',
+      tipoDocumento: 'EVOLUCAO',
+      origemId: DID,
+      documentoId: null,
+      motivo: null,
+      retentavel: null,
+      avisos: [],
+      criadoEm: '2026-11-05T10:00:00.000Z',
+      finalizadoEm: null,
+    });
+    const escape = async () => {
+      el()
+        .querySelector('[data-teste="confirmacao"]')!
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await fixture.whenStable();
+    };
+    const abrirConfirmacao = async () => {
+      await verPrevia();
+      await clicar('Enviar para a IA');
+    };
+
+    it('Enviar para a IA so abre a confirmacao inline: nada e enviado ainda, foco em Cancelar', async () => {
+      await montar();
+      await abrirConfirmacao();
+      ctrl.expectNone(URL_CONF);
+      const c = el().querySelector('[data-teste="confirmacao"]') as HTMLElement;
+      expect(c.getAttribute('role')).toBe('group');
+      expect(c.textContent).toContain('Enviar este texto para a IA?');
+      expect(c.textContent).toContain('exatamente como está na prévia');
+      expect(document.activeElement?.id).toBe('ia-cancelar-envio');
+    });
+
+    it('Cancelar e Escape fecham a confirmacao e devolvem o foco ao botao', async () => {
+      await montar();
+      await abrirConfirmacao();
+      await clicar('Cancelar');
+      expect(el().querySelector('[data-teste="confirmacao"]')).toBeNull();
+      expect(document.activeElement?.id).toBe('ia-enviar');
+      await clicar('Enviar para a IA');
+      await escape();
+      expect(el().querySelector('[data-teste="confirmacao"]')).toBeNull();
+      expect(document.activeElement?.id).toBe('ia-enviar');
+      ctrl.expectNone(URL_CONF);
+    });
+
+    it('Confirmar envio: POST confirmar so com o id (sem corpo) e abre o acompanhamento; texto sai da memoria', async () => {
+      await montar();
+      await abrirConfirmacao();
+      await clicar('Confirmar envio');
+      const r = ctrl.expectOne(URL_CONF);
+      expect(r.request.method).toBe('POST');
+      expect(r.request.body).toBeNull();
+      expect(botao('Enviando…')?.hasAttribute('disabled')).toBeTrue();
+      await flush(r, { id: GID, estado: 'PENDENTE' }, 202);
+      expect(el().querySelector('[data-teste="passo-acompanhar"]')).not.toBeNull();
+      expect(el().querySelector('[data-teste="previa"]')).toBeNull();
+      expect(fixture.componentInstance.previa()).toBeNull();
+      await flush(ctrl.expectOne(URL_G), pronto());
+      expect(texto('[data-teste="pendente"]')).toContain('Gerando…');
+      expect(document.activeElement?.id).toBe('ia-acomp-titulo');
+    });
+
+    it('duplo clique em Confirmar envio: um POST so', async () => {
+      await montar();
+      await abrirConfirmacao();
+      const b = botao('Confirmar envio')!;
+      b.click();
+      b.click();
+      await fixture.whenStable();
+      await flush(ctrl.expectOne(URL_CONF), { id: GID, estado: 'PENDENTE' }, 202);
+      await flush(ctrl.expectOne(URL_G), pronto());
+    });
+
+    it('409 de previa expirada: oferece gerar outra, que cria nova previa e reabre o passo', async () => {
+      await montar();
+      await abrirConfirmacao();
+      await clicar('Confirmar envio');
+      await flush(ctrl.expectOne(URL_CONF), { message: 'Previa expirada, gere outra' }, 409);
+      expect(texto('[data-teste="erro"]')).toBe(
+        'A prévia expirou (vale 30 minutos). Gere outra para continuar.',
+      );
+      expect(botao('Enviar para a IA')).toBeNull();
+      await clicar('Gerar outra prévia');
+      const r = ctrl.expectOne(URL_PREVIA);
+      expect(r.request.body).toEqual({ tipoDocumento: 'EVOLUCAO' });
+      await flush(r, previa(GID2, 'texto novo [CPF]'), 201);
+      expect(el().querySelector('[data-teste="erro"]')).toBeNull();
+      expect(el().querySelector('[data-teste="previa"]')?.textContent?.trim()).toBe(
+        'texto novo [CPF]',
+      );
+      expect(botao('Enviar para a IA')).not.toBeNull();
+    });
+
+    it('429 do limite diario: mostra a hora de renovar e a previa continua para tentar mais tarde', async () => {
+      await montar();
+      await abrirConfirmacao();
+      await clicar('Confirmar envio');
+      await flush(
+        ctrl.expectOne(URL_CONF),
+        { mensagem: 'x', limite: 20, usadas: 20, renovaEm: '2026-11-06T03:00:00.000Z' },
+        429,
+      );
+      expect(texto('[data-teste="erro"]')).toMatch(
+        /^Limite diário de gerações atingido; renova em 06\/11\/2026, \d{2}:\d{2}\.$/,
+      );
+      expect(el().querySelector('[data-teste="previa"]')?.textContent?.trim()).toBe(TEXTO);
+      expect(botao('Enviar para a IA')).not.toBeNull();
+    });
+
+    it('429 "ja ha uma geracao em andamento": avisa e leva ao acompanhamento da que esta rodando', async () => {
+      await montar();
+      await abrirConfirmacao();
+      await clicar('Confirmar envio');
+      await flush(ctrl.expectOne(URL_CONF), { message: 'Ja ha uma geracao em andamento' }, 429);
+      await flush(ctrl.expectOne(`/api/pacientes/${PID}/geracoes-ia`), [
+        { ...pronto(), id: GID2 },
+        { ...pronto(), estado: 'FALHOU' },
+      ]);
+      expect(texto('[data-teste="mensagem"]')).toBe(
+        'Já havia uma geração em andamento. Estou mostrando o andamento dela.',
+      );
+      expect(el().querySelector('[data-teste="passo-acompanhar"]')).not.toBeNull();
+      expect(fixture.componentInstance.previa()).toBeNull();
+      await flush(ctrl.expectOne(`/api/geracoes-ia/${GID2}`), { ...pronto(), id: GID2 });
+    });
+
+    it('429 de andamento sem pendente neste paciente: explica e fica na previa', async () => {
+      await montar();
+      await abrirConfirmacao();
+      await clicar('Confirmar envio');
+      await flush(ctrl.expectOne(URL_CONF), { message: 'Ja ha uma geracao em andamento' }, 429);
+      await flush(ctrl.expectOne(`/api/pacientes/${PID}/geracoes-ia`), []);
+      expect(texto('[data-teste="erro"]')).toContain('em outra nota');
+      expect(el().querySelector('[data-teste="previa"]')).not.toBeNull();
+    });
+
+    it('503 (IA desligada) e erro de rede: mensagem e a previa continua', async () => {
+      await montar();
+      await abrirConfirmacao();
+      await clicar('Confirmar envio');
+      await flush(ctrl.expectOne(URL_CONF), { message: 'IA indisponivel' }, 503);
+      expect(texto('[data-teste="erro"]')).toBe('A IA está desligada neste ambiente.');
+      await clicar('Enviar para a IA');
+      await clicar('Confirmar envio');
+      await flush(ctrl.expectOne(URL_CONF), {}, 500);
+      expect(texto('[data-teste="erro"]')).toContain('Confira sua conexão');
+      expect(el().querySelector('[data-teste="previa"]')?.textContent?.trim()).toBe(TEXTO);
+    });
+  });
+
+  describe('?geracao=<id> (link de "Pedidos de IA")', () => {
+    it('abre direto no acompanhamento e consulta so esse pedido', async () => {
+      await montar({ geracao: GID });
+      expect(el().querySelector('[data-teste="passo-config"]')).toBeNull();
+      expect(el().querySelector('[data-teste="passo-acompanhar"]')).not.toBeNull();
+      await flush(ctrl.expectOne(`/api/geracoes-ia/${GID}`), {
+        id: GID,
+        estado: 'PRONTO',
+        tipoDocumento: 'ANAMNESE',
+        origemId: DID,
+        documentoId: '66666666-6666-4666-8666-666666666666',
+        motivo: null,
+        retentavel: null,
+        avisos: [],
+        criadoEm: 'x',
+        finalizadoEm: 'y',
+      });
+      expect(botao('Abrir o rascunho')).not.toBeNull();
     });
   });
 
