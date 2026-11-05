@@ -8,7 +8,13 @@ const C: Consentimento = {
   estado: 'CONCEDIDO',
   desde: '2026-11-01T14:00:00.000Z',
   historico: [
-    { seq: 1, evento: 'CONCEDIDO', termoVersao: 'provisorio-1', em: '2026-11-01T14:00:00.000Z' },
+    {
+      seq: 1,
+      evento: 'CONCEDIDO',
+      termoVersao: 'provisorio-1',
+      origem: 'PSICOLOGO',
+      em: '2026-11-01T14:00:00.000Z',
+    },
   ],
 };
 

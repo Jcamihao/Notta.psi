@@ -22,7 +22,9 @@ const P: Paciente = {
 
 const URL_DOCS = (id: string) => `/api/pacientes/${id}/documentos`;
 const URL_PEDIDOS = (id: string) => `/api/pacientes/${id}/geracoes-ia`;
-// Prontuario (aprovados), rascunhos e pedidos de IA: tres chamadas, uma depois da outra.
+const URL_CONVITES = (id: string) => `/api/pacientes/${id}/convites-consentimento`;
+// Convites do termo por link (nascem com o cartao, junto da 1a lista: no maximo 2 em voo),
+// depois prontuario (aprovados), rascunhos e pedidos de IA, uma depois da outra.
 const listas = async (
   ctrl: HttpTestingController,
   espera: () => Promise<unknown>,
@@ -31,6 +33,7 @@ const listas = async (
   rascunhos: object[] = [],
   pedidos: object[] = [],
 ) => {
+  ctrl.expectOne(URL_CONVITES(id)).flush([]);
   ctrl.expectOne(`${URL_DOCS(id)}?status=APROVADO`).flush(aprovados);
   await espera();
   ctrl.expectOne(`${URL_DOCS(id)}?status=RASCUNHO`).flush(rascunhos);
@@ -431,9 +434,12 @@ describe('PacienteFormPage', () => {
           .flush({ estado: 'NENHUM', desde: null, historico: [] });
         await fixture.whenStable();
         expect(secao()).not.toBeNull();
-        const aprovados = ctrl.expectOne(`${URL_DOCS(ID)}?status=APROVADO`);
-        ctrl.expectNone(`${URL_DOCS(ID)}?status=RASCUNHO`);
-        aprovados.flush([]);
+        // Em voo ao mesmo tempo: so a lista de convites e os aprovados (teto de 2).
+        const emVoo = ctrl.match(() => true);
+        expect(emVoo.map((r) => r.request.urlWithParams).sort()).toEqual(
+          [URL_CONVITES(ID), `${URL_DOCS(ID)}?status=APROVADO`].sort(),
+        );
+        emVoo.forEach((r) => r.flush([]));
         await fixture.whenStable();
         ctrl.expectNone(URL_PEDIDOS(ID));
         ctrl.expectOne(`${URL_DOCS(ID)}?status=RASCUNHO`).flush([]);

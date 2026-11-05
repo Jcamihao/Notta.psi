@@ -1,0 +1,111 @@
+:host {
+  display: block;
+  width: 100%;
+}
+.convites {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-5);
+  width: 100%;
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--cream-200);
+  h3,
+  p {
+    margin: 0;
+  }
+}
+.convites > * {
+  max-width: 100%;
+}
+.convites-lead,
+.convites-dica,
+.convites-datas {
+  color: var(--text-secondary);
+}
+.aviso-regiao:empty {
+  display: none;
+}
+.aviso-regiao .aviso-ok,
+.aviso-regiao .aviso-erro {
+  margin: 0;
+}
+.convites-falha {
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+}
+.convites-enviar {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+}
+.convites-link,
+.convites-confirma {
+  display: grid;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-6);
+  background: var(--cream-200);
+  border-radius: var(--radius-card);
+  &:focus-visible {
+    outline: 2px solid var(--ink-900);
+    outline-offset: 4px;
+  }
+  p {
+    margin: 0;
+  }
+}
+.convites-link-titulo {
+  font-weight: var(--fw-medium);
+}
+.convites-link-aviso {
+  font-weight: var(--fw-medium);
+}
+.convites-link-linha {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  input {
+    flex: 1 1 14rem;
+    min-width: 0;
+    min-height: var(--size-control);
+    padding: 0 var(--space-6);
+    font: inherit;
+    color: var(--text-primary);
+    background: var(--white);
+    border: 1.5px solid var(--ink-700);
+    border-radius: var(--radius-pill);
+  }
+}
+.convites-lista {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  li {
+    display: grid;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--cream-200);
+  }
+  time {
+    font-variant-numeric: tabular-nums;
+  }
+}
+.convites-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+}
+.convites-datas {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+.convites-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

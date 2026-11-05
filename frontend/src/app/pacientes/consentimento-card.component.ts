@@ -16,6 +16,7 @@ import { dataHoraBr } from '../core/datas';
 import { mensagemHttp } from '../core/formulario';
 import { ButtonComponent } from '../ui/button.component';
 import { PillComponent } from '../ui/pill.component';
+import { ConvitesConsentimentoComponent } from './convites-consentimento.component';
 import {
   Consentimento,
   ConsentimentoService,
@@ -29,7 +30,7 @@ import {
 // depois de carregar o paciente, entao nunca ha mais de 2 chamadas ao mesmo tempo).
 @Component({
   selector: 'app-consentimento-card',
-  imports: [LucideAngularModule, ButtonComponent, PillComponent],
+  imports: [LucideAngularModule, ButtonComponent, PillComponent, ConvitesConsentimentoComponent],
   templateUrl: './consentimento-card.component.html',
   styleUrl: './consentimento-card.component.scss',
 })

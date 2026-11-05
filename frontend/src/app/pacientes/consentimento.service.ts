@@ -5,10 +5,14 @@ import { Injectable, inject } from '@angular/core';
 export type EstadoConsentimento = 'NENHUM' | 'CONCEDIDO' | 'REVOGADO';
 export type EventoConsentimento = 'CONCEDIDO' | 'REVOGADO';
 
+// Quem gerou o evento: o paciente (aceite por link, item 22) ou o psicologo (registro manual).
+export type OrigemConsentimento = 'PSICOLOGO' | 'PACIENTE';
+
 export interface EventoHistorico {
   seq: number;
   evento: EventoConsentimento;
   termoVersao: string;
+  origem: OrigemConsentimento;
   em: string;
 }
 

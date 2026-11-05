@@ -24,6 +24,9 @@
 .consentimento > * {
   max-width: 100%;
 }
+.consentimento > h3 {
+  margin-top: var(--space-3);
+}
 .consentimento-estado {
   display: flex;
   flex-wrap: wrap;
@@ -37,6 +40,7 @@
 .consentimento-desde,
 .consentimento-aviso,
 .consentimento-carregando,
+.consentimento-origem,
 .consentimento-termo {
   color: var(--text-secondary);
 }

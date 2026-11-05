@@ -10,6 +10,7 @@ import { Consentimento } from './consentimento.service';
 
 const ID = '11111111-1111-4111-8111-111111111111';
 const URL = `/api/pacientes/${ID}/consentimento`;
+const CONVITES = `/api/pacientes/${ID}/convites-consentimento`;
 const T1 = '2026-11-01T14:00:00.000Z';
 const T2 = '2026-11-02T15:30:00.000Z';
 const T3 = '2026-11-03T16:45:00.000Z';
@@ -18,14 +19,16 @@ const NENHUM: Consentimento = { estado: 'NENHUM', desde: null, historico: [] };
 const CONCEDIDO: Consentimento = {
   estado: 'CONCEDIDO',
   desde: T1,
-  historico: [{ seq: 1, evento: 'CONCEDIDO', termoVersao: 'provisorio-1', em: T1 }],
+  historico: [
+    { seq: 1, evento: 'CONCEDIDO', termoVersao: 'provisorio-1', origem: 'PSICOLOGO', em: T1 },
+  ],
 };
 const REVOGADO: Consentimento = {
   estado: 'REVOGADO',
   desde: T2,
   historico: [
-    { seq: 1, evento: 'CONCEDIDO', termoVersao: 'provisorio-1', em: T1 },
-    { seq: 2, evento: 'REVOGADO', termoVersao: 'provisorio-1', em: T2 },
+    { seq: 1, evento: 'CONCEDIDO', termoVersao: 'provisorio-1', origem: 'PSICOLOGO', em: T1 },
+    { seq: 2, evento: 'REVOGADO', termoVersao: 'provisorio-1', origem: 'PSICOLOGO', em: T2 },
   ],
 };
 const TRES: Consentimento = {
@@ -33,7 +36,7 @@ const TRES: Consentimento = {
   desde: T3,
   historico: [
     ...REVOGADO.historico,
-    { seq: 3, evento: 'CONCEDIDO', termoVersao: 'provisorio-1', em: T3 },
+    { seq: 3, evento: 'CONCEDIDO', termoVersao: 'provisorio-1', origem: 'PSICOLOGO', em: T3 },
   ],
 };
 
@@ -65,6 +68,10 @@ describe('ConsentimentoCardComponent', () => {
     const r = ctrl.expectOne(URL);
     expect(r.request.method).toBe('GET');
     await flush(r, c);
+    // O cartao carrega junto a lista de convites (a subsecao "Termo por link").
+    const lista = ctrl.expectOne(CONVITES);
+    expect(lista.request.method).toBe('GET');
+    await flush(lista, []);
   };
   const clicar = async (rotulo: string) => {
     botao(rotulo)!.click();
@@ -112,11 +119,106 @@ describe('ConsentimentoCardComponent', () => {
     ]);
   });
 
-  it('mostra o aviso honesto do contrato', async () => {
+  it('aviso diz que o registro pode ser manual ou por link do paciente', async () => {
     await carregar(NENHUM);
     expect(texto('.consentimento-aviso')).toBe(
-      'Nesta versão o registro é feito por você. O termo assinado pelo paciente chega em uma próxima etapa.',
+      'Você pode registrar o consentimento por conta própria ou enviar o termo para o paciente aceitar por link.',
     );
+  });
+
+  describe('termo por link (item 22)', () => {
+    const PACIENTE_ACEITOU: Consentimento = {
+      estado: 'CONCEDIDO',
+      desde: T3,
+      historico: [
+        { seq: 1, evento: 'CONCEDIDO', termoVersao: 'v1-rascunho', origem: 'PACIENTE', em: T3 },
+      ],
+    };
+
+    it('NENHUM e REVOGADO oferecem "Enviar termo ao paciente"; CONCEDIDO nao', async () => {
+      await carregar(NENHUM);
+      expect(botao('Enviar termo ao paciente')).not.toBeNull();
+      await clicar('Registrar consentimento');
+      await flush(ctrl.expectOne(URL), CONCEDIDO, 201);
+      expect(botao('Enviar termo ao paciente')).toBeNull();
+      await clicar('Revogar consentimento');
+      await clicar('Confirmar revogação');
+      await flush(ctrl.expectOne(URL), REVOGADO, 201);
+      expect(botao('Enviar termo ao paciente')).not.toBeNull();
+    });
+
+    it('CONCEDIDO sem botao de envio, mas a lista de convites continua visivel', async () => {
+      const r = ctrl.expectOne(URL);
+      await flush(r, CONCEDIDO);
+      await flush(ctrl.expectOne(CONVITES), [
+        {
+          id: 'c1',
+          estado: 'ACEITO',
+          expirado: false,
+          criadoEm: T1,
+          expiraEm: T2,
+          usadoEm: T1,
+          termoVersao: 'v1-rascunho',
+        },
+      ]);
+      expect(botao('Enviar termo ao paciente')).toBeNull();
+      expect(texto('[data-teste="convite"] app-pill')).toBe('Aceito');
+    });
+
+    it('historico mostra a origem de cada evento', async () => {
+      await carregar({
+        estado: 'CONCEDIDO',
+        desde: T3,
+        historico: [
+          { seq: 1, evento: 'CONCEDIDO', termoVersao: 'v1-rascunho', origem: 'PACIENTE', em: T1 },
+          { seq: 2, evento: 'REVOGADO', termoVersao: 'v1-rascunho', origem: 'PSICOLOGO', em: T2 },
+          { seq: 3, evento: 'CONCEDIDO', termoVersao: 'v1-rascunho', origem: 'PSICOLOGO', em: T3 },
+        ],
+      });
+      const origens = Array.from(el().querySelectorAll('.consentimento-origem')).map((o) =>
+        o.textContent?.trim(),
+      );
+      expect(origens).toEqual([
+        'Aceito pelo paciente',
+        'Registrado pelo psicólogo',
+        'Registrado pelo psicólogo',
+      ]);
+    });
+
+    it('paciente aceita com a tela aberta: o cartao recarrega e vira Concedido (Aceito pelo paciente)', async () => {
+      jasmine.clock().install();
+      spyOnProperty(document, 'visibilityState', 'get').and.returnValue('visible');
+      try {
+        await carregar(NENHUM);
+        await clicar('Enviar termo ao paciente');
+        await flush(
+          ctrl.expectOne(CONVITES),
+          { id: 'c1', link: 'http://x/termo/t', expiraEm: T2 },
+          201,
+        );
+        const pendente = {
+          id: 'c1',
+          estado: 'PENDENTE',
+          expirado: false,
+          criadoEm: T1,
+          expiraEm: T2,
+          usadoEm: null,
+          termoVersao: 'v1-rascunho',
+        };
+        await flush(ctrl.expectOne(CONVITES), [pendente]);
+        jasmine.clock().tick(15000);
+        await flush(ctrl.expectOne(CONVITES), [{ ...pendente, estado: 'ACEITO', usadoEm: T3 }]);
+        // o convite virou ACEITO: o cartao pede o estado novo
+        await flush(ctrl.expectOne(URL), PACIENTE_ACEITOU);
+        expect(texto('[data-teste="estado"]')).toContain('Concedido');
+        expect(texto('.consentimento-origem')).toBe('Aceito pelo paciente');
+        expect(botao('Revogar consentimento')).not.toBeNull();
+        expect(botao('Enviar termo ao paciente')).toBeNull();
+        expect(el().querySelector('#conv-link')).toBeNull();
+      } finally {
+        jasmine.clock().uninstall();
+      }
+    });
   });
 
   it('registrar: POST CONCEDIDO, troca o estado, avisa e foca o estado', async () => {

@@ -14,8 +14,8 @@
     </div>
 
     <p class="consentimento-aviso">
-      Nesta versão o registro é feito por você. O termo assinado pelo paciente chega em uma próxima
-      etapa.
+      Você pode registrar o consentimento por conta própria ou enviar o termo para o paciente
+      aceitar por link.
     </p>
 
     <div class="aviso-regiao" aria-live="polite">
@@ -85,6 +85,12 @@
       </button>
     }
 
+    <app-convites-consentimento
+      [pacienteId]="pacienteId()"
+      [podeEnviar]="d.estado !== 'CONCEDIDO'"
+      (aceito)="carregar()"
+    />
+
     @if (d.historico.length) {
       <h3 id="cs-historico">Histórico</h3>
       <ol class="consentimento-historico" aria-labelledby="cs-historico">
@@ -92,6 +98,9 @@
           <li>
             <span class="consentimento-evento">{{
               h.evento === 'CONCEDIDO' ? 'Concedido' : 'Revogado'
+            }}</span>
+            <span class="consentimento-origem">{{
+              h.origem === 'PACIENTE' ? 'Aceito pelo paciente' : 'Registrado pelo psicólogo'
             }}</span>
             <time [attr.datetime]="h.em">{{ dataHora(h.em) }}</time>
             <span class="consentimento-termo">Termo {{ h.termoVersao }}</span>

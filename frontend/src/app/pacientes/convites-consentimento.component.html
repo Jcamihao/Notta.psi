@@ -1,0 +1,162 @@
+<section class="convites" aria-labelledby="conv-titulo">
+  <h3 id="conv-titulo">Termo por link</h3>
+
+  @if (podeEnviar()) {
+    <p class="convites-lead">
+      Envie um link para o paciente ler e aceitar o termo, sem criar conta. Quando ele aceitar, o
+      consentimento é registrado aqui.
+    </p>
+  }
+
+  <div class="aviso-regiao" aria-live="polite">
+    @if (erro()) {
+      <p class="aviso-erro" data-teste="convite-erro">
+        <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{ erro() }}
+      </p>
+    }
+    @if (aviso()) {
+      <p class="aviso-ok" data-teste="convite-aviso">
+        <lucide-icon [img]="icones.CircleCheck" [size]="18" [strokeWidth]="1.5" />{{ aviso() }}
+      </p>
+    }
+  </div>
+
+  @if (criado(); as c) {
+    <div
+      id="conv-link-bloco"
+      class="convites-link"
+      tabindex="-1"
+      role="group"
+      aria-labelledby="conv-link-titulo"
+      data-teste="link-bloco"
+    >
+      <p id="conv-link-titulo" class="convites-link-titulo">Link do termo</p>
+      <div class="convites-link-linha">
+        <input
+          #campoEl
+          id="conv-link"
+          type="text"
+          readonly
+          spellcheck="false"
+          autocomplete="off"
+          aria-label="Link do termo para o paciente"
+          [value]="c.link"
+          (click)="selecionar(campoEl)"
+        />
+        <button app-button type="button" variant="soft" (click)="copiar()">Copiar link</button>
+      </div>
+      <p>
+        O link vale por 7 dias (até
+        <time [attr.datetime]="c.expiraEm">{{ dataHora(c.expiraEm) }}</time
+        >); envie por WhatsApp ou e-mail.
+      </p>
+      <p class="convites-link-aviso">Este link só aparece agora. Se perder, gere outro.</p>
+    </div>
+  }
+
+  @if (podeEnviar()) {
+    <div class="convites-enviar">
+      <button
+        app-button
+        type="button"
+        [variant]="criando() ? 'progress' : 'primary'"
+        [disabled]="criando()"
+        (click)="enviarTermo()"
+      >
+        {{ criando() ? 'Gerando o link…' : 'Enviar termo ao paciente' }}
+      </button>
+      @if (criado() || (convites() ?? []).some(vivo)) {
+        <p class="convites-dica">Gerar outro link cancela o anterior.</p>
+      }
+    </div>
+  }
+
+  @if (convites(); as lista) {
+    @if (lista.length) {
+      <ul class="convites-lista" aria-label="Convites enviados">
+        @for (v of lista; track v.id) {
+          <li data-teste="convite">
+            <div class="convites-item">
+              <app-pill
+                [tone]="tom[rotuloDe(v)]"
+                [dashed]="rotuloDe(v) === 'Cancelado' || rotuloDe(v) === 'Expirado'"
+                >{{ rotuloDe(v) }}</app-pill
+              >
+              <span class="convites-datas">
+                Enviado em <time [attr.datetime]="v.criadoEm">{{ dataHora(v.criadoEm) }}</time>
+                @if (v.estado === 'PENDENTE') {
+                  <span
+                    >{{ v.expirado ? '; expirou em ' : '; vale até ' }}
+                    <time [attr.datetime]="v.expiraEm">{{ dataHora(v.expiraEm) }}</time></span
+                  >
+                } @else if (v.usadoEm; as u) {
+                  <span
+                    >;
+                    {{
+                      v.estado === 'ACEITO'
+                        ? 'aceito em '
+                        : v.estado === 'RECUSADO'
+                          ? 'recusado em '
+                          : 'cancelado em '
+                    }}
+                    <time [attr.datetime]="u">{{ dataHora(u) }}</time></span
+                  >
+                }
+              </span>
+              @if (vivo(v) && confirmandoId() !== v.id) {
+                <button
+                  [id]="'conv-cancelar-' + v.id"
+                  app-button
+                  type="button"
+                  variant="soft"
+                  [attr.aria-label]="'Cancelar convite enviado em ' + dataHora(v.criadoEm)"
+                  (click)="pedirCancelamento(v.id)"
+                >
+                  Cancelar
+                </button>
+              }
+            </div>
+            @if (confirmandoId() === v.id) {
+              <div
+                class="convites-confirma"
+                role="group"
+                aria-labelledby="conv-confirma-titulo"
+                data-teste="convite-confirmacao"
+                (keydown.escape)="manter(v.id)"
+              >
+                <p id="conv-confirma-titulo" class="convites-link-titulo">Cancelar este convite?</p>
+                <p>O link deixa de funcionar e o paciente não consegue mais abrir o termo.</p>
+                <div class="convites-acoes">
+                  <button
+                    app-button
+                    type="button"
+                    [variant]="cancelando() ? 'progress' : 'primary'"
+                    [disabled]="cancelando()"
+                    (click)="cancelar(v.id)"
+                  >
+                    {{ cancelando() ? 'Cancelando…' : 'Cancelar convite' }}
+                  </button>
+                  <button
+                    [id]="'conv-manter-' + v.id"
+                    app-button
+                    type="button"
+                    variant="soft"
+                    [disabled]="cancelando()"
+                    (click)="manter(v.id)"
+                  >
+                    Manter convite
+                  </button>
+                </div>
+              </div>
+            }
+          </li>
+        }
+      </ul>
+    }
+  } @else if (erroLista()) {
+    <div class="aviso-erro convites-falha" role="alert" data-teste="convite-erro-lista">
+      <p>Não foi possível carregar os convites. Confira sua conexão.</p>
+      <button app-button type="button" variant="soft" (click)="carregar()">Tentar de novo</button>
+    </div>
+  }
+</section>
