@@ -15,6 +15,11 @@ export const routes: Routes = [
     canActivate: [visitanteGuard],
     loadComponent: () => import('./pages/cadastro.page').then((m) => m.CadastroPage),
   },
+  // Publica (paciente, sem conta): fora do shell e sem guard. O token e a credencial.
+  {
+    path: 'termo/:token',
+    loadComponent: () => import('./termo/termo.page').then((m) => m.TermoPage),
+  },
   {
     path: '',
     canActivate: [authGuard],

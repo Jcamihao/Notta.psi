@@ -6,6 +6,10 @@ import { SessaoStore } from './sessao.store';
 import { UsuarioStore } from './usuario.store';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+  // Rotas publicas (termo do paciente): sem sessao. Nao anexa o Bearer de um psicologo que por
+  // acaso esteja logado neste navegador e nunca trata a resposta como sessao expirada.
+  if (req.url.startsWith('/api/publico/')) return next(req);
+
   const sessao = inject(SessaoStore);
   const router = inject(Router);
   const usuarios = inject(UsuarioStore);

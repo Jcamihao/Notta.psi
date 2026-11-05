@@ -1,0 +1,125 @@
+<main class="termo">
+  <p class="marca">Notta.psi</p>
+
+  @switch (tela()) {
+    @case ('carregando') {
+      <p class="termo-status" role="status">Carregando o termo…</p>
+    }
+    @case ('pronto') {
+      @if (dados(); as d) {
+        <h1 id="termo-foco" tabindex="-1">Termo de consentimento</h1>
+        <dl class="termo-quem">
+          <div>
+            <dt>Psicólogo(a)</dt>
+            <dd data-teste="psicologo">{{ d.psicologo }}</dd>
+          </div>
+          <div>
+            <dt>Clínica</dt>
+            <dd data-teste="clinica">{{ d.clinica }}</dd>
+          </div>
+        </dl>
+
+        <div class="termo-texto" data-teste="texto">{{ d.termo.texto }}</div>
+
+        <div class="aviso-regiao" aria-live="polite">
+          @if (erro()) {
+            <p class="aviso-erro" data-teste="erro">
+              <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{ erro() }}
+            </p>
+          }
+        </div>
+
+        @if (recusando()) {
+          <div
+            class="termo-confirma"
+            role="group"
+            aria-labelledby="termo-confirma-titulo"
+            data-teste="confirmacao"
+            (keydown.escape)="voltar()"
+          >
+            <p id="termo-confirma-titulo" class="termo-confirma-titulo">
+              Você não aceita este termo?
+            </p>
+            <p>O seu psicólogo será avisado de que você não aceitou.</p>
+            <div class="termo-acoes">
+              <button
+                app-button
+                type="button"
+                [variant]="enviando() ? 'progress' : 'primary'"
+                [disabled]="enviando()"
+                (click)="recusar()"
+              >
+                {{ enviando() ? 'Enviando…' : 'Sim, não aceito' }}
+              </button>
+              <button
+                id="termo-voltar"
+                app-button
+                type="button"
+                variant="soft"
+                [disabled]="enviando()"
+                (click)="voltar()"
+              >
+                Voltar
+              </button>
+            </div>
+          </div>
+        } @else {
+          <div class="termo-acoes">
+            <button
+              app-button
+              type="button"
+              [variant]="enviando() ? 'progress' : 'primary'"
+              [disabled]="enviando()"
+              (click)="aceitar()"
+            >
+              {{ enviando() ? 'Enviando…' : 'Li e aceito' }}
+            </button>
+            <button
+              id="termo-recusar"
+              app-button
+              type="button"
+              variant="soft"
+              [disabled]="enviando()"
+              (click)="pedirRecusa()"
+            >
+              Não aceito
+            </button>
+          </div>
+        }
+
+        <p class="termo-privacidade">Esta página não mostra seus dados pessoais.</p>
+      }
+    }
+    @case ('aceito') {
+      <div role="status" data-teste="resultado-aceito">
+        <h1 id="termo-foco" tabindex="-1">Termo aceito</h1>
+        <p class="termo-resultado">
+          Obrigado. O seu aceite foi registrado. Você já pode fechar esta página.
+        </p>
+      </div>
+    }
+    @case ('recusado') {
+      <div role="status" data-teste="resultado-recusado">
+        <h1 id="termo-foco" tabindex="-1">Resposta registrada</h1>
+        <p class="termo-resultado">
+          Você não aceitou o termo. O seu psicólogo será avisado. Você já pode fechar esta página.
+        </p>
+      </div>
+    }
+    @case ('invalido') {
+      <div role="status" data-teste="resultado-invalido">
+        <h1 id="termo-foco" tabindex="-1">Link indisponível</h1>
+        <p class="termo-resultado">
+          Este link não está mais disponível. Peça um novo link ao seu psicólogo.
+        </p>
+      </div>
+    }
+    @case ('falha') {
+      <div role="alert" data-teste="falha">
+        <h1 id="termo-foco" tabindex="-1">Não foi possível abrir o termo</h1>
+        <p class="termo-resultado">{{ falhaMensagem() }}</p>
+        <button app-button type="button" (click)="carregar()">Tentar de novo</button>
+      </div>
+    }
+  }
+</main>

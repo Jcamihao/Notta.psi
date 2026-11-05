@@ -56,6 +56,27 @@ describe('authInterceptor', () => {
     expect(ctrl.expectOne('/api/x').request.headers.has('Authorization')).toBeFalse();
   });
 
+  it('rota publica: nao anexa Bearer mesmo com sessao ativa', () => {
+    http.get('/api/publico/consentimento/abc').subscribe();
+    const r = ctrl.expectOne('/api/publico/consentimento/abc');
+    expect(r.request.headers.has('Authorization')).toBeFalse();
+    r.flush({});
+  });
+
+  it('rota publica: 401 e 403 de senha provisoria NAO deslogam nem redirecionam', () => {
+    http.get('/api/publico/consentimento/abc').subscribe({ error: () => undefined });
+    ctrl
+      .expectOne('/api/publico/consentimento/abc')
+      .flush({}, { status: 401, statusText: 'Unauthorized' });
+    http.post('/api/publico/consentimento/abc/aceitar', {}).subscribe({ error: () => undefined });
+    ctrl
+      .expectOne('/api/publico/consentimento/abc/aceitar')
+      .flush({ message: 'Troca de senha obrigatoria' }, { status: 403, statusText: 'Forbidden' });
+    expect(sessao.autenticado()).toBeTrue();
+    expect(navegar).not.toHaveBeenCalled();
+    expect(recarregar).not.toHaveBeenCalled();
+  });
+
   it('401 limpa a sessao e navega para /login', () => {
     http.get('/api/pacientes').subscribe({ error: () => undefined });
     ctrl.expectOne('/api/pacientes').flush({}, { status: 401, statusText: 'Unauthorized' });

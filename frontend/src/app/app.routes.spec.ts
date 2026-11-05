@@ -1,4 +1,7 @@
-import { Route } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { provideRouter, Route, Router } from '@angular/router';
 import { routes } from './app.routes';
 import { authGuard } from './core/auth.guard';
 import { senhaProvisoriaGuard } from './core/senha-provisoria.guard';
@@ -6,6 +9,7 @@ import { DocumentoLeituraPage } from './documentos/documento-leitura.page';
 import { DocumentoNovoPage } from './documentos/documento-novo.page';
 import { PacienteFormPage } from './pacientes/paciente-form.page';
 import { PacientesPage } from './pacientes/pacientes.page';
+import { TermoPage } from './termo/termo.page';
 
 describe('rotas de pacientes', () => {
   const shell = routes.find((r) => r.path === '' && r.children) as Route;
@@ -51,5 +55,37 @@ describe('rotas de pacientes', () => {
     expect(paths.indexOf('pacientes/:id/documentos/novo')).toBeLessThan(
       paths.indexOf('pacientes/:id/documentos/:docId'),
     );
+  });
+});
+
+describe('rota publica do termo', () => {
+  const rota = routes.find((r) => r.path === 'termo/:token') as Route;
+  const shell = routes.find((r) => r.path === '' && r.children) as Route;
+
+  it('existe no nivel de cima, fora do shell, sem nenhum guard', () => {
+    expect(rota).toBeDefined();
+    expect(shell.children!.some((r) => r.path === 'termo/:token')).toBeFalse();
+    expect(rota.canActivate).toBeUndefined();
+    expect(rota.canActivateChild).toBeUndefined();
+    expect(rota.canMatch).toBeUndefined();
+    expect(rota.children).toBeUndefined();
+  });
+
+  it('carrega a pagina do termo sob demanda e vem antes do shell e do curinga', async () => {
+    expect(await (rota.loadComponent as () => Promise<unknown>)()).toBe(TermoPage);
+    const paths = routes.map((r) => r.path);
+    expect(paths.indexOf('termo/:token')).toBeLessThan(paths.indexOf(''));
+    expect(paths.indexOf('termo/:token')).toBeLessThan(paths.indexOf('**'));
+  });
+
+  it('navegar para /termo/abc sem sessao NAO cai no login nem no shell', async () => {
+    sessionStorage.clear();
+    TestBed.configureTestingModule({
+      providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/termo/abc');
+    expect(router.url).toBe('/termo/abc');
+    TestBed.inject(HttpTestingController).match(() => true);
   });
 });
