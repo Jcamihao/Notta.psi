@@ -90,14 +90,18 @@ afterAll(async () => {
 });
 
 describe('Paciente: estrutura no banco', () => {
-  it('RLS ENABLE + FORCE, so a policy psicologo_proprio, sem FK em cascade', async () => {
+  it('RLS ENABLE + FORCE, psicologo_proprio + policies de recifragem do dono, sem FK em cascade', async () => {
     const [t] = await owner.$queryRaw<
       { relrowsecurity: boolean; relforcerowsecurity: boolean }[]
     >`SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = 'Paciente'`;
     expect(t).toEqual({ relrowsecurity: true, relforcerowsecurity: true });
     const p = await owner.$queryRaw<{ policyname: string }[]>`
       SELECT policyname FROM pg_policies WHERE tablename = 'Paciente'`;
-    expect(p).toEqual([{ policyname: 'psicologo_proprio' }]);
+    expect(p.map((x) => x.policyname).sort()).toEqual([
+      'paciente_recifrar_select',
+      'paciente_recifrar_update',
+      'psicologo_proprio',
+    ]);
     const c = await owner.$queryRaw<{ conname: string }[]>`
       SELECT conname FROM pg_constraint
       WHERE conrelid = '"Paciente"'::regclass AND contype = 'f' AND confdeltype = 'c'`;

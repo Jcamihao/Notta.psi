@@ -131,6 +131,8 @@ describe('Documento: estrutura no banco', () => {
       { policyname: 'documento_dono_delete' },
       { policyname: 'documento_dono_update' },
       { policyname: 'documento_insert_proprio' },
+      { policyname: 'documento_recifrar_select' },
+      { policyname: 'documento_recifrar_update' },
       { policyname: 'documento_select_proprio' },
       { policyname: 'documento_update_proprio' },
     ]);

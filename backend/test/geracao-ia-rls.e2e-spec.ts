@@ -176,6 +176,8 @@ describe('GeracaoIa: estrutura no banco', () => {
       'geracaoia_dono_delete',
       'geracaoia_dono_update',
       'geracaoia_insert_proprio',
+      'geracaoia_recifrar_select',
+      'geracaoia_recifrar_update',
       'geracaoia_select_proprio',
       'geracaoia_update_proprio',
     ]);
