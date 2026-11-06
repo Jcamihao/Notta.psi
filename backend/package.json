@@ -19,7 +19,8 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
     "db:migrate": "prisma migrate deploy",
     "db:generate": "prisma generate",
-    "scan:segredos": "node scripts/scan-segredos.mjs"
+    "scan:segredos": "node scripts/scan-segredos.mjs",
+    "chave:gerar": "node scripts/gerar-chave.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
