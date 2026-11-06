@@ -390,6 +390,51 @@ describe('EquipePage', () => {
       expect(alerta()).toBe('');
     });
 
+    it('422 COM motivo vai no campo da senha, foca nele, limpa a senha e nao mostra alerta geral', async () => {
+      const casos: [string, string][] = [
+        ['COMUM', 'muito comum'],
+        ['PESSOAL', 'nome nem o e-mail'],
+        ['REPETIDA', 'repetições e sequências'],
+        ['CURTA', 'pelo menos 10'],
+      ];
+      for (const [motivo, trecho] of casos) {
+        preencher('tijolo-azul-lua-4821');
+        await enviar();
+        post().flush(
+          { statusCode: 422, message: 'Senha fraca: x', motivo },
+          { status: 422, statusText: 'Unprocessable Entity' },
+        );
+        await fixture.whenStable();
+        const senha = campo('eq-senha');
+        expect(senha.getAttribute('aria-invalid')).withContext(motivo).toBe('true');
+        const erroId = senha
+          .getAttribute('aria-describedby')!
+          .split(' ')
+          .find((id) => /erro/.test(id))!;
+        expect(document.getElementById(erroId)?.textContent).withContext(motivo).toContain(trecho);
+        expect(document.activeElement).withContext(motivo).toBe(senha);
+        expect(senha.value).toBe('');
+        expect(alerta()).toBe('');
+        expect(campo('eq-email').getAttribute('aria-invalid')).toBeNull();
+        // os outros campos continuam preenchidos para a pessoa so trocar a senha
+        expect(campo('eq-nome').value).toBe('  Carla Dias ');
+      }
+    });
+
+    it('dica de senha ao vivo com nome e e-mail do colega que esta sendo criado', async () => {
+      const dica = el().querySelector('app-senha-dica')!;
+      expect(campo('eq-senha').getAttribute('aria-describedby')).toContain('eq-senha-regras');
+      expect(dica.id).toBe('eq-senha-regras');
+      digitar('eq-nome', 'Carla Dias');
+      digitar('eq-email', 'carla@clinica.com');
+      digitar('eq-senha', 'x-carla-dias-4821', false);
+      await fixture.whenStable();
+      expect(dica.textContent).toContain('Não atende: Não contém seu nome nem seu e-mail');
+      digitar('eq-senha', 'tijolo-azul-lua-4821', false);
+      await fixture.whenStable();
+      expect(dica.textContent).toContain('Senha boa nas regras abaixo.');
+    });
+
     it('409 mostra o erro mesmo se enviou com Enter sem sair do campo', async () => {
       preencher('senha-inicial-1', false);
       await enviar();

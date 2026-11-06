@@ -18,6 +18,15 @@ export const senhaBytes =
     return n < min ? { senhaCurta: true } : null;
   };
 
+// Senha NOVA (cadastro, colega, troca): ate 72 bytes e pelo menos 10 CARACTERES (item 45). So
+// conveniencia: quem decide "comum", "pessoal" e "sequencia" e o servidor (422 com motivo).
+export const MINIMO_SENHA = 10;
+export const senhaNova: ValidatorFn = (c) => {
+  const s = String(c.value ?? '');
+  if (new TextEncoder().encode(s).length > 72) return { senhaLonga: true };
+  return [...s].length < MINIMO_SENHA ? { senhaCurta: true } : null;
+};
+
 // Campos opcionais do paciente (contrato do item 9). Vazio e valido; o servidor e a autoridade.
 const vazio = (c: AbstractControl) => !String(c.value ?? '').trim();
 
@@ -65,7 +74,12 @@ export const emailOpcional: ValidatorFn = (c) => {
 
 const MENSAGENS: Record<string, string> = {
   email: 'Digite um e-mail válido, como nome@clinica.com.',
-  senhaCurta: 'A senha precisa de pelo menos 8 caracteres.',
+  senhaCurta: 'A senha precisa de pelo menos 10 caracteres.',
+  senhaComum:
+    'Essa senha é muito comum. Escolha outra, de preferência uma frase longa que só você conheça.',
+  senhaPessoal: 'A senha não pode conter o nome nem o e-mail da conta. Escolha outra.',
+  senhaRepetida: 'Evite repetições e sequências, como 1111111111 ou abcdefghij.',
+  senhaFraca: 'Essa senha é fraca demais. Escolha outra, mais longa e menos previsível.',
   senhaLonga: 'Senha longa demais: o limite é 72 bytes (acentos e emojis ocupam mais).',
   nomeLongo: 'O nome pode ter até 120 caracteres.',
   nascimentoFuturo: 'A data de nascimento não pode ser no futuro.',
@@ -81,6 +95,20 @@ const MENSAGENS: Record<string, string> = {
   senhaIgual: 'A nova senha precisa ser diferente da atual.',
   confirmacaoDiferente: 'As senhas não conferem. Digite a nova senha igual nos dois campos.',
 };
+
+// 422 de senha fraca traz `motivo` (CURTA, COMUM, PESSOAL, REPETIDA). Devolve a chave do erro do
+// campo, ou null quando o 422 e outro (ex.: "Senha atual incorreta", que nao traz `motivo`).
+const ERRO_POR_MOTIVO: Record<string, string> = {
+  CURTA: 'senhaCurta',
+  COMUM: 'senhaComum',
+  PESSOAL: 'senhaPessoal',
+  REPETIDA: 'senhaRepetida',
+};
+export function erroDeSenhaFraca(e: HttpErrorResponse): string | null {
+  if (e.status !== 422) return null;
+  const motivo = (e.error as { motivo?: unknown } | null)?.motivo;
+  return typeof motivo === 'string' ? (ERRO_POR_MOTIVO[motivo] ?? 'senhaFraca') : null;
+}
 
 // Compara com outro campo do mesmo form. So reavalia quando ESTE campo muda: quem usa chama
 // updateValueAndValidity() antes de enviar.

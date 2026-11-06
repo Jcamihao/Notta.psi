@@ -62,7 +62,12 @@
           erro('novaSenha') ? 'ts-novaSenha-dica ts-novaSenha-erro' : 'ts-novaSenha-dica'
         "
       />
-      <p id="ts-novaSenha-dica" class="campo-dica">Pelo menos 8 caracteres.</p>
+      <app-senha-dica
+        id="ts-novaSenha-dica"
+        [senha]="form.controls.novaSenha.value"
+        [email]="eu()?.email ?? ''"
+        [nome]="eu()?.nome ?? ''"
+      />
       <p id="ts-novaSenha-erro" class="campo-erro" aria-live="polite">
         @if (erro('novaSenha'); as m) {
           <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}

@@ -118,6 +118,46 @@ describe('TrocarSenhaPage', () => {
       expect(navegar).not.toHaveBeenCalled();
     });
 
+    it('422 COM motivo (senha fraca) vai no campo da NOVA senha, nao no da atual', async () => {
+      const casos: [string, string][] = [
+        ['COMUM', 'muito comum'],
+        ['PESSOAL', 'nome nem o e-mail'],
+        ['REPETIDA', 'repetições e sequências'],
+        ['CURTA', 'pelo menos 10'],
+        ['OUTRO', 'fraca demais'],
+      ];
+      for (const [motivo, trecho] of casos) {
+        preencher('provisoria-1', 'tijolo-azul-lua-4821');
+        await enviar();
+        post().flush(
+          { statusCode: 422, message: 'Senha fraca: x', motivo },
+          { status: 422, statusText: 'Unprocessable Entity' },
+        );
+        await fixture.whenStable();
+        const nova = campo('ts-novaSenha');
+        expect(nova.getAttribute('aria-invalid')).withContext(motivo).toBe('true');
+        expect(erroDo('ts-novaSenha')).withContext(motivo).toContain(trecho);
+        expect(document.activeElement).withContext(motivo).toBe(nova);
+        expect(campo('ts-senhaAtual').getAttribute('aria-invalid')).toBeNull();
+        expect(camposVazios()).toBeTrue();
+        expect(alerta()).toBe('');
+        expect(navegar).not.toHaveBeenCalled();
+      }
+    });
+
+    it('a dica atualiza ao digitar e usa o e-mail e o nome da conta (aria-live polite)', async () => {
+      const dica = el().querySelector('app-senha-dica')!;
+      expect(campo('ts-novaSenha').getAttribute('aria-describedby')).toContain('ts-novaSenha-dica');
+      expect(dica.id).toBe('ts-novaSenha-dica');
+      expect(dica.querySelector('[aria-live="polite"]')).not.toBeNull();
+      digitar('ts-novaSenha', 'x-bruno-lima-4821', false);
+      await fixture.whenStable();
+      expect(dica.textContent).toContain('Não atende: Não contém seu nome nem seu e-mail');
+      digitar('ts-novaSenha', 'tijolo-azul-lua-4821', false);
+      await fixture.whenStable();
+      expect(dica.textContent).toContain('Senha boa nas regras abaixo.');
+    });
+
     it('400 mostra mensagem generica e limpa os campos', async () => {
       preencher();
       await enviar();
@@ -196,7 +236,7 @@ describe('TrocarSenhaPage', () => {
       preencher('provisoria-1', 'curta');
       await enviar();
       semPost();
-      expect(erroDo('ts-novaSenha')).toContain('pelo menos 8');
+      expect(erroDo('ts-novaSenha')).toContain('pelo menos 10');
     });
 
     it('sem duplo envio', async () => {

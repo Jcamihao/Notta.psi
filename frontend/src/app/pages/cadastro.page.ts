@@ -10,12 +10,14 @@ import {
   mensagemCampo,
   mensagemHttp,
   preenchido,
-  senhaBytes,
+  senhaNova,
+  erroDeSenhaFraca,
 } from '../core/formulario';
 import { Eu, SessaoStore } from '../core/sessao.store';
 import { AcessoComponent } from '../layout/acesso.component';
 import { ChevronDown, CircleAlert, LucideAngularModule } from 'lucide-angular';
 import { ButtonComponent } from '../ui/button.component';
+import { SenhaDicaComponent } from '../ui/senha-dica.component';
 
 const OBRIGATORIO = {
   clinica: 'Informe o nome da clínica.',
@@ -29,7 +31,14 @@ const texto = () => new FormControl('', { nonNullable: true, validators: [preenc
 
 @Component({
   selector: 'app-cadastro-page',
-  imports: [ReactiveFormsModule, RouterLink, AcessoComponent, LucideAngularModule, ButtonComponent],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    AcessoComponent,
+    LucideAngularModule,
+    ButtonComponent,
+    SenhaDicaComponent,
+  ],
   templateUrl: './cadastro.page.html',
 })
 export class CadastroPage {
@@ -47,7 +56,7 @@ export class CadastroPage {
     email: new FormControl('', { nonNullable: true, validators: [preenchido, emailValido] }),
     senha: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, senhaBytes(8)],
+      validators: [Validators.required, senhaNova],
     }),
     abordagem: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
@@ -89,6 +98,7 @@ export class CadastroPage {
         },
         error: (e: HttpErrorResponse) => {
           this.enviando.set(false);
+          const fraca = erroDeSenhaFraca(e);
           if (criada) {
             this.erroGeral.set(
               'Sua clínica foi criada, mas não deu para entrar agora. Use “Entrar”.',
@@ -98,6 +108,11 @@ export class CadastroPage {
             // markAsTouched: quem enviou com Enter no campo ainda nao saiu dele.
             this.form.controls.email.markAsTouched();
             document.getElementById('cad-email')?.focus();
+          } else if (fraca) {
+            // 422 com motivo: o erro vai no campo da senha (que continua preenchida para ajustar).
+            this.form.controls.senha.setErrors({ [fraca]: true });
+            this.form.controls.senha.markAsTouched();
+            document.getElementById('cad-senha')?.focus();
           } else {
             this.erroGeral.set(mensagemHttp(e));
           }

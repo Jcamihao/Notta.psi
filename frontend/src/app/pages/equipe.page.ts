@@ -9,11 +9,13 @@ import {
   mensagemCampo,
   mensagemHttp,
   preenchido,
-  senhaBytes,
+  senhaNova,
+  erroDeSenhaFraca,
 } from '../core/formulario';
 import { ChevronDown, CircleAlert, CircleCheck, LucideAngularModule } from 'lucide-angular';
 import { AvatarComponent } from '../ui/avatar.component';
 import { ButtonComponent } from '../ui/button.component';
+import { SenhaDicaComponent } from '../ui/senha-dica.component';
 import { PillComponent } from '../ui/pill.component';
 
 // Item de GET /psicologos (contrato.md, item 8).
@@ -49,6 +51,7 @@ const DATA = new Intl.DateTimeFormat('pt-BR', {
     AvatarComponent,
     ButtonComponent,
     PillComponent,
+    SenhaDicaComponent,
   ],
   templateUrl: './equipe.page.html',
   styleUrl: './equipe.page.scss',
@@ -76,7 +79,7 @@ export class EquipePage {
     email: new FormControl('', { nonNullable: true, validators: [preenchido, emailValido] }),
     senha: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, senhaBytes(8)],
+      validators: [Validators.required, senhaNova],
     }),
     abordagem: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
@@ -187,6 +190,7 @@ export class EquipePage {
         },
         error: (e: HttpErrorResponse) => {
           this.enviando.set(false);
+          const fraca = erroDeSenhaFraca(e);
           // A senha nunca fica na tela depois do envio. Limpa depois de mover o foco, senao o
           // blur do campo senha acende "Defina uma senha provisória" antes da pessoa agir.
           if (e.status === 409) {
@@ -197,10 +201,16 @@ export class EquipePage {
           } else if (e.status === 403) {
             this.erroGeral.set('Você não tem permissão para gerenciar a equipe.');
             void this.router.navigateByUrl('/');
-          } else {
+          } else if (!fraca) {
             this.erroGeral.set(mensagemHttp(e));
           }
           this.form.controls.senha.reset();
+          if (fraca) {
+            // 422 com motivo: erro no campo da senha (limpa depois do envio, como sempre).
+            this.form.controls.senha.setErrors({ [fraca]: true });
+            this.form.controls.senha.markAsTouched();
+            document.getElementById('eq-senha')?.focus();
+          }
         },
       });
   }

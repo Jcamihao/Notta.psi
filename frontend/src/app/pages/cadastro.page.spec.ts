@@ -106,6 +106,70 @@ describe('CadastroPage', () => {
     expect(navegar).not.toHaveBeenCalled();
   });
 
+  it('422 COM motivo mostra o erro no campo da senha, mantem o texto e nao tenta entrar', async () => {
+    const casos: [string, string][] = [
+      ['COMUM', 'muito comum'],
+      ['PESSOAL', 'nome nem o e-mail'],
+      ['REPETIDA', 'repetições e sequências'],
+      ['CURTA', 'pelo menos 10'],
+      ['OUTRO', 'fraca demais'],
+    ];
+    for (const [motivo, trecho] of casos) {
+      preencher('Senha1234!');
+      await enviar();
+      ctrl
+        .expectOne('/api/clinicas')
+        .flush(
+          { statusCode: 422, message: 'Senha fraca: x', motivo },
+          { status: 422, statusText: 'Unprocessable Entity' },
+        );
+      await fixture.whenStable();
+      const senha = campo('cad-senha');
+      expect(senha.getAttribute('aria-invalid')).withContext(motivo).toBe('true');
+      const erroId = senha
+        .getAttribute('aria-describedby')!
+        .split(' ')
+        .find((id) => /erro/.test(id))!;
+      expect(document.getElementById(erroId)?.textContent).withContext(motivo).toContain(trecho);
+      expect(document.activeElement).withContext(motivo).toBe(senha);
+      expect(senha.value).toBe('Senha1234!');
+      expect(alerta()).toBe('');
+      ctrl.expectNone('/api/auth/login');
+      expect(navegar).not.toHaveBeenCalled();
+    }
+  });
+
+  it('a dica atualiza ao digitar (texto + aria-live polite) e some a falta quando a senha melhora', async () => {
+    const dica = el().querySelector('app-senha-dica')!;
+    expect(campo('cad-senha').getAttribute('aria-describedby')).toContain('cad-senha-dica');
+    expect(dica.id).toBe('cad-senha-dica');
+    expect(dica.querySelector('[aria-live="polite"]')).not.toBeNull();
+    digitar('cad-nome', 'Ana Souza');
+    digitar('cad-email', 'ana@clinica.com');
+    digitar('cad-senha', '1111');
+    await fixture.whenStable();
+    expect(dica.textContent).toContain('Senha fraca: faltam 2 regras.');
+    expect(dica.textContent).toContain('Não atende: 10 ou mais caracteres');
+    digitar('cad-senha', 'x-ana-souza-4821');
+    await fixture.whenStable();
+    expect(dica.textContent).toContain('Não atende: Não contém seu nome nem seu e-mail');
+    digitar('cad-senha', 'tijolo-azul-lua-4821');
+    await fixture.whenStable();
+    expect(dica.textContent).toContain('Senha boa nas regras abaixo.');
+  });
+
+  it('senha com menos de 10 caracteres e bloqueada no cliente (mesmo com 10+ bytes)', async () => {
+    preencher('çãõéíóúâê'); // 9 caracteres, 18 bytes
+    await enviar();
+    ctrl.expectNone('/api/clinicas');
+    expect(campo('cad-senha').getAttribute('aria-invalid')).toBe('true');
+    const erroId = campo('cad-senha')
+      .getAttribute('aria-describedby')!
+      .split(' ')
+      .find((id) => /erro/.test(id))!;
+    expect(document.getElementById(erroId)?.textContent).toContain('pelo menos 10');
+  });
+
   it('400 mostra mensagem generica sem despejar o array do servidor', async () => {
     preencher();
     await enviar();

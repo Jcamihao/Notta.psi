@@ -220,12 +220,22 @@
           formControlName="senha"
           autocomplete="new-password"
           [attr.aria-invalid]="erro('senha') ? 'true' : null"
-          [attr.aria-describedby]="erro('senha') ? 'eq-senha-dica eq-senha-erro' : 'eq-senha-dica'"
+          [attr.aria-describedby]="
+            erro('senha')
+              ? 'eq-senha-dica eq-senha-regras eq-senha-erro'
+              : 'eq-senha-dica eq-senha-regras'
+          "
         />
         <p id="eq-senha-dica" class="campo-dica">
-          Pelo menos 8 caracteres. Combine a senha provisória com a pessoa por um canal seguro; ela
-          escolherá a própria no primeiro acesso.
+          Combine a senha provisória com a pessoa por um canal seguro; ela escolherá a própria no
+          primeiro acesso.
         </p>
+        <app-senha-dica
+          id="eq-senha-regras"
+          [senha]="form.controls.senha.value"
+          [email]="form.controls.email.value"
+          [nome]="form.controls.nome.value"
+        />
         <p id="eq-senha-erro" class="campo-erro" aria-live="polite">
           @if (erro('senha'); as m) {
             <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}

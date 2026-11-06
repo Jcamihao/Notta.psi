@@ -244,6 +244,10 @@ front so le o cookie `notta_csrf` (nao httpOnly de proposito) e nunca manda `Aut
   "Sair de todos os aparelhos" (menu da conta, com confirmacao inline) chama
   `POST /api/auth/sair-de-todos`.
 
+## Senha forte (item 45)
+
+Cadastro, "Criar colega" (Equipe) e "Trocar senha" usam `<app-senha-dica>` (`src/app/ui/senha-dica.component.ts`, regras em `src/app/core/senha-regras.ts`): lista de regras que atualiza enquanto a pessoa digita (10+ caracteres, nao e so repeticao/sequencia, nao contem o nome nem o e-mail), com o estado de cada regra em TEXTO ("Atende" / "Nao atende" para leitor de tela, icone de forma diferente) e um resumo em `aria-live="polite"`. So orienta: a senha nunca sai do navegador pela dica. O cliente so BLOQUEIA o que e certo no navegador (menos de 10 caracteres, mais de 72 bytes). "Senha comum" (lista do servidor, que nao vai ao navegador), "contem seu nome/e-mail" e "sequencia" voltam como 422 com `motivo` (`CURTA`, `COMUM`, `PESSOAL`, `REPETIDA`) e aparecem no campo da senha em linguagem simples (`erroDeSenhaFraca` em `core/formulario.ts`). Em Trocar senha, 422 COM `motivo` vai no campo da nova senha; 422 SEM `motivo` continua sendo "Senha atual incorreta". Os campos de nova senha usam `autocomplete="new-password"`.
+
 ## CSP do build (item 49)
 
 Depois do build de producao: `npm run build && npm run verificar:csp` (falha se o `dist` tiver

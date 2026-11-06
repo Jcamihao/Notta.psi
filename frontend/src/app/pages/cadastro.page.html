@@ -79,7 +79,12 @@
         [attr.aria-invalid]="erro('senha') ? 'true' : null"
         [attr.aria-describedby]="erro('senha') ? 'cad-senha-dica cad-senha-erro' : 'cad-senha-dica'"
       />
-      <p id="cad-senha-dica" class="campo-dica">Pelo menos 8 caracteres.</p>
+      <app-senha-dica
+        id="cad-senha-dica"
+        [senha]="form.controls.senha.value"
+        [email]="form.controls.email.value"
+        [nome]="form.controls.nome.value"
+      />
       <p id="cad-senha-erro" class="campo-erro" aria-live="polite">
         @if (erro('senha'); as m) {
           <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}

@@ -9,10 +9,13 @@ import {
   mensagemCampo,
   mensagemHttp,
   senhaBytes,
+  senhaNova,
+  erroDeSenhaFraca,
 } from '../core/formulario';
 import { SessaoStore } from '../core/sessao.store';
 import { CircleAlert, LucideAngularModule } from 'lucide-angular';
 import { ButtonComponent } from '../ui/button.component';
+import { SenhaDicaComponent } from '../ui/senha-dica.component';
 
 const OBRIGATORIO = {
   senhaAtual: 'Informe sua senha atual.',
@@ -24,7 +27,7 @@ const OBRIGATORIO = {
 // ca e o shell esconde a navegacao. Sem ela, e a troca voluntaria pelo link do cabecalho.
 @Component({
   selector: 'app-trocar-senha-page',
-  imports: [ReactiveFormsModule, LucideAngularModule, ButtonComponent],
+  imports: [ReactiveFormsModule, LucideAngularModule, ButtonComponent, SenhaDicaComponent],
   templateUrl: './trocar-senha.page.html',
   styleUrl: './trocar-senha.page.scss',
 })
@@ -35,6 +38,8 @@ export class TrocarSenhaPage {
   private readonly router = inject(Router);
 
   readonly obrigatoria = this.sessao.senhaProvisoria;
+  // Para a dica nao aceitar o proprio e-mail ou nome (item 45).
+  readonly eu = this.sessao.usuario;
   readonly enviando = signal(false);
   readonly erroGeral = signal('');
   readonly form = new FormGroup({
@@ -44,7 +49,7 @@ export class TrocarSenhaPage {
     }),
     novaSenha: new FormControl('', {
       nonNullable: true,
-      validators: [Validators.required, senhaBytes(8), erroSeIgual('senhaAtual', 'senhaIgual')],
+      validators: [Validators.required, senhaNova, erroSeIgual('senhaAtual', 'senhaIgual')],
     }),
     confirmar: new FormControl('', {
       nonNullable: true,
@@ -82,9 +87,15 @@ export class TrocarSenhaPage {
         this.enviando.set(false);
         // Senha nunca fica na tela depois do envio. Foca antes de limpar, senao o blur do campo
         // de onde saiu acende "obrigatorio" antes da pessoa agir.
-        document.getElementById('ts-senhaAtual')?.focus();
+        // 422 de SENHA FRACA traz `motivo` (erro no campo da nova senha); o 422 sem `motivo`
+        // continua sendo "Senha atual incorreta".
+        const fraca = erroDeSenhaFraca(e);
+        document.getElementById(fraca ? 'ts-novaSenha' : 'ts-senhaAtual')?.focus();
         this.form.reset();
-        if (e.status === 422) {
+        if (fraca) {
+          c.novaSenha.setErrors({ [fraca]: true });
+          c.novaSenha.markAsTouched();
+        } else if (e.status === 422) {
           c.senhaAtual.setErrors({ senhaAtualIncorreta: true });
           c.senhaAtual.markAsTouched();
         } else {
