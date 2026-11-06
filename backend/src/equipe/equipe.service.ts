@@ -8,6 +8,7 @@ import bcrypt from 'bcrypt';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { CUSTO_BCRYPT } from '../auth/auth.service';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
+import { exigirSenhaForte } from '../auth/politica-senha';
 import { erroAoCriarPsicologo } from '../comum/novo-psicologo';
 import { normalizarEmail } from '../comum/validacao';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
@@ -26,6 +27,9 @@ export class EquipeService {
   ) {}
 
   async criar(user: UsuarioAutenticado, dto: CriarPsicologoDto) {
+    // Politica de senha ANTES do bcrypt (barato) e do e-mail unico: a recusa nao depende de o
+    // e-mail ja existir (nao serve de sonda).
+    exigirSenhaForte(dto.senha, { email: dto.email, nome: dto.nome });
     // bcrypt (CPU) FORA da transacao: nao segura conexao do pool.
     const senhaHash = await bcrypt.hash(dto.senha, CUSTO_BCRYPT);
     try {

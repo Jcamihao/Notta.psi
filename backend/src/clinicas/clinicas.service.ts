@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import bcrypt from 'bcrypt';
 import { CUSTO_BCRYPT } from '../auth/auth.service';
+import { exigirSenhaForte } from '../auth/politica-senha';
 import { erroAoCriarPsicologo } from '../comum/novo-psicologo';
 import { normalizarEmail } from '../comum/validacao';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
@@ -14,6 +15,9 @@ export class ClinicasService {
   constructor(private readonly tenant: TenantPrismaService) {}
 
   async criar(dto: CriarClinicaDto) {
+    // Politica de senha ANTES do bcrypt (barato) e do e-mail unico: a recusa nao depende de o
+    // e-mail ja existir (nao serve de sonda).
+    exigirSenhaForte(dto.senha, { email: dto.email, nome: dto.nomePsicologo });
     // bcrypt (CPU) FORA da transacao: nao segura conexao do pool.
     const senhaHash = await bcrypt.hash(dto.senha, CUSTO_BCRYPT);
     const clinicaId = randomUUID();

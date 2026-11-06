@@ -6,7 +6,7 @@ Decisao do dono (2026-10-30): **cada psicologo ve so os proprios pacientes e doc
 
 | Acao | ADMIN | PSICOLOGO | Sem login |
 |---|---|---|---|
-| Cadastrar clinica (`POST /clinicas`), login, renovar a sessao, `/saude` | sim | sim | sim (rotas publicas) |
+| Cadastrar clinica (`POST /clinicas`, senha forte: item 45), login, renovar a sessao, `/saude` | sim | sim | sim (rotas publicas) |
 | Ver os proprios dados (`GET /eu`) | sim | sim | nao (401) |
 | Trocar a PROPRIA senha (`POST /auth/trocar-senha`, item 57) | sim | sim | nao (401) |
 | Qualquer outra rota com senha PROVISORIA (colega recem-criado, item 62) | n/a | **nao (403 "Troca de senha obrigatoria")** | nao (401) |
@@ -51,6 +51,34 @@ Decisao do dono (2026-11-05): acesso de **15 min** que se renova sozinho; sessao
 - **Limpeza em teste:** `apagarClinicas` apaga `Sessao` antes de `Psicologo` (FK RESTRICT); teste que apaga `Psicologo` por conta propria apaga a `Sessao` antes (como owner, com o psicologo no contexto: o DELETE tambem precisa passar pela policy de SELECT).
 - **Cookies (decisao de nome):** `notta_acesso`, `notta_refresh`, `notta_csrf`, sem prefixo `__Host-`/`__Secure-`. Motivo: o front le o CSRF pelo nome; o refresh precisa de `Path=/api/auth` e `__Host-` exige `Path=/`; `__Host-` exige `Secure`, e o http de desenvolvimento nao o tem. Consequencia aceita: sem o prefixo, um subdominio irmao poderia "plantar" cookie (cookie tossing); mitigacao: nao hospedar nada de terceiros em subdominio do dominio do app.
 - Testes: `test/sessao-rls.e2e-spec.ts` (banco, trigger, policy por hash), `test/sessao.e2e-spec.ts` (HTTP: cookies, rotacao, reuso, ociosidade, limite, sair, sair de todos, troca de senha, CSRF, throttler), `src/auth/*.spec.ts` (guard, cookies, CSRF).
+
+## Senha forte e residual de enumeracao de e-mail (item 45, back)
+
+Decisao do dono (2026-11-05): sem servico externo. A checagem de senha vazada usa uma LISTA LOCAL de senhas comuns (nao consulta o Have I Been Pwned: a senha nunca sai do processo); o dono pode ligar um servico externo depois.
+
+### Politica de senha
+
+- **Onde vale:** ao DEFINIR ou TROCAR senha: cadastro de clinica (`POST /clinicas`), colega criado pelo ADMIN com senha provisoria (`POST /psicologos`) e nova senha em `POST /auth/trocar-senha`. **NAO vale no login:** conta antiga com senha fraca continua entrando, mas so troca para uma forte.
+- **Onde esta:** funcao pura `avaliarSenha(senha, {email, nome})` e `exigirSenhaForte` em `backend/src/auth/politica-senha.ts`, chamada nos 3 services ANTES do bcrypt (e antes do e-mail unico). O DTO so confere o formato (1 a 72 BYTES, o maximo do bcrypt: 400); a regra de qualidade e 422.
+- **Regras (nesta ordem; a primeira que falhar responde):**
+  1. `CURTA`: menos de 10 CARACTERES (conta caracteres, nao bytes; 72 bytes continua o teto).
+  2. `REPETIDA`: uma unidade de 1 a 3 caracteres repetida do comeco ao fim (`aaaaaaaaaa`, `1212121212`, `abcabcabcabc`) ou a senha inteira e um trecho de sequencia obvia, no sentido normal ou invertido: `0123456789(0)`, `abcdefghijklmnopqrstuvwxyz`, `qwertyuiopasdfghjklzxcvbnm`.
+  3. `PESSOAL`: igual ao e-mail, ou CONTEM a parte local do e-mail (3+ caracteres) ou uma palavra do nome com 3+ letras (as particulas `das` e `dos` nao contam). Sem diferenciar caixa nem acento, e depois de trocar o leetspeak.
+  4. `COMUM`: esta na lista local. Comparacao sem caixa e sem acento; corta o FIM da senha (digitos e simbolos) em cada ponto possivel e so depois troca o leetspeak (`@`->a, `0`->o, `3`->e, `$`->s, `5`->s, `1`->i ou l). Por isso `Senha1234!` e `Fl@meng0123` caem. Palavra comum no COMECO de uma frase longa e diferente (`flamengo-cadeira-tijolo-9`) passa.
+- **Resposta:** 422 `{ statusCode: 422, message: 'Senha fraca: <motivo curto>', motivo: 'CURTA'|'COMUM'|'PESSOAL'|'REPETIDA' }`. A mensagem e FIXA por motivo: nunca traz a senha, um trecho dela nem a lista; todo `COMUM` responde igual, sem I/O (so um `Set` na memoria).
+- **Lista:** `backend/src/auth/senhas-comuns.txt`, uma por linha, minusculas: as 10 mil do SecLists (MIT) mais ~130 senhas comuns no Brasil escritas a mao (times, `senha123`, `123mudar`, `deus`, `amor`, nomes do dominio da clinica). Origem e licenca em `docs/LICENCAS.md`. Lida UMA vez quando o modulo carrega (boot); o `nest-cli.json` copia o arquivo para `dist/` (`assets`). Atualizar a lista = trocar o arquivo e subir de novo.
+- **Troca de senha:** a politica roda antes de conferir a senha atual (barato e nao revela nada da conta); `novaSenha` igual a atual segue 400.
+- **Log e auditoria:** nenhuma senha, hash ou motivo detalhado em log; a recusa nao grava auditoria (nao houve acao).
+- **Limite conhecido:** lista local de ~10 mil nao pega senha vazada que nao esteja nela. Servico de senha vazada (HIBP por faixa de hash, k-anonimato) fica como evolucao: exige rede no cadastro e decisao de privacidade do dono.
+- Testes: `src/auth/politica-senha.spec.ts` (funcao pura) e `test/senha-forte.e2e-spec.ts` (HTTP nos 3 pontos, login antigo fraco).
+
+### Residual de enumeracao de e-mail
+
+`POST /clinicas` e `POST /psicologos` respondem 409 `E-mail ja cadastrado` quando o e-mail ja existe (o e-mail e unico GLOBAL). Quem consegue chamar essas rotas pode, portanto, descobrir se um e-mail ja tem conta, inclusive em OUTRA clinica (o ADMIN sonda e-mails por `POST /psicologos`).
+
+- **O que o app faz hoje:** o corpo do 409 e identico para e-mail de outra clinica e da propria (teste `senha-forte.e2e-spec.ts`); o tempo nao revela mais (o bcrypt roda antes do INSERT nos dois caminhos); senha fraca responde 422 ANTES do 409 (a politica nao serve de sonda). Limites: cadastro de clinica 5/h por IP, equipe 20/h por psicologo, `@TetoHash()`. O login ja e generico (401 igual, hash falso, mesmo tempo).
+- **O que NAO resolve:** com limites, a sonda fica lenta, nao impossivel (20 e-mails por hora por ADMIN; 5 por hora por IP).
+- **Como fecha de verdade:** so a confirmacao de e-mail no cadastro (item 24: a resposta e sempre "enviamos um e-mail", igual existindo ou nao a conta) e o convite por e-mail de uso unico para colega (item 65: o ADMIN nao digita senha nem ve se o e-mail existe). Ate la e risco aceito e documentado.
 
 ## Como proteger uma rota por papel
 

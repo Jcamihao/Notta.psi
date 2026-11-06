@@ -296,7 +296,9 @@ describe('logs', () => {
     ];
     const appLog = await criarAppSemLimite({ logger });
     const http = appLog.getHttpServer();
-    const senha = `senha-log-${sufixo}`;
+    // Forte e sem o e-mail/nome dentro (a politica do item 45 recusa senha com a parte local).
+    const senha = `tijolo-azul-${sufixo}`;
+    const fraca = 'Senha1234!';
     const e = email('log');
     try {
       const cad = await request(http)
@@ -334,6 +336,12 @@ describe('logs', () => {
         .get('/eu')
         .set('Authorization', `Bearer ${token}x`)
         .expect(401);
+      // senha fraca (item 45): 422 e a senha, mesmo recusada, nao vai a nenhum log
+      await request(http)
+        .post('/clinicas')
+        .set(CLIENTE_API)
+        .send(corpoClinica(email('log4'), { senha: fraca }))
+        .expect(422);
       // erro inesperado no cadastro (vira 500)
       jest
         .spyOn(appLog.get(TenantPrismaService), 'run')
@@ -358,6 +366,7 @@ describe('logs', () => {
       // controle: a captura funciona (o erro do cadastro foi logado)
       expect(tudo).toContain('falha ao criar clinica');
       expect(tudo).not.toContain(senha);
+      expect(tudo).not.toContain(fraca);
       expect(tudo).not.toContain(token);
       expect(tudo).not.toContain(token.split('.')[2]);
       expect(tudo).not.toContain(hash);

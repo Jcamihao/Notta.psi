@@ -12,6 +12,7 @@ import { relogio } from '../comum/relogio';
 import { normalizarEmail } from '../comum/validacao';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { UsuarioAutenticado } from './jwt-auth.guard';
+import { exigirSenhaForte } from './politica-senha';
 import { SessaoAtual, SessaoService } from './sessao.service';
 
 // Fixo em codigo (nao vem de env). Usado no cadastro e no hash falso do login.
@@ -91,10 +92,12 @@ export class AuthService implements OnModuleInit {
     const atual = await this.tenant.run(clinicaId, (tx) =>
       tx.psicologo.findFirst({
         where: { id, clinicaId },
-        select: { senhaHash: true },
+        select: { senhaHash: true, email: true, nome: true },
       }),
     );
     if (!atual) throw new UnauthorizedException();
+    // Politica de senha forte (item 45) antes de gastar bcrypt. 422 com motivo; nao e 401.
+    exigirSenhaForte(novaSenha, atual);
     // 422, nao 401: o front desloga em todo 401.
     const incorreta = () =>
       new UnprocessableEntityException('Senha atual incorreta');

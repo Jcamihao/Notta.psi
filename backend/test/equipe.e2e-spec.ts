@@ -183,7 +183,6 @@ describe('POST /psicologos', () => {
   it.each([
     ['senha de 73 bytes', { senha: 'a'.repeat(73) }],
     ['40 emojis (160 bytes)', { senha: '😀'.repeat(40) }],
-    ['senha de 7', { senha: 'a'.repeat(7) }],
     ['nome vazio', { nome: '   ' }],
     ['nome 121', { nome: 'n'.repeat(121) }],
     ['abordagem invalida', { abordagemPadrao: 'XYZ' }],
@@ -196,7 +195,7 @@ describe('POST /psicologos', () => {
   it('senha de 72 bytes passa', async () => {
     await post(
       a.token,
-      corpoPsi(email('s72'), { senha: 'a'.repeat(72) }),
+      corpoPsi(email('s72'), { senha: 'Xq7!vB2m'.repeat(9) }),
     ).expect(201);
   });
 });

@@ -152,10 +152,12 @@ describe('senha provisoria: fluxo completo', () => {
       extra: 1,
     }).expect(400);
     await trocar(provisorio, { senhaAtual: '', novaSenha: NOVA }).expect(400);
-    await trocar(provisorio, {
+    // curta nao e mais 400: a politica (item 45) responde 422 com motivo
+    const curta = await trocar(provisorio, {
       senhaAtual: SENHA,
       novaSenha: '1234567',
-    }).expect(400);
+    }).expect(422);
+    expect(curta.body).toMatchObject({ motivo: 'CURTA' });
     // nada disso trocou a senha nem revogou o token
     await get('/eu', provisorio).expect(200);
 

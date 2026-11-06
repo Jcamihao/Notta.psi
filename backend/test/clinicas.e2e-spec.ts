@@ -106,15 +106,14 @@ describe('POST /clinicas', () => {
     expect(JSON.stringify(res.body)).not.toContain('secreto');
   });
 
-  it('senha: 72 bytes ok; 73 bytes, 40 emojis e 7 bytes -> 400', async () => {
-    const ok = await cadastrar(
-      corpoClinica(email('s72'), { senha: 'a'.repeat(72) }),
-    );
+  it('senha: 72 bytes ok; 73 bytes e 40 emojis (160 bytes) -> 400', async () => {
+    const forte72 = 'Xq7!vB2m'.repeat(9);
+    expect(Buffer.byteLength(forte72)).toBe(72);
+    const ok = await cadastrar(corpoClinica(email('s72'), { senha: forte72 }));
     expect(ok.status).toBe(201);
     for (const [i, senha] of [
-      'a'.repeat(73),
+      'Xq7!vB2m'.repeat(9) + 'z',
       '😀'.repeat(40),
-      'a'.repeat(7),
     ].entries()) {
       const res = await cadastrar(corpoClinica(email(`sx${i}`), { senha }));
       expect(res.status).toBe(400);

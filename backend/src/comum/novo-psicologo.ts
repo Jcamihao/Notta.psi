@@ -14,8 +14,10 @@ export class NovoPsicologoDto {
   @MaxLength(254)
   email!: string;
 
-  // Sem aparar: espaco na senha e intencional.
-  @Bytes(8, 72)
+  // Sem aparar: espaco na senha e intencional. So o formato aqui (1..72 bytes: o maximo do bcrypt);
+  // a politica (10+ caracteres, lista de comuns, etc.) e `exigirSenhaForte`, que responde 422 com
+  // motivo, no service.
+  @Bytes(1, 72)
   senha!: string;
 
   @IsEnum(Abordagem)

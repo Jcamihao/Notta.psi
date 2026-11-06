@@ -57,7 +57,8 @@ class TrocarSenhaDto {
   @Bytes(1, 72)
   senhaAtual!: string;
 
-  @Bytes(8, 72)
+  // So o formato (1..72 bytes); a politica de senha forte e `exigirSenhaForte` (422 com motivo).
+  @Bytes(1, 72)
   novaSenha!: string;
 }
 
