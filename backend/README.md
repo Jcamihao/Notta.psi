@@ -119,6 +119,13 @@ Tabela `Paciente`, RLS `psicologo_proprio` (cada psicologo ve so os proprios, AD
 - AAD obrigatorio: `cifrar(clinicaId, texto, aad)` e `decifrar(clinicaId, valor, aad)` com `aad = aadDe(tabela, coluna, id, psicologoId)` (`tabela|coluna|id|psicologoId`). O GCM autentica `v1.k1|<aad>`: cifrado copiado para outra linha, coluna ou dono falha com `falha ao decifrar`. Gravar com o id final da linha (gere o uuid antes do INSERT).
 - Vetores independentes (Python) no `criptografia.service.spec.ts`: HKDF (chave por clinica) e um cifrado AES-GCM com AAD.
 
+### Varias chaves (rotacao, item 25, parte A)
+- `NOTTA_MASTER_KEYS=k1:<hex>,k2:<hex>` e `NOTTA_MASTER_KEY_ATUAL=k2`. `cifrar` usa a ATUAL (grava o kid no valor). `decifrar` le o kid do proprio valor; kid fora da lista = `falha ao decifrar`, nunca cai para a atual.
+- Sem `NOTTA_MASTER_KEYS`, vale o de sempre: `NOTTA_MASTER_KEY` vira `k1` e e a atual. Valores `v1.k1.*` antigos continuam legiveis.
+- Boot falha (sem ecoar chave): as duas formas juntas; `NOTTA_MASTER_KEYS` sem `NOTTA_MASTER_KEY_ATUAL`; atual fora da lista; kid fora de `k<numero>` ou repetido; chave que nao passa nas mesmas validacoes da unica.
+- `recifrarValor(clinicaId, valor, aad)` (helper, sem comando ainda): decifra com o kid do valor e cifra com a atual; ja na atual devolve igual.
+- Gerador de chave (`npm run chave:gerar`) e comando de recifragem: itens seguintes da task.
+
 ## Consentimento do paciente (item 10)
 Tabela `Consentimento` (migration `20261101140000_consentimento`), modulo `src/consentimento/`: cada evento (`CONCEDIDO`, `REVOGADO`) e uma linha nova por paciente, nada e sobrescrito; estado = evento da maior `seq`. Rotas `GET`/`POST /pacientes/:id/consentimento` (POST body `{evento}`); `GET /pacientes` e `GET /pacientes/:id` ganham `consentimento`. Termo vigente no codigo (`src/consentimento/termo-consentimento.ts`, `TERMO_VIGENTE`, RASCUNHO nao revisado; ver "Termo de consentimento por link" abaixo). Somente-acrescentar como a trilha (notta_app so SELECT/INSERT, RLS FORCE, trigger barra UPDATE/DELETE/TRUNCATE ate para o dono, desvio `app.limpeza_de_teste` so para a limpeza de teste). `ConsentimentoService.exigirConcedido(tx, user, pacienteId)` = 403 se nao concedido (o item 12 usa). Detalhes: `docs/ACESSO.md`. Ver as linhas: `docker exec -i nottapsi-postgres-1 psql -U postgres -d notta_psi -c 'SELECT "pacienteId", seq, evento, "termoVersao", "criadoEm" FROM "Consentimento" ORDER BY "pacienteId", seq'`.
 

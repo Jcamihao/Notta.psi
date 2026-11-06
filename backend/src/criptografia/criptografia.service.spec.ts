@@ -2,6 +2,7 @@ import {
   aadDe,
   CriptografiaService,
   derivarChaveClinica,
+  kidDe,
 } from './criptografia.service';
 
 const MASTER = '0123456789abcdef'.repeat(4);
@@ -11,6 +12,8 @@ const FORMATO = /^v1\.k1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]*$/;
 
 // null = variavel ausente.
 function servico(chave: string | null = MASTER) {
+  delete process.env.NOTTA_MASTER_KEYS;
+  delete process.env.NOTTA_MASTER_KEY_ATUAL;
   if (chave === null) delete process.env.NOTTA_MASTER_KEY;
   else process.env.NOTTA_MASTER_KEY = chave;
   return new CriptografiaService();
@@ -376,5 +379,190 @@ describe('aadDe', () => {
   ])('recusa %s', (_, partes) => {
     const [t, c, i, p] = partes as [string, string, string, string];
     expect(() => aadDe(t, c, i, p)).toThrow('aad invalido');
+  });
+});
+
+describe('chaveiro com varias chaves (item 25, parte A)', () => {
+  const CHAVE_A =
+    '9a3f51c07e2b48d6a1f0e93c5b7d2a846c1e0f9d3b5a7c28e4f16d0b9a3c5e72';
+  const CHAVE_B =
+    'c4d8e2f1a7b93065d2e8f4a1c6b0973e5a1d9f3e7c2b8a46f0e5d1c9b7a3e268';
+  const ENV_LISTA = ['NOTTA_MASTER_KEYS', 'NOTTA_MASTER_KEY_ATUAL'] as const;
+  const salvo = ENV_LISTA.map((n) => process.env[n]);
+  afterEach(() => {
+    ENV_LISTA.forEach((n, i) => {
+      const v = salvo[i];
+      if (v === undefined) delete process.env[n];
+      else process.env[n] = v;
+    });
+  });
+
+  // undefined = variavel ausente. NOTTA_MASTER_KEY fica so se passada.
+  function multi(
+    lista: string | undefined,
+    atual: string | undefined,
+    unica?: string,
+  ) {
+    if (unica === undefined) delete process.env.NOTTA_MASTER_KEY;
+    else process.env.NOTTA_MASTER_KEY = unica;
+    if (lista === undefined) delete process.env.NOTTA_MASTER_KEYS;
+    else process.env.NOTTA_MASTER_KEYS = lista;
+    if (atual === undefined) delete process.env.NOTTA_MASTER_KEY_ATUAL;
+    else process.env.NOTTA_MASTER_KEY_ATUAL = atual;
+    return new CriptografiaService();
+  }
+
+  const falha = (fn: () => unknown) =>
+    expect(fn).toThrow(new Error('falha ao decifrar'));
+
+  it('so NOTTA_MASTER_KEY (compat): vira k1, atual, cifra e decifra', () => {
+    const c = multi(undefined, undefined, CHAVE_A);
+    const v = c.cifrar('cli-a', 'compat', AAD);
+    expect(kidDe(v)).toBe('k1');
+    expect(c.decifrar('cli-a', v, AAD)).toBe('compat');
+  });
+
+  it('cifra com a ATUAL e le valores de qualquer kid da lista', () => {
+    const antigo = multi(undefined, undefined, CHAVE_A).cifrar(
+      'cli-a',
+      'de k1',
+      AAD,
+    );
+    const novo = multi(`k1:${CHAVE_A},k2:${CHAVE_B}`, 'k2').cifrar(
+      'cli-a',
+      'de k2',
+      AAD,
+    );
+    expect(kidDe(novo)).toBe('k2');
+    const c = multi(`k1:${CHAVE_A},k2:${CHAVE_B}`, 'k2');
+    expect(c.decifrar('cli-a', antigo, AAD)).toBe('de k1');
+    expect(c.decifrar('cli-a', novo, AAD)).toBe('de k2');
+  });
+
+  it('ATUAL voltando para k1 cifra com k1 e ainda le k2', () => {
+    const novo = multi(`k1:${CHAVE_A},k2:${CHAVE_B}`, 'k2').cifrar(
+      'cli-a',
+      'de k2',
+      AAD,
+    );
+    const c = multi(`k1:${CHAVE_A},k2:${CHAVE_B}`, 'k1');
+    const agora = c.cifrar('cli-a', 'x', AAD);
+    expect(kidDe(agora)).toBe('k1');
+    expect(c.decifrar('cli-a', novo, AAD)).toBe('de k2');
+  });
+
+  it('kid com mais de um digito funciona (k10)', () => {
+    const c = multi(`k1:${CHAVE_A},k10:${CHAVE_B}`, 'k10');
+    const v = c.cifrar('cli-a', 'dez', AAD);
+    expect(v.startsWith('v1.k10.')).toBe(true);
+    expect(c.decifrar('cli-a', v, AAD)).toBe('dez');
+  });
+
+  it('valor de kid que nao esta na lista falha generico, sem cair na atual', () => {
+    const k1 = multi(undefined, undefined, CHAVE_A).cifrar('cli-a', 'x', AAD);
+    falha(() => multi(`k2:${CHAVE_B}`, 'k2').decifrar('cli-a', k1, AAD));
+    const k9 = multi(`k1:${CHAVE_A},k2:${CHAVE_B}`, 'k2')
+      .cifrar('cli-a', 'x', AAD)
+      .replace('.k2.', '.k9.');
+    falha(() =>
+      multi(`k1:${CHAVE_A},k2:${CHAVE_B}`, 'k2').decifrar('cli-a', k9, AAD),
+    );
+  });
+
+  it('cifrar com ATUAL k2 nao e lido por um servico so com k1', () => {
+    const v = multi(`k1:${CHAVE_A},k2:${CHAVE_B}`, 'k2').cifrar(
+      'cli-a',
+      'x',
+      AAD,
+    );
+    expect(v.startsWith('v1.k2.')).toBe(true);
+    falha(() => multi(`k1:${CHAVE_A}`, 'k1').decifrar('cli-a', v, AAD));
+  });
+
+  it('kidDe le o kid do valor e recusa valor mal formado', () => {
+    expect(kidDe('v1.k7.AAAA.AAAA.AAAA')).toBe('k7');
+    falha(() => kidDe('lixo'));
+    falha(() => kidDe(null));
+  });
+
+  it('ATUAL inexistente na lista = erro de boot', () => {
+    expect(() => multi(`k1:${CHAVE_A}`, 'k2')).toThrow(/NOTTA_MASTER_KEY/);
+  });
+
+  it.each([
+    [
+      'NOTTA_MASTER_KEY e NOTTA_MASTER_KEYS juntas',
+      () => multi(`k1:${CHAVE_A}`, 'k1', CHAVE_B),
+    ],
+    ['NOTTA_MASTER_KEYS sem ATUAL', () => multi(`k1:${CHAVE_A}`, undefined)],
+    ['ATUAL sem NOTTA_MASTER_KEYS', () => multi(undefined, 'k1', CHAVE_A)],
+  ])('%s = erro de boot', (_, fn) => {
+    expect(fn).toThrow(/NOTTA_MASTER_KEY/);
+  });
+
+  it.each([
+    ['chave curta', `k1:${'a'.repeat(62)}`],
+    ['nao hex', `k1:${'z'.repeat(64)}`],
+    ['fraca (bytes iguais)', `k1:${'ab'.repeat(32)}`],
+    ['kid sem k', `x1:${CHAVE_A}`],
+    ['kid maiusculo', `K1:${CHAVE_A}`],
+    ['kid sem numero', `k:${CHAVE_A}`],
+    ['kid repetido', `k1:${CHAVE_A},k1:${CHAVE_B}`],
+    ['item sem dois-pontos', CHAVE_A],
+    ['item vazio (virgula sobrando)', `k1:${CHAVE_A},`],
+  ])('lista invalida (%s) lanca sem ecoar chave', (_, lista) => {
+    let erro: Error | undefined;
+    try {
+      multi(lista, 'k1');
+    } catch (e) {
+      erro = e as Error;
+    }
+    expect(erro).toBeInstanceOf(Error);
+    expect(erro?.message).toMatch(/NOTTA_MASTER_KEYS/);
+    for (const c of [CHAVE_A, CHAVE_B, 'a'.repeat(62), 'z'.repeat(64)]) {
+      expect(erro?.message).not.toContain(c);
+    }
+  });
+
+  it('chave de teste das suites na lista so passa com a variavel de teste', () => {
+    const de_teste = '0123456789abcdef'.repeat(4);
+    delete process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE;
+    expect(() => multi(`k1:${de_teste}`, 'k1')).toThrow(/NOTTA_MASTER_KEYS/);
+    process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE = '1';
+    expect(() => multi(`k1:${de_teste}`, 'k1')).not.toThrow();
+  });
+
+  it('recifrarValor: leva k1 para a atual k2 com o mesmo texto; valor ja atual volta igual', () => {
+    const v1 = multi(undefined, undefined, CHAVE_A).cifrar(
+      'cli-a',
+      'texto de k1',
+      AAD,
+    );
+    const c = multi(`k1:${CHAVE_A},k2:${CHAVE_B}`, 'k2');
+    const v2 = c.recifrarValor('cli-a', v1, AAD);
+    expect(kidDe(v2)).toBe('k2');
+    expect(c.decifrar('cli-a', v2, AAD)).toBe('texto de k1');
+    expect(c.recifrarValor('cli-a', v2, AAD)).toBe(v2);
+  });
+
+  it('recifrarValor com AAD diferente falha generico', () => {
+    const v1 = multi(undefined, undefined, CHAVE_A).cifrar('cli-a', 'x', AAD);
+    const c = multi(`k1:${CHAVE_A},k2:${CHAVE_B}`, 'k2');
+    falha(() =>
+      c.recifrarValor(
+        'cli-a',
+        v1,
+        aadDe('Documento', 'texto', 'doc-2', 'psi-1'),
+      ),
+    );
+  });
+
+  it('recifrarValor de kid desconhecido falha generico', () => {
+    const v = multi(`k1:${CHAVE_A},k2:${CHAVE_B}`, 'k2')
+      .cifrar('cli-a', 'x', AAD)
+      .replace('.k2.', '.k9.');
+    falha(() =>
+      multi(`k1:${CHAVE_A},k2:${CHAVE_B}`, 'k2').recifrarValor('cli-a', v, AAD),
+    );
   });
 });
