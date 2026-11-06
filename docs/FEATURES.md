@@ -65,7 +65,7 @@ Numeração separada para não quebrar as referências da Fase 1 em andamento. A
 - [ ] 43. [B] CI: testes, lint, `npm audit`, atualização de dependências e testes de RLS obrigatórios antes de merge — Fase 2
 - [x] 44. [B] Trigger no banco: documento APROVADO imutável — Fase 2 (com o item 15)
 - [x] 51. [B] Defesa contra prompt injection e saída insegura da IA (o texto da sessão vira instrução; validar o rascunho) — Fase 3
-- [ ] 45. [M] Senha forte, checagem de senha vazada e anti-enumeração de e-mail — Fase 4
+- [x] 45. [M] Senha forte, checagem de senha vazada e anti-enumeração de e-mail — Fase 4
 - [x] 46. [M] Sessões revogáveis: refresh token rotativo, expiração curta, "sair de todos os aparelhos" — Fase 4
 - [ ] 47. [M] MFA para psicólogos (TOTP ou código por e-mail; decisão do dono) — Fase 4
 - [ ] 48. [B] Bloqueio de conta após falhas e aviso por e-mail de novo login — Fase 4
