@@ -37,7 +37,7 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 - [x] 22. [M] Termo de consentimento do paciente (obrigatório antes de qualquer dado real)
 - [ ] 23. [F] Página de transparência de segurança
 - [ ] 24. [M] Recuperar senha e confirmar e-mail (DECISÃO DO DONO 2026-11-05: provedor de e-mail = Resend; só começar depois que o dono comprar o domínio, porque o Resend exige domínio verificado; em desenvolvimento o e-mail é só gravado em log local. Destrava os itens 47, 48 e 65)
-- [ ] 25. [B] Backup e rotação da chave mestra
+- [~] 25. [B] Backup e rotação da chave mestra
 - [ ] 26. [M] Exportar e excluir dados (LGPD)
 
 ## Fase 5 — Uso diário
