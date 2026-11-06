@@ -1,4 +1,4 @@
-# Notta.psi — passagem de bastão (estado em 2026-11-06)
+# Notta.psi — handoff (passagem de bastão, estado em 2026-11-06)
 
 Este documento é para um agente de código (Codex ou outro Claude) que vai continuar o projeto. Leia inteiro antes de mexer em qualquer coisa. O dono do produto é João (`johnmarcus3210@gmail.com`); ele fala português, prefere respostas curtas, objetivas e honestas, acompanha muitas vezes pelo celular e usa um fechamento fixo (seção 10).
 
