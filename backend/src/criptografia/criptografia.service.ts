@@ -235,6 +235,11 @@ export class CriptografiaService {
     }
   }
 
+  // Kid que cifra agora: destino da recifragem (item 25, B).
+  kidAtual(): string {
+    return this.atual;
+  }
+
   // Migra um valor para a chave atual: decifra com o kid do proprio valor e cifra com a atual.
   // Ja na atual, devolve igual.
   recifrarValor(clinicaId: string, valor: string, aad: string): string {

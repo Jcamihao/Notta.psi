@@ -21,6 +21,7 @@
     "db:generate": "prisma generate",
     "scan:segredos": "node scripts/scan-segredos.mjs",
     "chave:gerar": "node scripts/gerar-chave.mjs",
+    "recifrar": "node dist/ferramentas/recifrar.js",
     "backup": "bash scripts/backup.sh",
     "verificar:backup": "bash scripts/verificar-backup.sh"
   },

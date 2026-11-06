@@ -238,3 +238,11 @@ Decisao do dono (2026-11-05): **previa obrigatoria** (o psicologo ve e confirma 
 - [ ] Todo `where` tem `clinicaId` e `psicologoId` do token.
 - [ ] Teste de integracao (Postgres real) prova: colega da mesma clinica (inclusive ADMIN) ve ZERO; sem `psicologoId` = zero; outra clinica = zero; INSERT com `psicologoId` alheio falha; UPDATE/DELETE de linha alheia afeta 0; filha apontando para pai de colega falha com o mesmo erro de pai inexistente.
 - [ ] Teste unitario do service com banco falso SEM RLS prova o filtro por `psicologoId` no `where`.
+
+## Recifragem pelo dono do banco (item 25, parte B)
+
+- Quem pode: quem tem a credencial do `notta_owner` (`DATABASE_URL_OWNER`). Isso ja era possivel antes, desligando o trigger; o item 56 guarda essa credencial. O `notta_app` nao ganha nada: a CLI recusa rodar como ele.
+- O que faz: troca cada valor cifrado que esta em chave antiga pela chave atual (`NOTTA_MASTER_KEY_ATUAL`), em lotes, sem parar o sistema. So as colunas cifradas (`Paciente`, `Documento.conteudoCifrado`, `GeracaoIa.textoCifrado`/`mapaCifrado`).
+- Excecao nos triggers: em documento aprovado e em geracao de IA, so o dono, com `app.recifrar = '1'` na transacao, e so se a coluna cifrada for a unica que muda. Status, datas e identidade continuam imutaveis.
+- Comando: `npm run recifrar -- [--clinica <id>] [--lote 200] [--dry-run]`, em `backend/`. Saida: so contagens por tabela e coluna, nunca valor ou chave. Sai com 1 se houver falha de verificacao (nada e gravado nessas linhas).
+- Excecao a regra "set_config so no TenantPrismaService": `backend/src/ferramentas/recifrar.ts` (ferramenta do dono, documentada no cabecalho).
