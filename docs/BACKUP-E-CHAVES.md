@@ -68,7 +68,7 @@ O que ele faz, nesta ordem:
 3. Restaura num banco temporario `notta_restore_<aleatorio>` (nunca no banco real).
 4. Conta as linhas de cada tabela.
 5. Decifra uma amostra de cada coluna cifrada com a chave do ambiente.
-6. Apaga o banco temporario e o arquivo decifrado, mesmo se algo falhar.
+6. Apaga o banco temporario e o arquivo decifrado, mesmo se algo falhar (o arquivo decifrado fica numa pasta temporaria so sua, nunca no lugar do backup).
 
 Resultado: uma linha `VERIFICACAO OK` ou `FALHOU: <motivo>`. Nunca mostra dado clinico, nem chave.
 
@@ -79,6 +79,8 @@ Como ler o resultado:
 - `FALHOU: amostra nao decifrou`: a chave do ambiente nao e a chave dos dados. **Confira a chave antes de qualquer outra coisa.** Sem ela, o backup nao serve.
 - `FALHOU: nenhuma coluna cifrada com dado`: banco vazio. Nada foi provado.
 
+Depois de uma rotacao, a chave do ambiente tem que ser a lista (`NOTTA_MASTER_KEYS` + `NOTTA_MASTER_KEY_ATUAL`), com todas as chaves que ainda cifram algo naquele backup. Um backup anterior a recifragem precisa da `k1`; um posterior, da `k2`.
+
 Nesta maquina:
 
 ```bash
@@ -87,6 +89,16 @@ export PSQL_CMD="docker exec -i nottapsi-postgres-1 psql -U postgres -v ON_ERROR
 ```
 
 Ja testado nesta maquina (2026-11-06): backup e verificacao OK com uma fixture de dados cifrados; corrupcao de um byte, senha errada e chave errada FALHARAM como deveriam.
+
+### Restaurar de verdade (desastre)
+
+A verificacao acima nao substitui a restauracao real. Passos (testados nesta maquina em 2026-11-06, num banco descartavel):
+
+1. Decifre: `openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:NOTTA_BACKUP_SENHA -in notta-AAAA-MM-DD.enc -out notta.dump` (a senha vai pela variavel de ambiente, nunca pelo comando).
+2. No servidor novo, antes de restaurar, os papeis `notta_owner` e `notta_app` e o banco vazio precisam existir (as policies e os donos das tabelas apontam para eles). Em desenvolvimento: `docker/initdb/01-roles.sql`.
+3. Restaure: `pg_restore -d <banco vazio> notta.dump`.
+4. Apague `notta.dump`: o dump decifrado tem tudo o que estava no banco e nao pode ficar no servidor.
+5. Suba o sistema com as chaves mestras certas (`NOTTA_MASTER_KEYS`/`NOTTA_MASTER_KEY_ATUAL` ou `NOTTA_MASTER_KEY`). Sem elas o sistema nem sobe (o boot falha de proposito); com a chave errada, nada cifrado abre.
 
 ## 6. Rotacionar a chave mestra (sem parar o sistema)
 
@@ -99,13 +111,14 @@ Regra de ouro: **nunca remova uma chave antiga antes de recifrar tudo que ela ci
    NOTTA_MASTER_KEY_ATUAL=k2
    ```
    Remova `NOTTA_MASTER_KEY` (as duas juntas derrubam o boot). A partir daqui, dado novo ja sai com `k2`; dado antigo continua legivel com `k1`.
-3. **Recifre os dados antigos** (quando o comando `npm run recifrar` existir; ainda nao existe, e o proximo item da task):
+3. **Recifre os dados antigos**. Rode em `backend/`, depois de `npm run build`, com `DATABASE_URL_OWNER` apontando para o `notta_owner` e as mesmas `NOTTA_MASTER_KEYS`/`NOTTA_MASTER_KEY_ATUAL` do passo 2:
    ```
    npm run recifrar -- --dry-run     # so conta, nao grava
    npm run recifrar                  # recifra em lotes, pode ser interrompido e retomado
    ```
-4. **Confira**: o dry-run seguinte tem que mostrar zero linhas a recifrar.
-5. **So agora aposente a `k1`**: tire `k1` de `NOTTA_MASTER_KEYS`. Guarde a chave antiga no cofre por mais tempo (backups antigos ainda dependem dela).
+   Cada linha da saida e uma coluna: `lidas`, `recifradas`, `conflitos` (o valor mudou no meio, a proxima rodada pega) e `falhas` (valor que nao decifrou ou nao passou na conferencia: nada e gravado nele). O comando sai com codigo 1 se houver falha. Use `--clinica <id>` para uma clinica so e `--lote <n>` para mudar o tamanho do lote (padrao 200).
+4. **Confira**: rode `npm run recifrar -- --dry-run` de novo. Tem que mostrar `recifradas=0` e `falhas=0` em todas as colunas. `falhas` diferente de zero = nao aposente a chave antiga.
+5. **So agora aposente a `k1`**: tire `k1` de `NOTTA_MASTER_KEYS` (continue com `NOTTA_MASTER_KEYS=k2:<chave nova>` e `NOTTA_MASTER_KEY_ATUAL=k2`; nao volte para `NOTTA_MASTER_KEY` sozinha, ela sempre conta como `k1`). Guarde a chave antiga no cofre por mais tempo: backups feitos antes da recifragem ainda estao em `k1` e so abrem com ela.
 
 Se algo der errado no meio: a chave antiga continua na lista. O sistema segue funcionando; nada se perde.
 

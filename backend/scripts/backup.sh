@@ -6,6 +6,8 @@
 # Banco: BACKUP_BANCO (padrao notta_psi). Credencial do banco: PGUSER/PGPASSWORD/PGHOST ou .pgpass.
 # O dump nunca toca o disco sem cifra: pg_dump | openssl enc > arquivo.
 set -euo pipefail
+# Backup e .sha256 so legiveis pelo dono (mesmo cifrado, nao precisa ser lido por ninguem mais).
+umask 077
 
 SAIDA="${1:-}"
 if [ -z "$SAIDA" ]; then

@@ -9,6 +9,7 @@
 #   PSQL_CMD="docker exec -i nottapsi-postgres-1 psql -U postgres -v ON_ERROR_STOP=1"
 # No fim apaga o banco temporario e o arquivo decifrado, mesmo em falha. Imprime so contagens e OK/FALHOU.
 set -euo pipefail
+umask 077
 
 ARQ="${1:-}"
 if [ -z "$ARQ" ] || [ ! -f "$ARQ" ]; then
@@ -90,8 +91,7 @@ done <<< "$TABELAS"
 COLUNAS=("Paciente nomeCifrado" "Paciente nascimentoCifrado" "Paciente telefoneCifrado" "Paciente emailCifrado" "Documento conteudoCifrado" "GeracaoIa textoCifrado" "GeracaoIa mapaCifrado")
 SQL=""
 for par in "${COLUNAS[@]}"; do
-  set -- $par
-  t="$1"; c="$2"
+  read -r t c <<< "$par"
   bloco="(SELECT '$t', '$c', \"clinicaId\", \"id\", \"psicologoId\", \"$c\" FROM \"$t\" WHERE \"$c\" IS NOT NULL LIMIT 5)"
   SQL="${SQL:+$SQL UNION ALL }$bloco"
 done

@@ -402,3 +402,45 @@ describe('Recifragem: GeracaoIa', () => {
     expect((await lerGeracao(u, id))[0].textoCifrado).toBe('cifrado');
   });
 });
+
+// Sem a flag e sem contexto de clinica, as policies do dono nao abrem nada. O UPDATE sem WHERE
+// e sem ler coluna so passa pela policy de UPDATE (a de SELECT nao entra), entao prova a
+// policy de UPDATE sozinha; roda sempre dentro de uma transacao que desfaz tudo.
+class Desfazer extends Error {
+  constructor(readonly n: number) {
+    super('desfazer');
+  }
+}
+const donoSemFlagSemContexto = (texto: string) =>
+  owner
+    .$transaction(async (tx) => {
+      throw new Desfazer(await tx.$executeRawUnsafe(texto));
+    })
+    .then(
+      () => {
+        throw new Error('transacao deveria ter sido desfeita');
+      },
+      (e: unknown) => e,
+    );
+
+describe('Recifragem: dono SEM a flag e sem contexto nao ve nem atualiza nada', () => {
+  it('SELECT e UPDATE das tres tabelas devolvem zero linhas', async () => {
+    const { u, pacienteId, notaId } = await novoDono('rec-sem-flag-geral');
+    await pendente(u, pacienteId, notaId);
+    for (const [tabela, coluna] of [
+      ['Paciente', 'nomeCifrado'],
+      ['Documento', 'conteudoCifrado'],
+      ['GeracaoIa', 'textoCifrado'],
+    ]) {
+      const vistas = await owner.$queryRawUnsafe<{ n: number }[]>(
+        `SELECT count(*)::int AS "n" FROM "${tabela}"`,
+      );
+      expect([tabela, vistas[0].n]).toEqual([tabela, 0]);
+      const r = await donoSemFlagSemContexto(
+        `UPDATE "${tabela}" SET "${coluna}" = 'x'`,
+      );
+      expect(r).toBeInstanceOf(Desfazer);
+      expect([tabela, (r as Desfazer).n]).toEqual([tabela, 0]);
+    }
+  });
+});

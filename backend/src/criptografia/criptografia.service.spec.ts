@@ -557,6 +557,20 @@ describe('chaveiro com varias chaves (item 25, parte A)', () => {
     );
   });
 
+  it('kid desconhecido nunca cai para a chave atual (nem se o valor foi cifrado com a mesma chave)', () => {
+    // Um servico com k3 = o MESMO material de k2 cifra com o cabecalho k3. Outro servico sem k3
+    // e com k2 atual teria a chave certa em maos: so o kid desconhecido o impede de decifrar.
+    const v = multi(`k1:${CHAVE_A},k3:${CHAVE_B}`, 'k3').cifrar(
+      'cli-a',
+      'x',
+      AAD,
+    );
+    expect(kidDe(v)).toBe('k3');
+    const c = multi(`k1:${CHAVE_A},k2:${CHAVE_B}`, 'k2');
+    falha(() => c.decifrar('cli-a', v, AAD));
+    falha(() => c.recifrarValor('cli-a', v, AAD));
+  });
+
   it('recifrarValor de kid desconhecido falha generico', () => {
     const v = multi(`k1:${CHAVE_A},k2:${CHAVE_B}`, 'k2')
       .cifrar('cli-a', 'x', AAD)

@@ -34,7 +34,10 @@ npm test                        # unitarios (sem banco)
 npm run test:e2e                # exige DATABASE_URL e DATABASE_URL_OWNER, falha alto sem elas. Roda 2 grupos em sequencia:
                                 # (1) paralelo (jest-e2e.json) e (2) EM SERIE (jest-e2e-serial.json): as suites que
                                 # fazem DDL com FK para Psicologo (acesso*) e a de carga (carga-clinicas), isoladas
-                                # das demais (DDL entra na fila do lock e atrasa o resto; carga mede latencia)
+                                # das demais (DDL entra na fila do lock e atrasa o resto; carga mede latencia),
+                                # e as 3 que fazem TRUNCATE como dono (documentos-rls, auditoria-rls,
+                                # consentimento-rls): TRUNCATE pede lock exclusivo e, em paralelo com outra suite
+                                # mexendo na mesma tabela, da deadlock ou lock_timeout (flake corrigido no item 25)
 npm run lint && npm run format:check && npm run build
 ```
 
@@ -123,9 +126,9 @@ Tabela `Paciente`, RLS `psicologo_proprio` (cada psicologo ve so os proprios, AD
 - `NOTTA_MASTER_KEYS=k1:<hex>,k2:<hex>` e `NOTTA_MASTER_KEY_ATUAL=k2`. `cifrar` usa a ATUAL (grava o kid no valor). `decifrar` le o kid do proprio valor; kid fora da lista = `falha ao decifrar`, nunca cai para a atual.
 - Sem `NOTTA_MASTER_KEYS`, vale o de sempre: `NOTTA_MASTER_KEY` vira `k1` e e a atual. Valores `v1.k1.*` antigos continuam legiveis.
 - Boot falha (sem ecoar chave): as duas formas juntas; `NOTTA_MASTER_KEYS` sem `NOTTA_MASTER_KEY_ATUAL`; atual fora da lista; kid fora de `k<numero>` ou repetido; chave que nao passa nas mesmas validacoes da unica.
-- `recifrarValor(clinicaId, valor, aad)` (helper, sem comando ainda): decifra com o kid do valor e cifra com a atual; ja na atual devolve igual.
+- `recifrarValor(clinicaId, valor, aad)`: decifra com o kid do valor e cifra com a atual; ja na atual devolve igual. Quem usa em lote e `npm run recifrar`.
 - Gerador: `npm run -s chave:gerar` imprime UMA chave nova (64 hex) e nada mais. Use `-s`: sem ele o npm imprime o cabecalho junto. Nunca em log nem no repo.
-- Comando de recifragem (`npm run recifrar`): item seguinte da task, ainda nao existe.
+- Comando de recifragem: `npm run recifrar -- [--clinica <id>] [--lote 200] [--dry-run]` (precisa de `npm run build` antes e de `DATABASE_URL_OWNER`; ver `docs/ACESSO.md` e `docs/BACKUP-E-CHAVES.md`). Depois de aposentar a `k1`, continue usando `NOTTA_MASTER_KEYS` (`k2:<hex>`) com `NOTTA_MASTER_KEY_ATUAL=k2`: `NOTTA_MASTER_KEY` sozinha sempre vale como `k1`.
 
 ## Consentimento do paciente (item 10)
 Tabela `Consentimento` (migration `20261101140000_consentimento`), modulo `src/consentimento/`: cada evento (`CONCEDIDO`, `REVOGADO`) e uma linha nova por paciente, nada e sobrescrito; estado = evento da maior `seq`. Rotas `GET`/`POST /pacientes/:id/consentimento` (POST body `{evento}`); `GET /pacientes` e `GET /pacientes/:id` ganham `consentimento`. Termo vigente no codigo (`src/consentimento/termo-consentimento.ts`, `TERMO_VIGENTE`, RASCUNHO nao revisado; ver "Termo de consentimento por link" abaixo). Somente-acrescentar como a trilha (notta_app so SELECT/INSERT, RLS FORCE, trigger barra UPDATE/DELETE/TRUNCATE ate para o dono, desvio `app.limpeza_de_teste` so para a limpeza de teste). `ConsentimentoService.exigirConcedido(tx, user, pacienteId)` = 403 se nao concedido (o item 12 usa). Detalhes: `docs/ACESSO.md`. Ver as linhas: `docker exec -i nottapsi-postgres-1 psql -U postgres -d notta_psi -c 'SELECT "pacienteId", seq, evento, "termoVersao", "criadoEm" FROM "Consentimento" ORDER BY "pacienteId", seq'`.
