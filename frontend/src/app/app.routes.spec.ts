@@ -9,6 +9,7 @@ import { DocumentoLeituraPage } from './documentos/documento-leitura.page';
 import { DocumentoNovoPage } from './documentos/documento-novo.page';
 import { PacienteFormPage } from './pacientes/paciente-form.page';
 import { PacientesPage } from './pacientes/pacientes.page';
+import { SegurancaPage } from './seguranca/seguranca.page';
 import { TermoPage } from './termo/termo.page';
 
 describe('rotas de pacientes', () => {
@@ -87,5 +88,30 @@ describe('rota publica do termo', () => {
     await router.navigateByUrl('/termo/abc');
     expect(router.url).toBe('/termo/abc');
     TestBed.inject(HttpTestingController).match(() => true);
+  });
+});
+
+describe('rota publica de seguranca', () => {
+  const publica = routes.find((r) => r.path === 'seguranca')!;
+  const shell = routes.find((r) => r.path === '' && r.children) as Route;
+
+  it('existe fora do shell, sem guard', () => {
+    expect(publica).toBeDefined();
+    expect(publica.canActivate).toBeUndefined();
+    expect(publica.canActivateChild).toBeUndefined();
+    expect(shell.children!.map((r) => r.path)).not.toContain('seguranca');
+  });
+
+  it('carrega a pagina sob demanda', async () => {
+    expect(await (publica.loadComponent as () => Promise<unknown>)()).toBe(SegurancaPage);
+  });
+
+  it('abre sem login: navegar para /seguranca nao redireciona', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/seguranca');
+    expect(router.url).toBe('/seguranca');
   });
 });

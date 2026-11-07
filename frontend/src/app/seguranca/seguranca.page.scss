@@ -1,0 +1,80 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 22px 24px;
+  @media (max-width: 30rem) {
+    padding: var(--space-6);
+  }
+}
+.seguranca {
+  display: grid;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: 44rem;
+  margin-inline: auto;
+  padding: var(--space-9) var(--space-8);
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
+  @media (max-width: 30rem) {
+    padding: var(--space-8) var(--space-6);
+  }
+  > * {
+    margin: 0;
+    min-width: 0;
+  }
+}
+h1 {
+  font-size: clamp(1.625rem, 7vw, 2.375rem);
+  letter-spacing: var(--ls-display);
+  line-height: var(--lh-tight);
+  overflow-wrap: anywhere;
+}
+h2 {
+  font-size: 20px;
+  letter-spacing: var(--ls-display);
+}
+h3 {
+  margin-top: var(--space-3);
+  font-size: var(--fs-card-title);
+  font-weight: var(--fw-medium);
+  overflow-wrap: anywhere;
+}
+.abertura {
+  font-size: 16px;
+  line-height: 1.55;
+}
+.atualizado,
+.rodape p {
+  color: var(--text-secondary);
+}
+.secao {
+  display: grid;
+  gap: var(--space-5);
+}
+.itens {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.item {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+  padding: var(--space-5);
+  background: var(--white);
+  border-radius: var(--radius-card);
+  p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 15px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+}
+.rodape {
+  padding-top: var(--space-5);
+  font-size: 14px;
+}

@@ -1,0 +1,27 @@
+<main class="seguranca">
+  <p class="marca">Notta.psi</p>
+  <h1>Como o Notta.psi protege os dados</h1>
+  <p class="abertura">{{ conteudo.abertura }}</p>
+  <p class="atualizado">Atualizado em {{ atualizadoEm }}</p>
+
+  @for (secao of conteudo.secoes; track secao.titulo; let i = $index) {
+    <section class="secao" [attr.aria-labelledby]="'secao-' + i">
+      <h2 [id]="'secao-' + i">{{ secao.titulo }}</h2>
+      <ul class="itens">
+        @for (item of secao.itens; track item.id) {
+          <li class="item" [attr.data-id]="item.id">
+            <app-pill [tone]="item.status === 'feito' ? 'blue' : 'yellow'">
+              {{ item.status === 'feito' ? 'Já existe' : 'Ainda não' }}
+            </app-pill>
+            <h3>{{ item.titulo }}</h3>
+            <p>{{ item.texto }}</p>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+
+  <footer class="rodape">
+    <p>{{ conteudo.rodape }}</p>
+  </footer>
+</main>

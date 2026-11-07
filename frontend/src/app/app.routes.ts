@@ -20,6 +20,11 @@ export const routes: Routes = [
     path: 'termo/:token',
     loadComponent: () => import('./termo/termo.page').then((m) => m.TermoPage),
   },
+  // Publica de proposito (transparencia): fora do shell e sem guard, logado ou nao.
+  {
+    path: 'seguranca',
+    loadComponent: () => import('./seguranca/seguranca.page').then((m) => m.SegurancaPage),
+  },
   {
     path: '',
     canActivate: [authGuard],
