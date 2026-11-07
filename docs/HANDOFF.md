@@ -51,7 +51,7 @@ Para subir o app à mão: gere `NOTTA_MASTER_KEY` (`npm run -s chave:gerar`) e `
 
 ## 4. O que já está pronto e verificado
 
-Itens de `docs/FEATURES.md` feitos e verificados (`[x]`): 1 a 22, 25, 41, 42, 44, 45, 46, 49, 51, 57 a 64 e a Fase 1.6. Os itens 23 e 24 estão abertos. Resumo do que existe:
+Itens de `docs/FEATURES.md` feitos e verificados (`[x]`): 1 a 23, 25, 41, 42, 44, 45, 46, 49, 51, 57 a 64 e a Fase 1.6. O item 24 está aberto. Resumo do que existe:
 
 - **Isolamento:** todo dado de clínica tem `clinicaId` e RLS ENABLE + FORCE. Cada psicólogo lê só os próprios pacientes e documentos (padrão `psicologo_proprio`, `docs/ACESSO.md`); o ADMIN gerencia a equipe e atende os próprios pacientes, mas não lê prontuário de colega. FKs filhas incluem `psicologoId`, porque checagem de FK ignora RLS.
 - **Criptografia:** AES-256-GCM, chave por clínica derivada por HKDF de uma chave mestra, formato `v1.<kid>.<iv>.<tag>.<ct>`, AAD obrigatório (`aadDe(tabela, coluna, id, psicologoId)`), chaveiro com várias chaves (`k1`, `k2`...) e `kid` lido do próprio valor (sem fallback). Paciente (nome, nascimento, telefone, e-mail) e conteúdo de documento ficam cifrados.
@@ -74,11 +74,13 @@ Nada está pela metade. O último item fechado foi o **25, backup e rotação da
 
 **Sem prova ainda:** recifragem multi-clínica com dados reais; dois processos `recifrar` ao mesmo tempo; restauração num cluster sem os papéis `notta_owner` e `notta_app`; backup agendado (é o item 56).
 
-**Estado do ambiente em 2026-11-07:** árvore do git limpa; Postgres embutido 18 de pé na porta 5436 (o Docker estava fora do ar; o container do Notta.psi está parado); o SelahIA local está parado; nenhum servidor de teste rodando. Gates verdes no Postgres 18: 693 unit, 485 e2e em paralelo, 91 em série; o front tinha 598 testes verdes (rodar de novo antes de mexer).
+**Estado do ambiente em 2026-11-07:** árvore do git limpa; Postgres embutido 18 de pé na porta 5436 (o Docker estava fora do ar; o container do Notta.psi está parado); o SelahIA local está parado; nenhum servidor de teste rodando. Gates verdes no Postgres 18: 693 unit, 485 e2e em paralelo, 91 em série; o front tem 620 testes verdes (rodar de novo antes de mexer); e2e do back 486 em paralelo e 91 em série.
+
+Item 23 (página pública `/seguranca`): feito por Haiku e revisado por Sonnet, que corrigiu exageros e omissões (IA envia texto a terceiro, o que é e o que não é cifrado, imutabilidade vale contra o aplicativo e não contra o administrador do banco). **Manutenção obrigatória:** a página (`frontend/src/app/seguranca/seguranca.conteudo.ts`) e a tabela de evidências (`docs/SEGURANCA-AFIRMACOES.md`) precisam ser atualizadas sempre que uma proteção mudar (por exemplo, ao entregar MFA, backup agendado ou exclusão LGPD, mover o item de "Ainda não" para "Já existe" com evidência); um teste falha se as duas listas divergirem, mas não confere o texto.
 
 ## 6. O que falta (ordem recomendada)
 
-1. **Fase 4 sem dependência externa:** 23 página de transparência de segurança (front, com o que já existe), 26 exportar e excluir dados (LGPD; precisa de decisão do dono), 52 retenção e descarte (inclui retenção das tabelas `Sessao` e do que ficou `RESTRICT`), 54 plano de incidente (processo, escrever um documento).
+1. **Fase 4 sem dependência externa:** 26 exportar e excluir dados (LGPD; precisa de decisão do dono), 52 retenção e descarte (inclui retenção das tabelas `Sessao` e do que ficou `RESTRICT`), 54 plano de incidente (processo, escrever um documento).
 2. **Depende do dono comprar o domínio** (o provedor de e-mail escolhido é o **Resend**, que exige domínio verificado): 24 recuperar senha e confirmar e-mail, 65 convite por e-mail de uso único (fecha o risco I-1), 47 MFA por código de e-mail, 48 bloqueio de conta e aviso de novo login. O domínio também serve para `NOTTA_APP_URL` e o deploy.
 3. **Antes de abrir para clínicas:** 66 ajustar o texto do painel de sigilo e a mensagem de 503 do login ao que o código realmente garante, 67 transferir pacientes de psicólogo desativado.
 4. **Fase 5 (uso diário):** 27 linha do tempo, 28 busca (o texto é cifrado; a lista de pacientes hoje carrega no máximo 500 e ordena no app, precisa de paginação aqui), 29 ajuste de linguagem técnica, 30 exportar PDF ou Word.
