@@ -173,6 +173,7 @@ describe('GeracaoIa: estrutura no banco', () => {
     const p = await owner.$queryRaw<{ policyname: string }[]>`
       SELECT policyname FROM pg_policies WHERE tablename = 'GeracaoIa' ORDER BY policyname`;
     expect(p.map((x) => x.policyname)).toEqual([
+      'geracaoia_anonimizar_update',
       'geracaoia_dono_delete',
       'geracaoia_dono_update',
       'geracaoia_insert_proprio',
@@ -216,7 +217,11 @@ describe('GeracaoIa: estrutura no banco', () => {
     expect(priv).toEqual({ del: false, trg: false });
     const trg = await owner.$queryRaw<{ tgname: string }[]>`
       SELECT tgname FROM pg_trigger WHERE tgrelid = '"GeracaoIa"'::regclass AND NOT tgisinternal`;
-    expect(trg).toEqual([{ tgname: 'geracao_ia_barreira' }]);
+    // 20261110120000: + trigger de insert para paciente excluido (item 26).
+    expect(trg.map((x) => x.tgname).sort()).toEqual([
+      'geracao_ia_barreira',
+      'geracaoia_paciente_excluido',
+    ]);
     const chk = await owner.$queryRaw<{ conname: string }[]>`
       SELECT conname FROM pg_constraint
       WHERE conrelid = '"GeracaoIa"'::regclass AND contype = 'c' ORDER BY conname`;

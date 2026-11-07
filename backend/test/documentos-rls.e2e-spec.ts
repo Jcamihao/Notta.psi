@@ -127,7 +127,9 @@ describe('Documento: estrutura no banco', () => {
     const p = await owner.$queryRaw<{ policyname: string }[]>`
       SELECT policyname FROM pg_policies WHERE tablename = 'Documento' ORDER BY policyname`;
     // psicologo_proprio (unica, do item 12) foi trocada: o WITH CHECK dela impedia aprovar.
+    // 20261110120000: + policy do dono para a anonimizacao (item 26).
     expect(p).toEqual([
+      { policyname: 'documento_anonimizar_update' },
       { policyname: 'documento_dono_delete' },
       { policyname: 'documento_dono_update' },
       { policyname: 'documento_insert_proprio' },
@@ -170,6 +172,7 @@ describe('Documento: estrutura no banco', () => {
     expect(trg).toEqual([
       { tgname: 'documento_barreira_linha' },
       { tgname: 'documento_barreira_truncate' },
+      { tgname: 'documento_paciente_excluido' },
     ]);
     const chk = await owner.$queryRaw<{ conname: string; def: string }[]>`
       SELECT conname, pg_get_constraintdef(oid) AS def FROM pg_constraint

@@ -163,7 +163,11 @@ describe('ConviteConsentimento: estrutura no banco', () => {
     const g = await owner.$queryRaw<{ tgname: string }[]>`
       SELECT tgname FROM pg_trigger
       WHERE tgrelid = '"ConviteConsentimento"'::regclass AND NOT tgisinternal ORDER BY tgname`;
-    expect(g.map((x) => x.tgname)).toEqual(['convite_consentimento_barreira']);
+    // 20261110120000: + trigger de insert para paciente excluido (item 26).
+    expect(g.map((x) => x.tgname)).toEqual([
+      'convite_consentimento_barreira',
+      'convite_paciente_excluido',
+    ]);
     const c = await owner.$queryRaw<{ conname: string }[]>`
       SELECT conname FROM pg_constraint
       WHERE conrelid IN ('"ConviteConsentimento"'::regclass, '"Consentimento"'::regclass)

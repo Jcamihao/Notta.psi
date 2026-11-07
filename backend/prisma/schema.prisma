@@ -68,6 +68,8 @@ model Paciente {
   nascimentoCifrado String?
   telefoneCifrado   String?
   emailCifrado      String?
+  // Exclusao por anonimizacao (item 26): so a funcao anonimizar_paciente preenche. Nunca volta a NULL.
+  excluidoEm        DateTime?
   criadoEm          DateTime               @default(now())
   atualizadoEm      DateTime               @updatedAt
   consentimentos    Consentimento[]

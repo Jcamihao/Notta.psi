@@ -97,7 +97,9 @@ describe('Paciente: estrutura no banco', () => {
     expect(t).toEqual({ relrowsecurity: true, relforcerowsecurity: true });
     const p = await owner.$queryRaw<{ policyname: string }[]>`
       SELECT policyname FROM pg_policies WHERE tablename = 'Paciente'`;
+    // 20261110120000: + policy do dono para a anonimizacao (item 26).
     expect(p.map((x) => x.policyname).sort()).toEqual([
+      'paciente_anonimizar_update',
       'paciente_recifrar_select',
       'paciente_recifrar_update',
       'psicologo_proprio',

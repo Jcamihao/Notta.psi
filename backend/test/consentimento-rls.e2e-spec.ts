@@ -143,6 +143,7 @@ describe('Consentimento: estrutura no banco', () => {
     expect(g.map((x) => x.tgname)).toEqual([
       'consentimento_barreira_linha',
       'consentimento_barreira_truncate',
+      'consentimento_paciente_excluido',
     ]);
     const c = await owner.$queryRaw<{ conname: string }[]>`
       SELECT conname FROM pg_constraint
