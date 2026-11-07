@@ -26,7 +26,7 @@ export interface ConteudoSeguranca {
 export const CONTEUDO_SEGURANCA: ConteudoSeguranca = {
   atualizadoEm: '2026-11-07',
   abertura:
-    'Esta página mostra o que o Notta.psi faz hoje e o que ainda não está pronto. Nada aqui promete mais do que o sistema entrega.',
+    'Esta página mostra o que o Notta.psi faz hoje, com os limites de cada proteção, e o que ainda não está pronto.',
   secoes: [
     {
       titulo: 'O que já existe',
@@ -36,35 +36,36 @@ export const CONTEUDO_SEGURANCA: ConteudoSeguranca = {
           status: 'feito',
           titulo: 'Dados do paciente e texto clínico ficam cifrados.',
           texto:
-            'Nome, nascimento, telefone e e-mail do paciente e o conteúdo dos documentos são cifrados no banco (AES-256-GCM), com uma chave própria de cada clínica derivada de uma chave mestra que não fica no banco.',
+            'Nome, nascimento, telefone e e-mail do paciente e o conteúdo dos documentos são cifrados no banco (AES-256-GCM), com uma chave própria de cada clínica derivada de uma chave mestra que não fica no banco. O texto enviado à IA e a tabela de códigos dele também ficam cifrados enquanto existem. Nem tudo é cifrado: nome e e-mail de quem entra no sistema, nome da clínica, tipo, situação e data de cada documento e a data de criação dos registros ficam em texto comum. O aplicativo decifra os dados para mostrá-los ao psicólogo; por isso quem controla o servidor e a chave mestra consegue lê-los.',
         },
         {
           id: 'isolamento',
           status: 'feito',
           titulo: 'Cada psicólogo lê só os próprios pacientes.',
           texto:
-            'Colegas da mesma clínica, inclusive a administração, não leem o prontuário uns dos outros. O banco de dados impõe isso, não só o código do aplicativo.',
+            'Colegas da mesma clínica, inclusive a administração, não leem o prontuário uns dos outros. O banco de dados impõe isso, não só o código do aplicativo. Quem administra o banco ou tem a chave mestra fica fora dessa regra (veja "Proteção contra quem administra o servidor", abaixo).',
         },
         {
           id: 'aprovado',
           status: 'feito',
           titulo: 'Documento aprovado não muda.',
           texto:
-            'Depois de aprovado, o documento não pode ser editado nem apagado. Uma correção vira um novo documento ligado ao anterior.',
+            'Depois de aprovado, o documento não pode ser editado nem apagado pelo aplicativo, e o banco de dados barra essas tentativas. Uma correção vira um novo documento ligado ao anterior. Quem tem acesso de administrador ao banco consegue contornar essa trava (veja abaixo); a única alteração prevista nele é a troca da chave de cifra, que não muda o conteúdo.',
         },
         {
           id: 'auditoria',
           status: 'feito',
           titulo: 'Quem acessou o quê fica registrado.',
           texto:
-            'Criar, ler, listar e editar dados de pacientes grava quem fez, o quê e quando, sem guardar o conteúdo. Esse registro só aceita novas linhas.',
+            'Criar, ler, listar e editar pacientes e documentos, aprovar documentos, registrar consentimento e usar a IA gravam quem fez, o quê e quando, sem guardar o conteúdo. O aplicativo só consegue acrescentar linhas a esse registro, não alterar nem apagar; o administrador do banco consegue (veja abaixo).',
         },
         {
           id: 'ia',
           status: 'feito',
-          titulo: 'A IA recebe o texto sem seus dados de identificação, e você confere antes.',
+          titulo:
+            'Antes da IA, os dados de identificação são trocados por códigos, e o psicólogo confere.',
           texto:
-            'Antes de qualquer texto ir à IA, o sistema troca nome, CPF, telefone, e-mail, endereço e datas por códigos, mostra ao psicólogo o texto exato que será enviado e só envia depois da confirmação. O filtro reduz o risco, mas não é perfeito. Todo rascunho feito pela IA precisa ser lido e aprovado pelo psicólogo. A IA vem desligada por padrão.',
+            'Antes de qualquer texto ir à IA, o sistema troca por códigos o nome do paciente cadastrado, CPF, telefone, e-mail, CEP e endereço com número, datas completas (como 10/05/2026) e os termos que o psicólogo marcar. Nome de outras pessoas, endereço sem número e data por extenso não são trocados sozinhos: o filtro reduz o risco, mas não é perfeito. O psicólogo vê o texto exato que será enviado e só depois da confirmação dele o envio acontece. O texto já com códigos vai a um serviço de IA de terceiros (hoje, o Google Gemini, por meio do SelahIA); o que esse serviço faz com ele segue os termos dele. A IA só é usada para pacientes com consentimento concedido e vem desligada por padrão. O que ela escreve é só um rascunho: ele vira documento aprovado quando o psicólogo o aprova.',
         },
         {
           id: 'consentimento',
@@ -85,7 +86,7 @@ export const CONTEUDO_SEGURANCA: ConteudoSeguranca = {
           status: 'feito',
           titulo: 'Senhas fortes e guardadas com segurança.',
           texto:
-            'A senha precisa ter pelo menos 10 caracteres e não pode ser uma senha comum; ela é guardada só como hash (bcrypt), nunca em texto.',
+            'A senha precisa ter pelo menos 10 caracteres e não pode constar numa lista de senhas comuns; ela é guardada só como hash (bcrypt), nunca em texto.',
         },
         {
           id: 'tentativas',
@@ -143,10 +144,31 @@ export const CONTEUDO_SEGURANCA: ConteudoSeguranca = {
           texto: 'Ainda não foi escrito.',
         },
         {
+          id: 'ia-real',
+          status: 'pendente',
+          titulo: 'IA com dados reais.',
+          texto:
+            'Ainda não liberada: a IA só foi testada com textos fictícios, e o plano pago do serviço de IA é exigido antes de qualquer dado real passar por ela.',
+        },
+        {
+          id: 'dono-banco',
+          status: 'pendente',
+          titulo: 'Proteção contra quem administra o servidor.',
+          texto:
+            'As travas do banco valem contra o aplicativo. Quem tiver a credencial de administrador do banco consegue contorná-las, e quem tiver a chave mestra consegue decifrar os dados. Planejado: credencial de administrador fora do aplicativo, banco em rede privada, conexão cifrada com o banco e firewall.',
+        },
+        {
+          id: 'auditoria-tela',
+          status: 'pendente',
+          titulo: 'Consultar o registro de acessos.',
+          texto: 'O registro existe, mas ainda não há tela para consultá-lo.',
+        },
+        {
           id: 'estado',
           status: 'pendente',
           titulo: 'Estado do produto.',
-          texto: 'O Notta.psi ainda está em desenvolvimento.',
+          texto:
+            'O Notta.psi ainda está em desenvolvimento e não foi publicado em produção. Quando for publicado, a hospedagem e o local onde os dados ficam serão informados aqui.',
         },
       ],
     },

@@ -67,6 +67,15 @@ describe('SegurancaPage', () => {
     }
   });
 
+  it('nao esconde o que um paciente precisa saber: IA de terceiros, o que nao e cifrado e o limite do administrador do banco', () => {
+    const texto = (id: string) => el().querySelector(`[data-id="${id}"]`)?.textContent ?? '';
+    expect(texto('ia')).toContain('terceiros');
+    expect(texto('ia')).toContain('Google Gemini');
+    expect(texto('cifra')).toContain('Nem tudo é cifrado');
+    expect(texto('aprovado')).toContain('administrador ao banco');
+    expect(texto('dono-banco')).toContain('chave mestra');
+  });
+
   it('mostra o rodape do conteudo', () => {
     expect(el().textContent).toContain(CONTEUDO_SEGURANCA.rodape);
   });
