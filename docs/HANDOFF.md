@@ -4,10 +4,10 @@ Este documento é para um agente de código (Codex ou outro Claude) que vai cont
 
 ## 0. Primeiros passos (faça nesta ordem)
 
-1. `git status` e `git log --oneline | head -15` (a árvore deve estar limpa; o último trabalho é o item 25).
+1. `git status` e `git log --oneline | head -15` (a árvore deve estar limpa; o último trabalho foi o item 25, backup e rotação da chave mestra).
 2. Leia `docs/FEATURES.md` (ordem e estado), `docs/ACESSO.md` (regras de acesso e padrões de banco) e, se existir, `.superpowers/sdd/fase-1/contrato.md` (contratos e decisões do dono, item por item).
 3. Suba o banco (seção 3), rode `npx prisma migrate deploy` e os gates do back e do front (seção 3) para confirmar que tudo está verde ANTES de mexer.
-4. Faça a seção 5 (fechar o item 25) e depois a seção 6, um item por vez, parando para perguntar nas decisões da seção 7.
+4. Leia a seção 5 (onde parou) e siga a seção 6, um item por vez, parando para perguntar nas decisões da seção 7.
 
 ## 1. O que é o produto
 
@@ -51,7 +51,7 @@ Para subir o app à mão: gere `NOTTA_MASTER_KEY` (`npm run -s chave:gerar`) e `
 
 ## 4. O que já está pronto e verificado
 
-Itens de `docs/FEATURES.md` feitos e verificados (`[x]`): 1 a 22, 41, 42, 44, 45, 46, 49, 51, 57 a 64 e a Fase 1.6. O item 25 está `[~]` (seção 5); o 23 e o 24 estão abertos. Resumo do que existe:
+Itens de `docs/FEATURES.md` feitos e verificados (`[x]`): 1 a 22, 25, 41, 42, 44, 45, 46, 49, 51, 57 a 64 e a Fase 1.6. Os itens 23 e 24 estão abertos. Resumo do que existe:
 
 - **Isolamento:** todo dado de clínica tem `clinicaId` e RLS ENABLE + FORCE. Cada psicólogo lê só os próprios pacientes e documentos (padrão `psicologo_proprio`, `docs/ACESSO.md`); o ADMIN gerencia a equipe e atende os próprios pacientes, mas não lê prontuário de colega. FKs filhas incluem `psicologoId`, porque checagem de FK ignora RLS.
 - **Criptografia:** AES-256-GCM, chave por clínica derivada por HKDF de uma chave mestra, formato `v1.<kid>.<iv>.<tag>.<ct>`, AAD obrigatório (`aadDe(tabela, coluna, id, psicologoId)`), chaveiro com várias chaves (`k1`, `k2`...) e `kid` lido do próprio valor (sem fallback). Paciente (nome, nascimento, telefone, e-mail) e conteúdo de documento ficam cifrados.
@@ -65,27 +65,27 @@ Itens de `docs/FEATURES.md` feitos e verificados (`[x]`): 1 a 22, 41, 42, 44, 45
 
 Os contratos de cada item e os relatórios dos agentes estão em `.superpowers/sdd/fase-1/` (pasta ignorada pelo git, só existe nesta máquina: `contrato.md`, `task-*-brief.md`, `task-*-report.md` explicam decisões e COMO USAR de cada etapa).
 
-## 5. O que está em andamento agora (termine isto primeiro)
+## 5. Onde parou
 
-**Item 25, backup e rotação da chave mestra (`[~]`).** Desenvolvimento pronto e commitado (commits `772c080`, `4089123`, `afc2516`, `2b8c2bb`, `9706b72`, mais `1f71e91` da revisão parcial): chaveiro com várias chaves, `npm run chave:gerar`, `npm run recifrar -- [--clinica <id>] [--lote N] [--dry-run]` (só como `notta_owner`; migration `20261109120000_recifrar_dono` com policies do dono guardadas pela flag `app.recifrar` e exceção nos triggers de `Documento` e `GeracaoIa` só para a coluna cifrada), `backend/scripts/backup.sh`, `backend/scripts/verificar-backup.sh` e `docs/BACKUP-E-CHAVES.md`. Gates verdes (seção 3).
+Nada está pela metade. O último item fechado foi o **25, backup e rotação da chave mestra** (`[x]`), com desenvolvimento feito por dois agentes Haiku e revisão e correção por um Sonnet (commits `772c080` a `a6e4a75`). O que existe:
+- Chaveiro com várias chaves mestras (`NOTTA_MASTER_KEYS` e `NOTTA_MASTER_KEY_ATUAL`), `npm run -s chave:gerar`, comando `npm run recifrar -- [--clinica <id>] [--lote N] [--dry-run]` (só como `notta_owner`; migration `20261109120000_recifrar_dono`), scripts `backend/scripts/backup.sh` e `verificar-backup.sh` e o guia `docs/BACKUP-E-CHAVES.md`.
+- O revisor rodou todos os mutantes do contrato (todos derrubam teste; lacunas viraram testes), achou e fechou lacunas, corrigiu `umask`, `set --` e documentação, e achou a causa do teste instável `documentos-rls` (`TRUNCATE` pede lock exclusivo antes do trigger barrar): as 3 suites com `TRUNCATE` do dono foram para o grupo serial.
+- O ciclo real de backup e restauração foi provado com um Postgres 16.2 descartável (backup, verificação, byte corrompido, chave errada e senha errada: todos FALHAM). Exige `pg_dump` da MESMA versão do servidor (o guia explica).
 
-**O que falta (revisão e correção, obrigatória por ser criptografia):** o revisor Sonnet foi interrompido no meio. Já entraram: `umask 077` nos scripts, um teste de kid desconhecido sem fallback e a correção do teste instável `documentos-rls` (as suites com `TRUNCATE` foram para o grupo serial). Falta:
-1. Rodar os mutantes do contrato (`contrato.md`, seção "Item 25", linha "Mutantes (do revisor)"), um por vez, confirmando que algum teste cai e que nada fica aplicado: trigger sem a checagem de `current_user`; trigger sem exigir que só a coluna cifrada mude; policy do dono sem a flag; recifrar sem a conferência de ida e volta; decifrar com fallback para a chave atual; `kid` ignorado; remover a checagem de ambiguidade no boot; backup aceitando senha curta; verificar-backup sem apagar o banco temporário. Mutante que não derruba teste vira teste novo.
-2. Revisar o diff completo (`git diff 772c080~1..HEAD`) procurando segredo em log, senha de backup visível no `ps`, SQL por concatenação, limpeza que não roda em falha, exceção de trigger larga demais (conferir TODAS as colunas de `Documento`, inclusive `atualizadoEm` e `dataSessao`), doc que promete mais do que o código faz.
-3. Rodar o ciclo real `backup` e `verificar:backup` (com um byte corrompido tem que FALHAR), que depende do Docker (`PGDUMP_CMD="docker exec -i nottapsi-postgres-1 pg_dump -U postgres"` e equivalentes).
-4. Então marcar `[x]` o item 25.
+**Sem prova ainda:** recifragem multi-clínica com dados reais; dois processos `recifrar` ao mesmo tempo; restauração num cluster sem os papéis `notta_owner` e `notta_app`; backup agendado (é o item 56).
+
+**Estado do ambiente em 2026-11-07:** árvore do git limpa; Postgres embutido 18 de pé na porta 5436 (o Docker estava fora do ar; o container do Notta.psi está parado); o SelahIA local está parado; nenhum servidor de teste rodando. Gates verdes no Postgres 18: 693 unit, 485 e2e em paralelo, 91 em série; o front tinha 598 testes verdes (rodar de novo antes de mexer).
 
 ## 6. O que falta (ordem recomendada)
 
-1. **Fechar o item 25** (seção 5).
-2. **Fase 4 sem dependência externa:** 23 página de transparência de segurança (front, com o que já existe), 26 exportar e excluir dados (LGPD; precisa de decisão do dono), 52 retenção e descarte (inclui retenção das tabelas `Sessao` e do que ficou `RESTRICT`), 54 plano de incidente (processo, escrever um documento).
-3. **Depende do dono comprar o domínio** (o provedor de e-mail escolhido é o **Resend**, que exige domínio verificado): 24 recuperar senha e confirmar e-mail, 65 convite por e-mail de uso único (fecha o risco I-1), 47 MFA por código de e-mail, 48 bloqueio de conta e aviso de novo login. O domínio também serve para `NOTTA_APP_URL` e o deploy.
-4. **Antes de abrir para clínicas:** 66 ajustar o texto do painel de sigilo e a mensagem de 503 do login ao que o código realmente garante, 67 transferir pacientes de psicólogo desativado.
-5. **Fase 5 (uso diário):** 27 linha do tempo, 28 busca (o texto é cifrado; a lista de pacientes hoje carrega no máximo 500 e ordena no app, precisa de paginação aqui), 29 ajuste de linguagem técnica, 30 exportar PDF ou Word.
-6. **Fase 6 (comercial):** 31 landing page (use a skill de design de landing, não o design system do app), 32 lista de early access, 33 planos e cobrança, 53 monitoramento e alertas.
-7. **Fase 8 (pedidos de uma psicóloga, itens 34 a 36 e 68 a 78):** acompanhamento entre sessões por link (o que ela chamou de diferencial), resumo semanal, alerta de risco com revisão humana, estilo de escrita do psicólogo, comparar registros, resumo pré-sessão, agenda, vídeo, financeiro, recibos, indicadores, repasse e os 3 planos. **Decisão do dono já tomada:** agenda e vídeo por **Google Agenda e Google Meet** (espelho de mão única do Notta.psi para o Google, evento com título genérico e o paciente FORA do evento, link do Meet enviado ao paciente pelo próprio Notta.psi); vídeo próprio é opção futura. A proposta dos planos (Individual, Plus, Premium) está no fim de `docs/FEATURES.md` como rascunho.
-8. **Antes do deploy:** 56 hardening de infraestrutura (TLS no banco, banco em rede privada, firewall, backups cifrados com restauração testada, a credencial `notta_owner` fora do app, testar a receita de CSP no nginx real), 43 CI (o dono pediu deixar por último: testes, lint, `npm audit` e testes de RLS obrigatórios antes de merge), 55 teste de invasão externo e checklist OWASP ASVS.
-9. **Fase 7 (áudio, documentos formais, bucket externo, mais de um provedor de IA):** fora do escopo atual.
+1. **Fase 4 sem dependência externa:** 23 página de transparência de segurança (front, com o que já existe), 26 exportar e excluir dados (LGPD; precisa de decisão do dono), 52 retenção e descarte (inclui retenção das tabelas `Sessao` e do que ficou `RESTRICT`), 54 plano de incidente (processo, escrever um documento).
+2. **Depende do dono comprar o domínio** (o provedor de e-mail escolhido é o **Resend**, que exige domínio verificado): 24 recuperar senha e confirmar e-mail, 65 convite por e-mail de uso único (fecha o risco I-1), 47 MFA por código de e-mail, 48 bloqueio de conta e aviso de novo login. O domínio também serve para `NOTTA_APP_URL` e o deploy.
+3. **Antes de abrir para clínicas:** 66 ajustar o texto do painel de sigilo e a mensagem de 503 do login ao que o código realmente garante, 67 transferir pacientes de psicólogo desativado.
+4. **Fase 5 (uso diário):** 27 linha do tempo, 28 busca (o texto é cifrado; a lista de pacientes hoje carrega no máximo 500 e ordena no app, precisa de paginação aqui), 29 ajuste de linguagem técnica, 30 exportar PDF ou Word.
+5. **Fase 6 (comercial):** 31 landing page (use a skill de design de landing, não o design system do app), 32 lista de early access, 33 planos e cobrança, 53 monitoramento e alertas.
+6. **Fase 8 (pedidos de uma psicóloga, itens 34 a 36 e 68 a 78):** acompanhamento entre sessões por link (o que ela chamou de diferencial), resumo semanal, alerta de risco com revisão humana, estilo de escrita do psicólogo, comparar registros, resumo pré-sessão, agenda, vídeo, financeiro, recibos, indicadores, repasse e os 3 planos. **Decisão do dono já tomada:** agenda e vídeo por **Google Agenda e Google Meet** (espelho de mão única do Notta.psi para o Google, evento com título genérico e o paciente FORA do evento, link do Meet enviado ao paciente pelo próprio Notta.psi); vídeo próprio é opção futura. A proposta dos planos (Individual, Plus, Premium) está no fim de `docs/FEATURES.md` como rascunho.
+7. **Antes do deploy:** 56 hardening de infraestrutura (TLS no banco, banco em rede privada, firewall, backups cifrados com restauração testada, a credencial `notta_owner` fora do app, testar a receita de CSP no nginx real), 43 CI (o dono pediu deixar por último: testes, lint, `npm audit` e testes de RLS obrigatórios antes de merge), 55 teste de invasão externo e checklist OWASP ASVS.
+8. **Fase 7 (áudio, documentos formais, bucket externo, mais de um provedor de IA):** fora do escopo atual.
 
 ## 7. Decisões abertas do dono (pergunte, não decida)
 
