@@ -141,7 +141,8 @@ export const CONTEUDO_SEGURANCA: ConteudoSeguranca = {
           id: 'incidente',
           status: 'pendente',
           titulo: 'Plano de resposta a incidentes.',
-          texto: 'Ainda não foi escrito.',
+          texto:
+            'Existe um rascunho do plano, ainda não revisado por advogado nem ensaiado em simulado.',
         },
         {
           id: 'ia-real',

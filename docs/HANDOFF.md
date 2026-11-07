@@ -51,7 +51,7 @@ Para subir o app à mão: gere `NOTTA_MASTER_KEY` (`npm run -s chave:gerar`) e `
 
 ## 4. O que já está pronto e verificado
 
-Itens de `docs/FEATURES.md` feitos e verificados (`[x]`): 1 a 23, 25, 41, 42, 44, 45, 46, 49, 51, 57 a 64 e a Fase 1.6. O item 24 está aberto. Resumo do que existe:
+Itens de `docs/FEATURES.md` feitos e verificados (`[x]`): 1 a 23, 25, 41, 42, 44, 45, 46, 49, 51, 57 a 64 e a Fase 1.6. O item 24 está aberto e o 54 está `[~]` (rascunho de `docs/PLANO-DE-INCIDENTE.md` entregue; falta revisão de advogado e um simulado). Resumo do que existe:
 
 - **Isolamento:** todo dado de clínica tem `clinicaId` e RLS ENABLE + FORCE. Cada psicólogo lê só os próprios pacientes e documentos (padrão `psicologo_proprio`, `docs/ACESSO.md`); o ADMIN gerencia a equipe e atende os próprios pacientes, mas não lê prontuário de colega. FKs filhas incluem `psicologoId`, porque checagem de FK ignora RLS.
 - **Criptografia:** AES-256-GCM, chave por clínica derivada por HKDF de uma chave mestra, formato `v1.<kid>.<iv>.<tag>.<ct>`, AAD obrigatório (`aadDe(tabela, coluna, id, psicologoId)`), chaveiro com várias chaves (`k1`, `k2`...) e `kid` lido do próprio valor (sem fallback). Paciente (nome, nascimento, telefone, e-mail) e conteúdo de documento ficam cifrados.
@@ -80,7 +80,7 @@ Item 23 (página pública `/seguranca`): feito por Haiku e revisado por Sonnet, 
 
 ## 6. O que falta (ordem recomendada)
 
-1. **Fase 4 sem dependência externa:** 26 exportar e excluir dados (LGPD; precisa de decisão do dono), 52 retenção e descarte (inclui retenção das tabelas `Sessao` e do que ficou `RESTRICT`), 54 plano de incidente (processo, escrever um documento).
+1. **Fase 4 sem dependência externa:** 26 exportar e excluir dados (LGPD; precisa de decisão do dono), 52 retenção e descarte (inclui retenção das tabelas `Sessao` e do que ficou `RESTRICT`). O 54 (plano de incidente) tem rascunho pronto em `docs/PLANO-DE-INCIDENTE.md`: o dono precisa decidir encarregado, qualificação jurídica (controlador ou operador) e fazer um simulado.
 2. **Depende do dono comprar o domínio** (o provedor de e-mail escolhido é o **Resend**, que exige domínio verificado): 24 recuperar senha e confirmar e-mail, 65 convite por e-mail de uso único (fecha o risco I-1), 47 MFA por código de e-mail, 48 bloqueio de conta e aviso de novo login. O domínio também serve para `NOTTA_APP_URL` e o deploy.
 3. **Antes de abrir para clínicas:** 66 ajustar o texto do painel de sigilo e a mensagem de 503 do login ao que o código realmente garante, 67 transferir pacientes de psicólogo desativado.
 4. **Fase 5 (uso diário):** 27 linha do tempo, 28 busca (o texto é cifrado; a lista de pacientes hoje carrega no máximo 500 e ordena no app, precisa de paginação aqui), 29 ajuste de linguagem técnica, 30 exportar PDF ou Word.

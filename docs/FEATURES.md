@@ -72,7 +72,7 @@ Numeração separada para não quebrar as referências da Fase 1 em andamento. A
 - [x] 49. [F] Sessão em cookie httpOnly com proteção CSRF, CSP e nada de innerHTML — Fase 4
 - [ ] 50. [B] Cifrar identificadores do paciente em repouso (nome, CPF, telefone, e-mail, endereço; decisão do dono) — Fase 4, antes de dado real
 - [ ] 52. [B] Retenção e descarte: expirar rascunhos antigos, apagar nota bruta, limpar backup e WAL — Fase 4
-- [ ] 54. [processo] Plano de incidente e notificação de vazamento (LGPD/ANPD) — antes de dado real
+- [~] 54. [processo] Plano de incidente e notificação de vazamento (LGPD/ANPD) — antes de dado real
 - [ ] 53. [B] Monitoramento e alertas de segurança (falhas de login, picos, erros 5xx; logs sem dado clínico) — Fase 6
 - [ ] 56. [B] Hardening de infraestrutura: TLS no banco, banco em rede privada, firewall, backups cifrados com restauração testada — antes do deploy
 - [ ] 55. [processo] Teste de invasão externo e checklist OWASP ASVS — antes do lançamento
