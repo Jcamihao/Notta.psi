@@ -17,6 +17,7 @@ import {
   LucideAngularModule,
   Menu,
   MonitorOff,
+  ShieldCheck,
   UserRound,
   Users,
   X,
@@ -104,6 +105,15 @@ import { NavItemComponent } from '../ui/nav-item.component';
               [icon]="icones.KeyRound"
             >
               Trocar senha
+            </a>
+            <a
+              app-nav-item
+              routerLink="/seguranca"
+              routerLinkActive
+              ariaCurrentWhenActive="page"
+              [icon]="icones.ShieldCheck"
+            >
+              Segurança
             </a>
           </nav>
         }
@@ -352,7 +362,18 @@ export class ShellComponent {
   private readonly cancelar = viewChild('cancelar', { read: ElementRef });
   private readonly pedir = viewChild('pedir', { read: ElementRef });
 
-  readonly icones = { CircleCheck, House, KeyRound, LogOut, Menu, MonitorOff, UserRound, Users, X };
+  readonly icones = {
+    CircleCheck,
+    House,
+    KeyRound,
+    LogOut,
+    Menu,
+    MonitorOff,
+    ShieldCheck,
+    UserRound,
+    Users,
+    X,
+  };
   readonly usuario = this.sessao.usuario;
   readonly ehAdmin = this.sessao.ehAdmin;
   readonly obrigatoria = this.sessao.senhaProvisoria;

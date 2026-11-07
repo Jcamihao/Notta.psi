@@ -92,6 +92,17 @@
                 "input": "public"
               }
             ],
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              },
+              {
+                "glob": "SEGURANCA-AFIRMACOES.md",
+                "input": "../docs",
+                "output": "/"
+              }
+            ],
             "styles": ["src/styles.scss"]
           }
         },

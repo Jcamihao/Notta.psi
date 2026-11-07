@@ -154,4 +154,9 @@ describe('LoginPage', () => {
           .not.toBeNull();
       });
   });
+
+  it('tem link "Como protegemos os dados" para /seguranca', () => {
+    const a = (fixture.nativeElement as HTMLElement).querySelector('a[href="/seguranca"]');
+    expect(a?.textContent?.trim()).toBe('Como protegemos os dados');
+  });
 });

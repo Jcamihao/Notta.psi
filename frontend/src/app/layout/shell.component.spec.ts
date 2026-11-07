@@ -49,6 +49,11 @@ describe('ShellComponent', () => {
     expect(el().querySelector('main router-outlet')).not.toBeNull();
   });
 
+  it('menu tem o item Segurança para /seguranca (desktop e mobile usam o mesmo menu)', () => {
+    const a = el().querySelector('header nav a[href="/seguranca"]');
+    expect(a?.textContent?.trim()).toBe('Segurança');
+  });
+
   it('mostra o nome da clinica e do psicologo no cabecalho', () => {
     const topo = el().querySelector('header')!.textContent!;
     expect(topo).toContain('Clinica Horizonte');

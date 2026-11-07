@@ -292,4 +292,10 @@ describe('TermoPage', () => {
       for (const s of consoleSpies) expect(s).not.toHaveBeenCalled();
     });
   });
+
+  it('rodape do termo tem link "Como protegemos os seus dados" para /seguranca', async () => {
+    await abrir();
+    const a = (fixture.nativeElement as HTMLElement).querySelector('a[href="/seguranca"]');
+    expect(a?.textContent?.trim()).toBe('Como protegemos os seus dados');
+  });
 });
