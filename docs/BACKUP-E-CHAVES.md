@@ -126,5 +126,6 @@ Se algo der errado no meio: a chave antiga continua na lista. O sistema segue fu
 
 - O `openssl` com senha prova que o arquivo nao foi alterado (pelo sha256) e que a senha confere, mas nao tem autenticacao propria do conteudo. Em producao, prefira `age` ou um KMS. Isso e tratado no item 56.
 - Este guia nao agenda backup. Backup automatico (cron, retencao, copia para fora) e o item 56.
+- `pg_dump`, `pg_restore` e `psql` precisam ser da mesma versao do servidor (ou mais nova): o `pg_dump` 16 recusa um servidor 18 ("server version mismatch"). Use os binarios do proprio servidor, por exemplo via `PGDUMP_CMD`.
 - A verificacao de restauracao prova uma amostra por coluna, nao o banco inteiro linha a linha.
 - A verificacao precisa da chave certa do ambiente. Se a chave nao bate, o backup esta bom mas a verificacao falha: isso e de proposito, para nao dar falsa seguranca.
