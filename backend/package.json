@@ -22,6 +22,7 @@
     "scan:segredos": "node scripts/scan-segredos.mjs",
     "chave:gerar": "node scripts/gerar-chave.mjs",
     "recifrar": "node dist/ferramentas/recifrar.js",
+    "descartar": "node dist/ferramentas/descartar.js",
     "backup": "bash scripts/backup.sh",
     "verificar:backup": "bash scripts/verificar-backup.sh"
   },
