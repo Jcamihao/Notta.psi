@@ -17,7 +17,7 @@ import {
   SelahIaClient,
 } from '../ia/selahia.client';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
-import { aadGeracao } from './geracao-ia.tipos';
+import { aadGeracao, SO_PACIENTE_VIVO } from './geracao-ia.tipos';
 
 type Dono = Pick<UsuarioAutenticado, 'clinicaId' | 'psicologoId'>;
 type Falha = { motivo: string; retentavel: boolean };
@@ -58,6 +58,7 @@ export class GeracaoIaExecutor {
           clinicaId: user.clinicaId,
           psicologoId: user.psicologoId,
           estado: 'PENDENTE',
+          ...SO_PACIENTE_VIVO,
         },
       }),
     );

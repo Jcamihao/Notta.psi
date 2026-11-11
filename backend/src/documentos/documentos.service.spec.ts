@@ -175,6 +175,7 @@ describe('DocumentosService.criar', () => {
       id: pacienteId,
       clinicaId: user.clinicaId,
       psicologoId: user.psicologoId,
+      excluidoEm: null,
     });
     expect(exigirConcedido).not.toHaveBeenCalled();
     expect(tx.documento.create).not.toHaveBeenCalled();
@@ -249,6 +250,7 @@ describe('DocumentosService.obter', () => {
       pacienteId,
       clinicaId: user.clinicaId,
       psicologoId: user.psicologoId,
+      paciente: { excluidoEm: null },
     });
     expect(registrar).toHaveBeenCalledWith(tx, user, 'LEU', 'Documento', id);
     registrar.mockClear();
@@ -294,6 +296,7 @@ describe('DocumentosService.editar', () => {
       pacienteId,
       clinicaId: user.clinicaId,
       psicologoId: user.psicologoId,
+      paciente: { excluidoEm: null },
       status: 'RASCUNHO',
     });
     const novo = (args.data as { conteudoCifrado: string }).conteudoCifrado;
@@ -349,6 +352,7 @@ describe('DocumentosService.aprovar', () => {
       pacienteId,
       clinicaId: user.clinicaId,
       psicologoId: user.psicologoId,
+      paciente: { excluidoEm: null },
       status: 'RASCUNHO',
     });
     expect(args.data).toEqual({
@@ -406,6 +410,7 @@ describe('DocumentosService.criar com substituiId', () => {
       pacienteId,
       clinicaId: user.clinicaId,
       psicologoId: user.psicologoId,
+      paciente: { excluidoEm: null },
     });
   });
 

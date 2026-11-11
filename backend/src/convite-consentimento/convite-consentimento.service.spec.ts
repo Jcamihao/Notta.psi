@@ -132,7 +132,7 @@ describe('ConviteConsentimentoService.criar', () => {
       NotFoundException,
     );
     expect(tx.paciente.findFirst.mock.calls[0][0]).toEqual({
-      where: { id: pacienteId, ...dono },
+      where: { id: pacienteId, ...dono, excluidoEm: null },
       select: { id: true },
     });
     expect(tx.conviteConsentimento.create).not.toHaveBeenCalled();

@@ -197,7 +197,8 @@ export class PacientesService {
   private traduzirErroDaFuncao(e: unknown): unknown {
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
       const codigo = (e.meta as { code?: string } | undefined)?.code;
-      if (codigo === SQL_NAO_ENCONTRADO) return new NotFoundException(NAO_ENCONTRADO);
+      if (codigo === SQL_NAO_ENCONTRADO)
+        return new NotFoundException(NAO_ENCONTRADO);
       if (codigo === SQL_TOMBSTONE_AUSENTE) {
         return new ConflictException(
           'Paciente mudou durante a exclusao; tente de novo',

@@ -91,7 +91,7 @@ describe('GeracaoIaService.previa', () => {
       tipoDocumento: 'EVOLUCAO',
     });
     expect(tx.paciente.findFirst).toHaveBeenCalledWith({
-      where: { id: pacienteId, ...dono },
+      where: { id: pacienteId, ...dono, excluidoEm: null },
     });
     expect(tx.documento.findFirst).toHaveBeenCalledWith({
       where: { id: origemId, pacienteId, ...dono },

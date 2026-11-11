@@ -336,9 +336,7 @@ function montarExcluir(opcoes: {
   const tx = {
     paciente: {
       findFirst: jest.fn(() =>
-        Promise.resolve(
-          opcoes.pacienteAchado === false ? null : { id: PID },
-        ),
+        Promise.resolve(opcoes.pacienteAchado === false ? null : { id: PID }),
       ),
     },
     documento: {
@@ -351,8 +349,9 @@ function montarExcluir(opcoes: {
         Promise.resolve((opcoes.geracoes ?? []).map((id) => ({ id }))),
       ),
     },
-    $queryRaw: jest.fn((_strings: TemplateStringsArray, ...valores: unknown[]) =>
-      chamadaFuncao(...valores),
+    $queryRaw: jest.fn(
+      (_strings: TemplateStringsArray, ...valores: unknown[]) =>
+        chamadaFuncao(...valores),
     ),
   };
   const tenant = {
@@ -377,10 +376,16 @@ const GER_A = randomUUID();
 
 describe('PacientesService.excluir', () => {
   it('filtra paciente pelo token e so os vivos (excluidoEm null); 1 transacao', async () => {
-    const { tx, tenant, service } = montarExcluir({ docs: [DOC_A], geracoes: [GER_A] });
+    const { tx, tenant, service } = montarExcluir({
+      docs: [DOC_A],
+      geracoes: [GER_A],
+    });
     await service.excluir(user, PID);
     expect(tenant.runComoUsuario).toHaveBeenCalledTimes(1);
-    expect(tenant.runComoUsuario).toHaveBeenCalledWith(user, expect.any(Function));
+    expect(tenant.runComoUsuario).toHaveBeenCalledWith(
+      user,
+      expect.any(Function),
+    );
     expect(tx.paciente.findFirst.mock.calls[0][0].where).toEqual({
       id: PID,
       clinicaId: user.clinicaId,
@@ -413,48 +418,87 @@ describe('PacientesService.excluir', () => {
       string,
     ];
     const docs = JSON.parse(docsJson) as Record<string, string>;
-    const ger = JSON.parse(gerJson) as Record<string, { texto: string; mapa: string }>;
+    const ger = JSON.parse(gerJson) as Record<
+      string,
+      { texto: string; mapa: string }
+    >;
     expect(Object.keys(docs).sort()).toEqual([DOC_A, DOC_B].sort());
     expect(Object.keys(ger)).toEqual([GER_A]);
 
     const psic = user.psicologoId;
     expect(
-      cripto.decifrar(user.clinicaId, nomeT, aadDe('Paciente', 'nomeCifrado', PID, psic)),
+      cripto.decifrar(
+        user.clinicaId,
+        nomeT,
+        aadDe('Paciente', 'nomeCifrado', PID, psic),
+      ),
     ).toBe('Paciente excluido');
     for (const id of [DOC_A, DOC_B]) {
       expect(
-        cripto.decifrar(user.clinicaId, docs[id], aadDe('Documento', 'conteudoCifrado', id, psic)),
+        cripto.decifrar(
+          user.clinicaId,
+          docs[id],
+          aadDe('Documento', 'conteudoCifrado', id, psic),
+        ),
       ).toBe('Conteudo excluido a pedido (LGPD)');
     }
     expect(
-      cripto.decifrar(user.clinicaId, ger[GER_A].texto, aadGeracao('textoCifrado', GER_A, psic)),
+      cripto.decifrar(
+        user.clinicaId,
+        ger[GER_A].texto,
+        aadGeracao('textoCifrado', GER_A, psic),
+      ),
     ).toBe('Conteudo excluido a pedido (LGPD)');
     expect(
-      cripto.decifrar(user.clinicaId, ger[GER_A].mapa, aadGeracao('mapaCifrado', GER_A, psic)),
+      cripto.decifrar(
+        user.clinicaId,
+        ger[GER_A].mapa,
+        aadGeracao('mapaCifrado', GER_A, psic),
+      ),
     ).toBe('{}');
     // Tombstone nao decifra com AAD de outra linha (cada um e vinculado a sua linha).
     expect(() =>
-      cripto.decifrar(user.clinicaId, docs[DOC_A], aadDe('Documento', 'conteudoCifrado', DOC_B, psic)),
+      cripto.decifrar(
+        user.clinicaId,
+        docs[DOC_A],
+        aadDe('Documento', 'conteudoCifrado', DOC_B, psic),
+      ),
     ).toThrow();
   });
 
   it('nunca grava texto clinico original: os cifrados enviados nao sao o texto', async () => {
-    const { chamadaFuncao, service } = montarExcluir({ docs: [DOC_A], geracoes: [GER_A] });
+    const { chamadaFuncao, service } = montarExcluir({
+      docs: [DOC_A],
+      geracoes: [GER_A],
+    });
     await service.excluir(user, PID);
     const todos = JSON.stringify(chamadaFuncao.mock.calls[0]);
-    expect(todos).not.toMatch(/Conteudo excluido a pedido \(LGPD\)|Paciente excluido/);
+    expect(todos).not.toMatch(
+      /Conteudo excluido a pedido \(LGPD\)|Paciente excluido/,
+    );
   });
 
   it('devolve { excluidoEm } em ISO e audita EXCLUIU na mesma transacao, so quando exclui', async () => {
-    const { tx, service, registrar, excluidoEm } = montarExcluir({ docs: [], geracoes: [] });
+    const { tx, service, registrar, excluidoEm } = montarExcluir({
+      docs: [],
+      geracoes: [],
+    });
     const r = await service.excluir(user, PID);
     expect(r).toEqual({ excluidoEm: excluidoEm.toISOString() });
     expect(registrar).toHaveBeenCalledTimes(1);
-    expect(registrar).toHaveBeenCalledWith(tx, user, 'EXCLUIU', 'Paciente', PID);
+    expect(registrar).toHaveBeenCalledWith(
+      tx,
+      user,
+      'EXCLUIU',
+      'Paciente',
+      PID,
+    );
   });
 
   it('paciente inexistente, alheio ou ja excluido: 404 identico, sem funcao e sem auditoria', async () => {
-    const { chamadaFuncao, service, registrar } = montarExcluir({ pacienteAchado: false });
+    const { chamadaFuncao, service, registrar } = montarExcluir({
+      pacienteAchado: false,
+    });
     const erro = await service.excluir(user, PID).catch((e: unknown) => e);
     expect(erro).toBeInstanceOf(NotFoundException);
     expect((erro as NotFoundException).message).toBe('Paciente nao encontrado');
@@ -466,7 +510,8 @@ describe('PacientesService.excluir', () => {
     const { service, registrar } = montarExcluir({
       docs: [],
       geracoes: [],
-      funcao: () => Promise.reject(erroBruto('P0002', 'Paciente nao encontrado')),
+      funcao: () =>
+        Promise.reject(erroBruto('P0002', 'Paciente nao encontrado')),
     });
     await expect(service.excluir(user, PID)).rejects.toThrow(
       new NotFoundException('Paciente nao encontrado'),
@@ -478,7 +523,8 @@ describe('PacientesService.excluir', () => {
     const { service, registrar } = montarExcluir({
       docs: [DOC_A],
       geracoes: [],
-      funcao: () => Promise.reject(erroBruto('22023', 'Tombstone de documento ausente')),
+      funcao: () =>
+        Promise.reject(erroBruto('22023', 'Tombstone de documento ausente')),
     });
     await expect(service.excluir(user, PID)).rejects.toThrow(ConflictException);
     expect(registrar).not.toHaveBeenCalled();

@@ -133,6 +133,7 @@ export class DocumentosService {
           pacienteId,
           clinicaId: user.clinicaId,
           psicologoId: user.psicologoId,
+          paciente: { excluidoEm: null },
         },
       });
       // 404 nao grava: nao existe leitura a registrar.
@@ -248,12 +249,14 @@ export class DocumentosService {
     }
   }
 
+  // Paciente excluido (item 26) some do prontuario: documento dele = 404, como o inexistente.
   private dono(user: UsuarioAutenticado, pacienteId: string, id: string) {
     return {
       id,
       pacienteId,
       clinicaId: user.clinicaId,
       psicologoId: user.psicologoId,
+      paciente: { excluidoEm: null },
     };
   }
 
@@ -295,7 +298,12 @@ export class DocumentosService {
     id: string,
   ) {
     return tx.paciente.findFirst({
-      where: { id, clinicaId: user.clinicaId, psicologoId: user.psicologoId },
+      where: {
+        id,
+        clinicaId: user.clinicaId,
+        psicologoId: user.psicologoId,
+        excluidoEm: null,
+      },
       select: { id: true },
     });
   }

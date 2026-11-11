@@ -152,6 +152,7 @@ describe('ConsentimentoService.registrar', () => {
         id: pacienteId,
         clinicaId: user.clinicaId,
         psicologoId: user.psicologoId,
+        excluidoEm: null,
       },
       select: { id: true },
     });

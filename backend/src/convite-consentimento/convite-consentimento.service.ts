@@ -171,7 +171,7 @@ export class ConviteConsentimentoService {
     pacienteId: string,
   ) {
     const p = await tx.paciente.findFirst({
-      where: { id: pacienteId, ...this.dono(user) },
+      where: { id: pacienteId, ...this.dono(user), excluidoEm: null },
       select: { id: true },
     });
     if (!p) throw new NotFoundException(NAO_ENCONTRADO);

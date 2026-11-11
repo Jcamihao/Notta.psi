@@ -28,7 +28,7 @@ import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { inicioDoDia, proximaMeiaNoite } from './dia-sp';
 import type { PreviaIaDto } from './geracao-ia.dto';
 import { GeracaoIaExecutor } from './geracao-ia.executor';
-import { aadGeracao } from './geracao-ia.tipos';
+import { aadGeracao, SO_PACIENTE_VIVO } from './geracao-ia.tipos';
 
 const PREVIA_VALE_MS = 30 * 60_000;
 // PENDENTE sem terminar ha mais que isso vira FALHOU (o SelahIA espera ate 45 s; o cliente, 50 s).
@@ -93,7 +93,7 @@ export class GeracaoIaService {
     return this.tenant.runComoUsuario(user, async (tx) => {
       const dono = { clinicaId: user.clinicaId, psicologoId: user.psicologoId };
       const paciente = await tx.paciente.findFirst({
-        where: { id: pacienteId, ...dono },
+        where: { id: pacienteId, ...dono, excluidoEm: null },
       });
       if (!paciente) throw new NotFoundException(PACIENTE_NAO_ENCONTRADO);
       const origem = await tx.documento.findFirst({
@@ -166,7 +166,10 @@ export class GeracaoIaService {
     try {
       r = await this.tenant.runComoUsuario(user, async (tx) => {
         await this.expirarPendentes(tx, user);
-        const ler = () => tx.geracaoIa.findFirst({ where: { id, ...dono } });
+        const ler = () =>
+          tx.geracaoIa.findFirst({
+            where: { id, ...dono, ...SO_PACIENTE_VIVO },
+          });
         const g = await ler();
         if (!g) throw new NotFoundException(GERACAO_NAO_ENCONTRADA);
         const pronta = this.respostaSemDisparar(g);
@@ -191,6 +194,7 @@ export class GeracaoIaService {
           where: {
             id,
             ...dono,
+            ...SO_PACIENTE_VIVO,
             OR: [
               { estado: 'PREVIA', expiraEm: { gt: agora } },
               { estado: 'FALHOU', retentavel: true },
@@ -238,6 +242,7 @@ export class GeracaoIaService {
           id,
           clinicaId: user.clinicaId,
           psicologoId: user.psicologoId,
+          ...SO_PACIENTE_VIVO,
         },
       });
     });
@@ -249,7 +254,7 @@ export class GeracaoIaService {
     const linhas = await this.tenant.runComoUsuario(user, async (tx) => {
       const dono = { clinicaId: user.clinicaId, psicologoId: user.psicologoId };
       const paciente = await tx.paciente.findFirst({
-        where: { id: pacienteId, ...dono },
+        where: { id: pacienteId, ...dono, excluidoEm: null },
         select: { id: true },
       });
       if (!paciente) return null;
@@ -272,6 +277,7 @@ export class GeracaoIaService {
           id,
           clinicaId: user.clinicaId,
           psicologoId: user.psicologoId,
+          ...SO_PACIENTE_VIVO,
         },
       });
       if (!g) throw new NotFoundException(GERACAO_NAO_ENCONTRADA);

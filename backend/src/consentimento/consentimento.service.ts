@@ -190,7 +190,12 @@ export class ConsentimentoService {
     id: string,
   ) {
     return tx.paciente.findFirst({
-      where: { id, clinicaId: user.clinicaId, psicologoId: user.psicologoId },
+      where: {
+        id,
+        clinicaId: user.clinicaId,
+        psicologoId: user.psicologoId,
+        excluidoEm: null,
+      },
       select: { id: true },
     });
   }
