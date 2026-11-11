@@ -247,6 +247,19 @@ Decisao do dono (2026-11-05): **previa obrigatoria** (o psicologo ve e confirma 
 - Comando: `npm run recifrar -- [--clinica <id>] [--lote 200] [--dry-run]`, em `backend/`. Saida: so contagens por tabela e coluna, nunca valor ou chave. Sai com 1 se houver falha de verificacao (nada e gravado nessas linhas).
 - Excecao a regra "set_config so no TenantPrismaService": `backend/src/ferramentas/recifrar.ts` (ferramenta do dono, documentada no cabecalho).
 
+## Retencao de rascunhos (item 52A, fatia do back)
+
+- Regra: documento `RASCUNHO` (qualquer tipo, inclusive `NOTTA_BRUTA`) sem edicao ha mais de N dias e apagado de verdade. O criterio e `atualizadoEm` anterior ao corte; cada edicao zera o prazo. N = `NOTTA_RETENCAO_RASCUNHO_DIAS` (inteiro de 1 a 36500, padrao 7). Valor invalido derruba o boot e o comando, sem mostrar o valor.
+- Nunca apagado: `APROVADO`. O trigger `documento_imutavel` barra o DELETE de aprovado para todos os papeis, e a funcao filtra antes. Para guardar um texto, aprove-o.
+- Sai junto: as `GeracaoIa` ligadas ao rascunho, como origem ou como documento gerado (FK RESTRICT: saem antes). Isso inclui a geracao cujo documento gerado ja foi aprovado: o aprovado fica intacto, mas o registro de qual rascunho o originou some. Rascunho de paciente excluido (anonimizado) tambem sai.
+- Pulado: rascunho com `GeracaoIa` `PENDENTE` (executor da IA em voo). Sai numa rodada seguinte, se ainda vencido.
+- Quem apaga: a funcao `descartar_rascunhos_vencidos(corte, lote, simular)` (migration `20261111120000_descartar_rascunhos`). EXECUTE so do dono: `REVOKE` de PUBLIC e de `notta_app`. Ela usa as policies de DELETE do dono que ja existiam (so da clinica do contexto). A flag `app.descartando`, ligada so na transacao, abre a leitura e a auditoria do dono nessa clinica, e nada mais. `notta_app` continua sem DELETE em `Documento`.
+- Auditoria: `DESCARTOU` por documento apagado (`recursoId` = id do documento, dono = dono do documento), na mesma transacao do DELETE.
+- Comando: `npm run descartar -- [--dry-run] [--clinica <id>] [--lote N]` (N de 1 a 5000, padrao 500), em `backend/`, com `DATABASE_URL_OWNER`. Recusa rodar como `notta_app`. Percorre clinica por clinica, em lotes (cada lote e uma transacao curta). `--dry-run` so conta. Dois processos ao mesmo tempo nao apagam o mesmo rascunho (`FOR UPDATE SKIP LOCKED`). Saida: so numeros e ids de clinica. Codigos de saida: 0 ok, 1 erro de banco, 2 uso ou configuracao.
+- Ainda nao agendado: o comando roda na mao. O agendamento e do item 56 (deploy).
+- Para a tela (fatia 52C): a API devolve `descarteEm` (ISO = `atualizadoEm` + prazo) em cada rascunho, nas respostas de listar, obter, criar e editar. Em aprovado vem `null`.
+- Testes: `test/descartar-rascunhos.e2e-spec.ts` (banco, com envelhecimento feito pelo dono), `src/ferramentas/descartar.spec.ts` e `src/comum/retencao.spec.ts`.
+
 ## Exclusao de paciente por anonimizacao (item 26, fatia do back)
 
 - Rota: `DELETE /pacientes/:id` (200 `{ excluidoEm }`). So o proprio psicologo (ADMIN nao exclui paciente de colega). Inexistente, alheio e ja excluido = o MESMO 404 (`P0002` da funcao `anonimizar_paciente`, sem pre-checagem no app). 409 se um documento ou geracao nasceu no meio (tombstone faltando; tente de novo).
