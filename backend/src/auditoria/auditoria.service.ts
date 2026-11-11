@@ -21,6 +21,7 @@ export const ACOES = [
   'REFRESH_REUSADO',
   'SAIU_DE_TODOS',
   'EXCLUIU',
+  'EXPORTOU',
 ] as const;
 export const RECURSOS = [
   'Paciente',

@@ -70,3 +70,20 @@ describe('AuditoriaService.registrar', () => {
     ).rejects.toThrow('banco caiu');
   });
 });
+
+describe('AuditoriaService: exportacao do paciente', () => {
+  it('EXPORTOU (exportacao, item 26) e acao valida, gravada com o id do paciente', async () => {
+    const { create, tx, service } = montar();
+    const id = randomUUID();
+    await service.registrar(tx, user, 'EXPORTOU', 'Paciente', id);
+    expect(create).toHaveBeenCalledWith({
+      data: {
+        clinicaId: user.clinicaId,
+        psicologoId: user.psicologoId,
+        acao: 'EXPORTOU',
+        recurso: 'Paciente',
+        recursoId: id,
+      },
+    });
+  });
+});
