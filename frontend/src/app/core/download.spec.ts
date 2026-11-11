@@ -28,6 +28,7 @@ describe('baixarArquivo', () => {
     (HTMLAnchorElement.prototype.click as jasmine.Spy).and.throwError('falha');
     expect(() => baixarArquivo(new Blob(['x']), 'paciente-abc.json')).toThrowError('falha');
     expect(URL.revokeObjectURL).toHaveBeenCalledOnceWith('blob:teste-1');
+    expect(document.querySelector('a[download]')).toBeNull();
   });
 
   it('nao deixa o <a> no DOM depois do clique', () => {

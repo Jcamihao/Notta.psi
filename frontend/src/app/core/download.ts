@@ -4,15 +4,15 @@ import { InjectionToken } from '@angular/core';
 // logo depois do clique (mesmo se o clique falhar): o conteudo nao fica referenciado na pagina.
 export function baixarArquivo(blob: Blob, nome: string): void {
   const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
   try {
-    const a = document.createElement('a');
     a.href = url;
     a.download = nome;
     a.style.display = 'none';
     document.body.appendChild(a);
     a.click();
-    a.remove();
   } finally {
+    a.remove();
     URL.revokeObjectURL(url);
   }
 }
