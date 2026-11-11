@@ -246,3 +246,11 @@ Decisao do dono (2026-11-05): **previa obrigatoria** (o psicologo ve e confirma 
 - Excecao nos triggers: em documento aprovado e em geracao de IA, so o dono, com `app.recifrar = '1'` na transacao, e so se a coluna cifrada for a unica que muda. Status, datas e identidade continuam imutaveis.
 - Comando: `npm run recifrar -- [--clinica <id>] [--lote 200] [--dry-run]`, em `backend/`. Saida: so contagens por tabela e coluna, nunca valor ou chave. Sai com 1 se houver falha de verificacao (nada e gravado nessas linhas).
 - Excecao a regra "set_config so no TenantPrismaService": `backend/src/ferramentas/recifrar.ts` (ferramenta do dono, documentada no cabecalho).
+
+## Exclusao de paciente por anonimizacao (item 26, fatia do back)
+
+- Rota: `DELETE /pacientes/:id` (200 `{ excluidoEm }`). So o proprio psicologo (ADMIN nao exclui paciente de colega). Inexistente, alheio e ja excluido = o MESMO 404 (`P0002` da funcao `anonimizar_paciente`, sem pre-checagem no app). 409 se um documento ou geracao nasceu no meio (tombstone faltando; tente de novo).
+- O app calcula os tombstones cifrados com o AAD de cada linha e a funcao SQL (dona `notta_owner`, flag `app.anonimizando`) so troca esses valores e marca `excluidoEm`. Auditoria `EXCLUIU` na mesma transacao: se ela falha, nada muda. Mapa da geracao vira `[]` (lista JSON, o executor itera sobre ele).
+- Todo caminho que le paciente, documento, geracao, consentimento ou convite filtra paciente excluido (`excluidoEm: null`, ou `SO_PACIENTE_VIVO` nas geracoes) e responde 404 identico.
+- IA em voo (limite): a chamada ao SelahIA que ja saiu antes da exclusao nao volta (rede, fora de transacao); o texto anonimizado (sem identificadores) ja estava la. Quando ela responde, o INSERT do documento e barrado pelo trigger `documento_paciente_excluido`, a transacao desfaz e o pedido vira FALHOU com texto tombstone. Provado em `test/pacientes-excluir.e2e-spec.ts` (IA em voo).
+- Pendente: tela e exportacao dos dados do paciente.
