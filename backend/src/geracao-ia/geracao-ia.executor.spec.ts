@@ -101,6 +101,7 @@ function montar(
   );
   return {
     id,
+    tx,
     executor,
     estado,
     updates,
@@ -214,6 +215,22 @@ describe('GeracaoIaExecutor', () => {
         retentavel: true,
       });
     }
+  });
+
+  it('so le pedido PENDENTE do usuario e de paciente vivo (excluido nao vai a IA)', async () => {
+    const m = montar();
+    await m.executor.executar(m.id, user);
+    expect(m.tx.geracaoIa.findFirst.mock.calls[0]).toEqual([
+      {
+        where: {
+          id: m.id,
+          clinicaId: user.clinicaId,
+          psicologoId: user.psicologoId,
+          estado: 'PENDENTE',
+          origem: { paciente: { excluidoEm: null } },
+        },
+      },
+    ]);
   });
 
   it('pedido que nao esta PENDENTE (ou nao e do usuario): nao chama a IA', async () => {
