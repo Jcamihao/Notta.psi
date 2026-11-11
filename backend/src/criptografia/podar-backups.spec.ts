@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,
+  lutimesSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -393,5 +394,33 @@ describe('podar-backups.sh (item 52B)', () => {
     expect(rodar(['--dias', '30', alvo]).status).toBe(0);
     expect(readdirSync(alvo).sort()).toEqual(['n.enc']);
     expect(readdirSync(vizinha).sort()).toEqual(['n.enc', 'v.enc']);
+  });
+
+  it('link simbolico .enc, velho ou novo, nao e apagado e nao rouba o lugar do mais recente', () => {
+    par('vencido', 40);
+    par('mais-velho', 90);
+    const alvo = join(dir, 'alvo-externo.dat');
+    writeFileSync(alvo, CONTEUDO);
+    symlinkSync(alvo, join(dir, 'novo-link.enc')); // data do proprio link: agora
+    symlinkSync(alvo, join(dir, 'velho-link.enc'));
+    const t = Date.now() / 1000 - 100 * DIA;
+    lutimesSync(join(dir, 'velho-link.enc'), t, t);
+    const r = rodar([dir]);
+    expect(r.status).toBe(0);
+    expect(lstatSync(join(dir, 'novo-link.enc')).isSymbolicLink()).toBe(true);
+    expect(lstatSync(join(dir, 'velho-link.enc')).isSymbolicLink()).toBe(true);
+    expect(existsSync(alvo)).toBe(true);
+    // o mais recente REAL (vencido) continua protegido; o mais velho sai
+    expect(existe('vencido.enc')).toBe(true);
+    expect(existe('mais-velho.enc')).toBe(false);
+  });
+
+  it('unidade da idade e dia (nao hora): 30 dias menos 1 hora fica, mais 1 hora sai', () => {
+    arquivo('dentro.enc', 30 - 1 / 24);
+    arquivo('fora.enc', 30 + 1 / 24);
+    arquivo('novo.enc', 1);
+    rodar([dir]);
+    expect(existe('dentro.enc')).toBe(true);
+    expect(existe('fora.enc')).toBe(false);
   });
 });
