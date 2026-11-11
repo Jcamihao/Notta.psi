@@ -253,4 +253,14 @@ Decisao do dono (2026-11-05): **previa obrigatoria** (o psicologo ve e confirma 
 - O app calcula os tombstones cifrados com o AAD de cada linha e a funcao SQL (dona `notta_owner`, flag `app.anonimizando`) so troca esses valores e marca `excluidoEm`. Auditoria `EXCLUIU` na mesma transacao: se ela falha, nada muda. Mapa da geracao vira `[]` (lista JSON, o executor itera sobre ele).
 - Todo caminho que le paciente, documento, geracao, consentimento ou convite filtra paciente excluido (`excluidoEm: null`, ou `SO_PACIENTE_VIVO` nas geracoes) e responde 404 identico.
 - IA em voo (limite): a chamada ao SelahIA que ja saiu antes da exclusao nao volta (rede, fora de transacao); o texto anonimizado (sem identificadores) ja estava la. Quando ela responde, o INSERT do documento e barrado pelo trigger `documento_paciente_excluido`, a transacao desfaz e o pedido vira FALHOU com texto tombstone. Provado em `test/pacientes-excluir.e2e-spec.ts` (IA em voo).
-- Pendente: tela e exportacao dos dados do paciente.
+- Pendente: tela da exportacao (o back esta pronto, ver a secao abaixo).
+
+## Exportacao de paciente (item 26, portabilidade, fatia do back)
+
+- Rota: `GET /pacientes/:id/exportar`. So o proprio psicologo (ADMIN nao le paciente de colega). Resposta 200 em JSON, `Content-Disposition: attachment; filename="paciente-<uuid>.json"` (nunca o nome), `Cache-Control: no-store`. Formato versionado (`"versao": 1`): `paciente` (id, nome, nascimento, telefone, email, criadoEm, atualizadoEm), `consentimentos`, `documentos` (texto DECIFRADO), `convites` e um `aviso` fixo.
+- Sai: os dados do paciente, o historico de consentimento (evento, versao do termo, origem, convite de origem), os documentos com status, datas e a ligacao de correcao (`substituiId`), e os convites (estado e datas).
+- NAO sai, e por que: colunas `*Cifrado` e hashes (sao do armazenamento, nao do dado); `tokenHash` e o token do link (credencial de aceite); GeracaoIa (texto anonimizado e mapa sao transitorios e o mapa tem pseudonimos); trilha de auditoria (e do sistema, nao do paciente); texto longo do termo (sai so a versao); dados de outros pacientes ou do psicologo.
+- Tudo numa unica transacao (`runComoUsuario`): leituras, decifra e a auditoria `EXPORTOU` (recurso `Paciente`, id do paciente). Falha de decifra = 500 generico, sem arquivo parcial e sem auditoria. 404 identico (inexistente, alheio, outra clinica, ja excluido), sem auditoria.
+- Teto: 2000 linhas por lista (documentos, consentimentos, convites). Acima disso = 413 com mensagem fixa, sem montar o arquivo.
+- Limite: 10 por hora por psicologo (`exportar`, 429 com `Retry-After`). Conta tambem 404 e 413, porque o guard roda antes do servico.
+- Provado em `test/pacientes-exportar.e2e-spec.ts` (cabecalhos, formato, decifra, nada de segredo no JSON, 404 identico, trilha, limite) e nos testes unitarios de `src/pacientes/pacientes.service.spec.ts`.
