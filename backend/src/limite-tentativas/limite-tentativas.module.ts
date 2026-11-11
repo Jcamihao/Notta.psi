@@ -50,6 +50,16 @@ export const THROTTLERS = [
   // Renovacao da sessao (item 46): publica (cookie de refresh), por IP (/64 no IPv6). Uso normal =
   // 1 por 15 min por aba; 30/min cobre varias abas e barra tentativa em massa de refresh.
   { name: 'renovar', ttl: MINUTO, limit: 30 },
+  // Exportacao do paciente (item 26): arquivo com o prontuario inteiro em claro. Por psicologo do
+  // token (nao IP). 10 por hora: sobra para quem exporta um paciente por vez; barra varredura.
+  // Conta tambem 404 e 413 (o guard roda antes do servico).
+  {
+    name: 'exportar',
+    ttl: 60 * MINUTO,
+    limit: 10,
+    getTracker: (req: Record<string, any>) =>
+      (req.user as { psicologoId: string }).psicologoId,
+  },
   // Uso normal da API por psicologo (somado entre TODAS as rotas autenticadas).
   { name: 'api', ttl: MINUTO, limit: 300 },
 ];

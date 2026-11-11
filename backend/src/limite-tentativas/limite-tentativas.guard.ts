@@ -50,6 +50,7 @@ export const LimiteCadastroClinica = () => limite('clinicas');
 // Guard de rota: roda DEPOIS dos guards globais (JWT), entao `req.user` ja existe.
 export const LimiteEquipe = () => limite('equipe');
 export const LimiteTrocarSenha = () => limite('trocar-senha');
+export const LimiteExportar = () => limite('exportar');
 // Rotas publicas do termo (sem JWT): tracker padrao = IP (/64).
 export const LimiteConsentimentoPublico = () => limite('consentimento-publico');
 // Renovacao da sessao (item 46): sem JWT, tracker padrao = IP (/64).
