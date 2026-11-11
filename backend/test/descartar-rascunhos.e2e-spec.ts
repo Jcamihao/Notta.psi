@@ -37,8 +37,10 @@ const CLINICAS = [
   randomUUID(),
   randomUUID(),
   randomUUID(),
+  randomUUID(),
+  randomUUID(),
 ];
-const [A, B, C, D, E] = CLINICAS;
+const [A, B, C, D, E, F, G] = CLINICAS;
 const SENTINELA = 'TEXTO-CLINICO-SENTINELA-52A';
 
 async function criarClinica(id: string) {
@@ -581,5 +583,217 @@ describe('descarte: dry-run, isolamento, permissoes e concorrencia', () => {
     const auditados = await descartesDe(psi, lista);
     expect(auditados).toHaveLength(7);
     expect(new Set(auditados).size).toBe(7);
+  });
+});
+
+describe('descarte: aprovado gerado e corrida com a IA (clinica F)', () => {
+  it('rascunho de origem sai, o aprovado gerado fica 100% intacto e a trilha ENVIOU_IA segue', async () => {
+    const psi = await criarPsi(F, 'desc-f1');
+    const pac = await criarPaciente(psi);
+    const origem = await rascunho(psi, pac);
+    await envelhecer(psi, origem, 10);
+    const gerado = await rascunho(psi, pac, { geradoPorIa: true });
+    const gerId = await geracao(psi, origem, {
+      estado: 'PRONTO',
+      documentoId: gerado,
+    });
+    // O psicologo aprova o gerado (atualizadoEm antigo: so o status o protege).
+    await tenant.runComoUsuario(psi, (tx) =>
+      tx.documento.update({
+        where: { id: gerado },
+        data: {
+          status: 'APROVADO',
+          aprovadoEm: ha(30),
+          atualizadoEm: ha(30),
+        },
+      }),
+    );
+    await tenant.runComoUsuario(psi, (tx) =>
+      tx.auditoria.create({
+        data: {
+          clinicaId: F,
+          psicologoId: psi.psicologoId,
+          acao: 'ENVIOU_IA',
+          recurso: 'GeracaoIa',
+          recursoId: gerId,
+        },
+      }),
+    );
+    const antes = await comoOwner(
+      F,
+      (tx) => tx.documento.findUniqueOrThrow({ where: { id: gerado } }),
+      { psicologoId: psi.psicologoId },
+    );
+
+    const r = await rodar({ clinicaId: F });
+    expect(r.total).toEqual({
+      clinicas: 1,
+      selecionados: 1,
+      documentos: 1,
+      geracoes: 1,
+    });
+    expect((await existentesDocs(psi, [origem])).size).toBe(0);
+    expect((await existentesGer(psi, [gerId])).size).toBe(0);
+    const depois = await comoOwner(
+      F,
+      (tx) => tx.documento.findUniqueOrThrow({ where: { id: gerado } }),
+      { psicologoId: psi.psicologoId },
+    );
+    expect(depois).toEqual(antes);
+    expect(depois.status).toBe('APROVADO');
+    const trilha = await comoOwner(
+      F,
+      (tx) =>
+        tx.auditoria.findMany({
+          where: { recursoId: gerId, acao: 'ENVIOU_IA' },
+          select: { id: true },
+        }),
+      { psicologoId: psi.psicologoId },
+    );
+    expect(trilha).toHaveLength(1);
+    expect(await descartesDe(psi, [gerado])).toEqual([]);
+  });
+
+  it('GeracaoIa que vira PENDENTE entre a selecao e o delete: o rascunho fica (recheca sob lock)', async () => {
+    const psi = await criarPsi(F, 'desc-f2');
+    const pac = await criarPaciente(psi);
+    const origem = await rascunho(psi, pac);
+    await envelhecer(psi, origem, 10);
+    const gerId = await geracao(psi, origem, { estado: 'PREVIA' });
+
+    const exec = new PrismaClient({
+      datasources: { db: { url: process.env.DATABASE_URL_OWNER! } },
+    });
+    try {
+      let soltar!: () => void;
+      let travou!: () => void;
+      const travado = new Promise<void>((res) => (travou = res));
+      const segura = new Promise<void>((res) => (soltar = res));
+      // "Executor": PREVIA -> PENDENTE, transacao ainda aberta (o descarte nao ve o PENDENTE).
+      const tx1 = new TenantPrismaService(exec as unknown as PrismaService).run(
+        F,
+        async (tx) => {
+          await tx.geracaoIa.update({
+            where: { id: gerId },
+            data: { estado: 'PENDENTE' },
+          });
+          travou();
+          await segura;
+        },
+        { psicologoId: psi.psicologoId },
+      );
+      await travado;
+      const descarte = rodar({ clinicaId: F });
+      await new Promise((r) => setTimeout(r, 800));
+      soltar();
+      await tx1;
+      const r = await descarte;
+      expect(r.total.selecionados).toBe(1);
+      expect(r.total.documentos).toBe(0);
+      expect(r.total.geracoes).toBe(0);
+    } finally {
+      await exec.$disconnect();
+    }
+    expect((await existentesDocs(psi, [origem])).has(origem)).toBe(true);
+    expect((await existentesGer(psi, [gerId])).has(gerId)).toBe(true);
+    expect(await descartesDe(psi, [origem])).toEqual([]);
+  });
+
+  it('rascunho travado por outra transacao e pulado sem esperar (SKIP LOCKED); sai na rodada seguinte', async () => {
+    const psi = await criarPsi(F, 'desc-f3');
+    const pac = await criarPaciente(psi);
+    const travadoId = await rascunho(psi, pac);
+    const livreId = await rascunho(psi, pac);
+    await envelhecer(psi, travadoId, 10);
+    await envelhecer(psi, livreId, 10);
+
+    const outro = new PrismaClient({
+      datasources: { db: { url: process.env.DATABASE_URL_OWNER! } },
+    });
+    try {
+      let soltar!: () => void;
+      let travou!: () => void;
+      const travado = new Promise<void>((res) => (travou = res));
+      const segura = new Promise<void>((res) => (soltar = res));
+      const tx1 = new TenantPrismaService(
+        outro as unknown as PrismaService,
+      ).run(
+        F,
+        async (tx) => {
+          await tx.$queryRaw`SELECT id FROM "Documento" WHERE id = ${travadoId} FOR UPDATE`;
+          travou();
+          await segura;
+        },
+        { psicologoId: psi.psicologoId },
+      );
+      await travado;
+      // Se esperasse o lock, a rodada so terminaria depois de soltar() (que vem depois do await).
+      const r = await Promise.race([
+        rodar({ clinicaId: F }),
+        new Promise<'travou'>((res) => setTimeout(() => res('travou'), 8000)),
+      ]);
+      soltar();
+      await tx1;
+      expect(r).not.toBe('travou');
+      const feito = r as Awaited<ReturnType<typeof rodar>>;
+      expect(feito.total.documentos).toBe(1);
+      expect((await existentesDocs(psi, [livreId])).size).toBe(0);
+      expect((await existentesDocs(psi, [travadoId])).has(travadoId)).toBe(
+        true,
+      );
+    } finally {
+      await outro.$disconnect();
+    }
+    await rodar({ clinicaId: F });
+    expect((await existentesDocs(psi, [travadoId])).size).toBe(0);
+  });
+
+  it('o corte vale em UTC mesmo se o fuso da sessao do banco nao for UTC', async () => {
+    const psi = await criarPsi(G, 'desc-g1');
+    const pac = await criarPaciente(psi);
+    const corte = new Date(Date.now() - 7 * DIA);
+    const vencido = await rascunho(psi, pac);
+    const naoVencido = await rascunho(psi, pac);
+    await comoOwner(
+      G,
+      async (tx) => {
+        await tx.documento.update({
+          where: { id: vencido },
+          data: { atualizadoEm: new Date(corte.getTime() - 3600_000) },
+        });
+        await tx.documento.update({
+          where: { id: naoVencido },
+          data: { atualizadoEm: new Date(corte.getTime() + 3600_000) },
+        });
+      },
+      { psicologoId: psi.psicologoId },
+    );
+    const owner = new PrismaClient({
+      datasources: { db: { url: process.env.DATABASE_URL_OWNER! } },
+    });
+    const chamar = (fuso: string, simular: boolean) =>
+      owner.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT set_config('timezone', ${fuso}, true)`;
+        await tx.$executeRaw`SELECT set_config('app.current_clinica_id', ${G}, true)`;
+        const [r] = await tx.$queryRaw<
+          { selecionados: number; documentos: number }[]
+        >`
+          SELECT selecionados, documentos FROM descartar_rascunhos_vencidos(
+            CAST(${corte.toISOString()} AS timestamptz), 1000, CAST(${simular} AS boolean))`;
+        return r;
+      });
+    try {
+      // Fusos a leste e a oeste de UTC: o resultado nao pode mudar.
+      expect((await chamar('Asia/Tokyo', true)).selecionados).toBe(1);
+      expect((await chamar('Pacific/Kiritimati', true)).selecionados).toBe(1);
+      const r = await chamar('America/Los_Angeles', false);
+      expect(r.documentos).toBe(1);
+    } finally {
+      await owner.$disconnect();
+    }
+    expect((await existentesDocs(psi, [vencido])).size).toBe(0);
+    expect((await existentesDocs(psi, [naoVencido])).has(naoVencido)).toBe(
+      true,
+    );
   });
 });
