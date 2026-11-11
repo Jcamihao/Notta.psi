@@ -35,7 +35,9 @@ export class InicioPage {
   private readonly servico = inject(PacientesService);
 
   readonly usuario = this.sessao.usuario;
-  readonly dataHora = dataHoraBr;
+  // Data invalida (nao deveria vir da API) nao quebra a tela: simplesmente some.
+  readonly cadastradoEm = (iso: string): string | null =>
+    Number.isNaN(Date.parse(iso)) ? null : dataHoraBr(iso);
   readonly rotulo = ROTULO_CONSENTIMENTO;
   readonly tom = TOM_CONSENTIMENTO;
   readonly lista = signal<Paciente[] | null>(null);
@@ -49,10 +51,14 @@ export class InicioPage {
     () => (this.lista() ?? []).filter((p) => this.estadoDe(p) !== 'CONCEDIDO').length,
   );
   // Copia antes de ordenar (a lista original nao muda). sort e estavel: empate de data mantem a
-  // ordem que a API mandou.
+  // ordem que a API mandou. Data invalida conta como a mais antiga (0), nunca NaN no comparador.
+  private readonly instante = (iso: string): number => {
+    const t = Date.parse(iso);
+    return Number.isNaN(t) ? 0 : t;
+  };
   readonly recentes = computed(() =>
     [...(this.lista() ?? [])]
-      .sort((a, b) => Date.parse(b.criadoEm) - Date.parse(a.criadoEm))
+      .sort((a, b) => this.instante(b.criadoEm) - this.instante(a.criadoEm))
       .slice(0, RECENTES),
   );
 

@@ -259,6 +259,26 @@ describe('InicioPage', () => {
     }
   });
 
+  it('criadoEm invalido nao quebra a tela: vai para o fim e sem data', async () => {
+    await responde([
+      paciente('a', 'Ana Lima', 'nao-e-data', 'CONCEDIDO'),
+      paciente('b', 'Bruno Alves', '2026-10-02T10:00:00.000Z', 'CONCEDIDO'),
+      paciente('c', 'Carla Dias', '', 'CONCEDIDO'),
+      paciente('d', 'Davi Reis', '2026-10-03T10:00:00.000Z', 'CONCEDIDO'),
+    ]);
+    const nomes = recentes().map((li) => li.querySelector('a')?.textContent?.trim());
+    expect(nomes.slice(0, 2)).toEqual(['Davi Reis', 'Bruno Alves']);
+    expect(nomes.length).toBe(4);
+    expect(texto()).not.toContain('Invalid');
+    expect(recentes()[2].textContent).not.toContain('Cadastrado em');
+  });
+
+  it('estado vazio nao repete o atalho de novo paciente (so o botao do passo a passo)', async () => {
+    await responde([]);
+    expect(el().querySelector('[aria-labelledby="titulo-atalhos"]')).toBeNull();
+    expect(el().querySelectorAll('a[href="/pacientes/novo"]').length).toBe(1);
+  });
+
   it('lista com 500 pacientes nao quebra e mostra so os 5 recentes', async () => {
     const grande: Paciente[] = Array.from({ length: 500 }, (_, i) =>
       paciente(

@@ -78,6 +78,9 @@
   color: var(--text-primary);
   font-size: var(--fs-card-title);
   font-weight: var(--fw-medium);
+  // Alvo de toque de pelo menos 24px de altura (WCAG 2.5.8).
+  display: inline-block;
+  padding-block: var(--space-1);
 }
 .inicio-falha {
   display: flex;

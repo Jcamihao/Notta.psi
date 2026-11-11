@@ -55,17 +55,20 @@
     <p class="texto-apoio" role="status">Carregando seus pacientes…</p>
   }
 
-  <section class="bloco" aria-labelledby="titulo-atalhos">
-    <h2 id="titulo-atalhos">Atalhos</h2>
-    <div class="atalhos">
-      <a app-button routerLink="/pacientes/novo">
-        <lucide-icon [img]="icones.UserPlus" [size]="18" [strokeWidth]="1.5" />Novo paciente
-      </a>
-      <a app-button variant="soft" routerLink="/pacientes">
-        <lucide-icon [img]="icones.Users" [size]="18" [strokeWidth]="1.5" />Ver pacientes
-      </a>
-    </div>
-  </section>
+  <!-- Lista vazia ja tem o botao "Cadastrar primeiro paciente": atalho repetido so atrapalha. -->
+  @if (!l || l.length) {
+    <section class="bloco" aria-labelledby="titulo-atalhos">
+      <h2 id="titulo-atalhos">Atalhos</h2>
+      <div class="atalhos">
+        <a app-button routerLink="/pacientes/novo">
+          <lucide-icon [img]="icones.UserPlus" [size]="18" [strokeWidth]="1.5" />Novo paciente
+        </a>
+        <a app-button variant="soft" routerLink="/pacientes">
+          <lucide-icon [img]="icones.Users" [size]="18" [strokeWidth]="1.5" />Ver pacientes
+        </a>
+      </div>
+    </section>
+  }
 
   @if (l && l.length) {
     <section class="bloco" data-teste="recentes" aria-labelledby="titulo-recentes">
@@ -76,7 +79,9 @@
           <li class="recente" data-teste="recente">
             <span class="recente-principal">
               <a [routerLink]="['/pacientes', p.id]" class="recente-nome">{{ p.nome }}</a>
-              <span class="texto-apoio">Cadastrado em {{ dataHora(p.criadoEm) }}</span>
+              @if (cadastradoEm(p.criadoEm); as quando) {
+                <span class="texto-apoio">Cadastrado em {{ quando }}</span>
+              }
             </span>
             <app-pill [tone]="tom[estadoDe(p)]" [dashed]="estadoDe(p) === 'NENHUM'">{{
               rotulo[estadoDe(p)]
