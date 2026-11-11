@@ -11,7 +11,7 @@ import { Paciente, PacientesService } from './pacientes.service';
 
 // Recado que a tela anterior deixa no state da navegacao (so um codigo fixo, nunca dado de
 // paciente: o state vai para o historico do navegador).
-export type AvisoPacientes = 'criado' | 'nao-encontrado';
+export type AvisoPacientes = 'criado' | 'nao-encontrado' | 'excluido' | 'nao-encontrado-exclusao';
 
 // 'YYYY-MM-DD' -> 'DD/MM/AAAA' sem passar por Date (new Date('1990-05-17') mostra o dia anterior
 // no Brasil).

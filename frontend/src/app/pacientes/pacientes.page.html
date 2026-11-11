@@ -23,6 +23,15 @@
         <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />Paciente não
         encontrado.
       </p>
+    } @else if (aviso() === 'excluido') {
+      <p class="aviso-ok" role="status" data-teste="aviso">
+        <lucide-icon [img]="icones.CircleCheck" [size]="18" [strokeWidth]="1.5" />Paciente excluído.
+      </p>
+    } @else if (aviso() === 'nao-encontrado-exclusao') {
+      <p class="aviso-erro" role="alert" data-teste="aviso">
+        <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />Paciente não
+        encontrado. Ele pode já ter sido excluído.
+      </p>
     }
   </div>
 

@@ -158,6 +158,77 @@ describe('PacientesPage (aviso da navegacao)', () => {
     ctrl.verify();
   });
 
+  it('"Paciente excluído." aparece como status (anuncia sem tirar o foco)', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: 'pacientes', component: PacientesPage }]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
+    });
+    const ctrl = TestBed.inject(HttpTestingController);
+    const harness = await RouterTestingHarness.create();
+    await TestBed.inject(Router).navigateByUrl('/pacientes', {
+      state: { aviso: 'excluido' },
+    });
+    ctrl.expectOne('/api/pacientes').flush([]);
+    await harness.fixture.whenStable();
+    const aviso = (harness.routeNativeElement as HTMLElement).querySelector('[data-teste="aviso"]');
+    expect(aviso?.textContent).toContain('Paciente excluído.');
+    expect(aviso?.getAttribute('role')).toBe('status');
+    ctrl.verify();
+  });
+
+  it('404 da exclusao: "Paciente não encontrado. Ele pode já ter sido excluído." como alerta', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([{ path: 'pacientes', component: PacientesPage }]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
+    });
+    const ctrl = TestBed.inject(HttpTestingController);
+    const harness = await RouterTestingHarness.create();
+    await TestBed.inject(Router).navigateByUrl('/pacientes', {
+      state: { aviso: 'nao-encontrado-exclusao' },
+    });
+    ctrl.expectOne('/api/pacientes').flush([]);
+    await harness.fixture.whenStable();
+    const aviso = (harness.routeNativeElement as HTMLElement).querySelector('[data-teste="aviso"]');
+    expect(aviso?.textContent).toContain('Paciente não encontrado. Ele pode já ter sido excluído.');
+    expect(aviso?.getAttribute('role')).toBe('alert');
+    ctrl.verify();
+  });
+
+  it('o aviso de exclusao some ao navegar de novo (sem state)', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([
+          { path: 'pacientes', component: PacientesPage },
+          { path: 'outra', component: PacientesPage },
+        ]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
+    });
+    const ctrl = TestBed.inject(HttpTestingController);
+    const router = TestBed.inject(Router);
+    const harness = await RouterTestingHarness.create();
+    await router.navigateByUrl('/pacientes', { state: { aviso: 'excluido' } });
+    ctrl.expectOne('/api/pacientes').flush([]);
+    await harness.fixture.whenStable();
+    await router.navigateByUrl('/outra');
+    ctrl.expectOne('/api/pacientes').flush([]);
+    await harness.fixture.whenStable();
+    await router.navigateByUrl('/pacientes');
+    ctrl.expectOne('/api/pacientes').flush([]);
+    await harness.fixture.whenStable();
+    expect(
+      (harness.routeNativeElement as HTMLElement).querySelector('[data-teste="aviso"]'),
+    ).toBeNull();
+    ctrl.verify();
+  });
+
   it('sem state nao mostra aviso', async () => {
     TestBed.configureTestingModule({
       providers: [
