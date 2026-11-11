@@ -26,7 +26,7 @@ Nenhum item "pendente" entra na tabela: eles so afirmam o que ainda nao existe. 
 - `backup`: Existem `backend/scripts/backup.sh` (cifra com openssl) e `verificar-backup.sh` (restaura em banco temporario); nao ha agendamento (`docs/HANDOFF.md` secao 9).
 - `termo-juridico`: Termo `v1-rascunho`; o boot em producao exige `NOTTA_TERMO_REVISADO=1`.
 - `pentest`: Item 55 aberto. Nao verificavel por codigo; vale a palavra do plano.
-- `retencao`: Item 52 aberto; nao ha expiracao nem descarte automatico de rascunhos, nota bruta, backup ou WAL.
+- `retencao`: Item 52 implementado como COMANDOS: `npm run descartar` (rascunho sem edicao ha 7 dias, `backend/prisma/migrations/20261111120000_descartar_rascunhos`, `backend/test/descartar-rascunhos.e2e-spec.ts`) e `npm run podar-backups` (backup com mais de 30 dias, `backend/scripts/podar-backups.sh`, `backend/src/criptografia/podar-backups.spec.ts`), mais aviso na tela (`frontend/src/app/core/descarte.ts`). Continua `pendente` na pagina porque NAO ha agendador: o agendamento e do item 56 e, ate la, nada apaga sozinho. Mover para `feito` (com linha na tabela) quando o agendamento existir e for provado.
 - `incidente`: Item 54 aberto; nao ha documento de plano de incidente em `docs/`.
 - `ia-real`: `docs/HANDOFF.md` secao 9 ("so com texto curto e ficticio") e secao 7 ("plano pago do Gemini obrigatorio antes de qualquer dado real").
 - `dono-banco`: Item 56 aberto (credencial `notta_owner` fora do app, TLS no banco, rede privada, firewall); `docs/HANDOFF.md` secao 9.

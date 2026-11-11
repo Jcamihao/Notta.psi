@@ -71,7 +71,7 @@ Numeração separada para não quebrar as referências da Fase 1 em andamento. A
 - [ ] 48. [B] Bloqueio de conta após falhas e aviso por e-mail de novo login — Fase 4
 - [x] 49. [F] Sessão em cookie httpOnly com proteção CSRF, CSP e nada de innerHTML — Fase 4
 - [ ] 50. [B] Cifrar identificadores do paciente em repouso (nome, CPF, telefone, e-mail, endereço; decisão do dono) — Fase 4, antes de dado real
-- [ ] 52. [B] Retenção e descarte: expirar rascunhos antigos, apagar nota bruta, limpar backup e WAL — Fase 4
+- [x] 52. [B] Retenção e descarte (feito e verificado em 2026-11-11, como comandos: `npm run descartar` apaga rascunho sem edição há 7 dias, nunca aprovado; `npm run podar-backups` apaga backup com mais de 30 dias e nunca o mais recente; a tela avisa o prazo do rascunho. DECISÃO DO DONO 2026-11-11: 7 dias desde a última edição, 30 dias de backup. NÃO RODAM SOZINHOS: o agendamento fica no item 56. Sem arquivamento de WAL no projeto: se ligarem, o WAL precisa do mesmo prazo)
 - [~] 54. [processo] Plano de incidente e notificação de vazamento (LGPD/ANPD) — antes de dado real
 - [ ] 53. [B] Monitoramento e alertas de segurança (falhas de login, picos, erros 5xx; logs sem dado clínico) — Fase 6
 - [ ] 56. [B] Hardening de infraestrutura: TLS no banco, banco em rede privada, firewall, backups cifrados com restauração testada — antes do deploy

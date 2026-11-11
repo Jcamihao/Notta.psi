@@ -142,7 +142,8 @@ export const CONTEUDO_SEGURANCA: ConteudoSeguranca = {
           id: 'retencao',
           status: 'pendente',
           titulo: 'Prazos de retenção e descarte automático.',
-          texto: 'Planejados: ainda não existem.',
+          texto:
+            'Já existem os comandos que apagam rascunhos sem edição há 7 dias (aprovados nunca são apagados) e arquivos de backup com mais de 30 dias, e a tela avisa quando um rascunho vai ser apagado. Mas ainda não rodam sozinhos: o agendamento entra com a preparação da hospedagem. Até lá, nada é apagado automaticamente. Dado excluído no aplicativo pode continuar nos backups por até 30 dias.',
         },
         {
           id: 'incidente',
