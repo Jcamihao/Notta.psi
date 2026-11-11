@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -45,5 +46,15 @@ export class PacientesController {
     @Body() dto: EditarPacienteDto,
   ) {
     return this.pacientes.atualizar(user, id, dto);
+  }
+
+  // Exclusao por anonimizacao (LGPD, item 26). 200 com { excluidoEm }. Sem
+  // @PermiteSenhaProvisoria: dado clinico. ADMIN nao exclui paciente de colega (404 identico).
+  @Delete(':id')
+  excluir(
+    @UsuarioAtual() user: UsuarioAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.pacientes.excluir(user, id);
   }
 }

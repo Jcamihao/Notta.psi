@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Paciente, Prisma } from '@prisma/client';
+import { Prisma, type Paciente } from '@prisma/client';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { ConsentimentoService } from '../consentimento/consentimento.service';
@@ -14,11 +15,20 @@ import {
   aadDe,
   CriptografiaService,
 } from '../criptografia/criptografia.service';
+import { aadGeracao } from '../geracao-ia/geracao-ia.tipos';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import type { CriarPacienteDto, EditarPacienteDto } from './pacientes.dto';
 
 const TETO_LISTA = 500;
 const NAO_ENCONTRADO = 'Paciente nao encontrado';
+// Exclusao (item 26): texto FIXO e nao clinico no lugar do conteudo. Cada um e cifrado com o AAD
+// da propria linha (nunca reaproveitado de outra).
+const TOMBSTONE_NOME = 'Paciente excluido';
+const TOMBSTONE_CONTEUDO = 'Conteudo excluido a pedido (LGPD)';
+const TOMBSTONE_MAPA = '{}';
+// SQLSTATE e codigo da funcao: P0002 = no_data_found; 22023 = tombstone faltando (corrida).
+const SQL_NAO_ENCONTRADO = 'P0002';
+const SQL_TOMBSTONE_AUSENTE = '22023';
 
 // campo da API -> coluna cifrada. A coluna entra no AAD (cifrado nao troca de coluna).
 const COLUNAS = {
@@ -77,7 +87,11 @@ export class PacientesService {
       user,
       async (tx) => {
         const achadas = await tx.paciente.findMany({
-          where: { clinicaId: user.clinicaId, psicologoId: user.psicologoId },
+          where: {
+            clinicaId: user.clinicaId,
+            psicologoId: user.psicologoId,
+            excluidoEm: null,
+          },
           orderBy: { criadoEm: 'asc' },
           take: TETO_LISTA,
         });
@@ -119,6 +133,80 @@ export class PacientesService {
     return { ...this.paraResposta(linha), consentimento: estado };
   }
 
+  // Exclusao por ANONIMIZACAO (LGPD, item 26). Tudo numa transacao: a funcao SQL troca o
+  // conteudo cifrado por tombstones (que o app calcula aqui) e marca excluidoEm. Sem I/O de rede.
+  async excluir(user: UsuarioAutenticado, id: string) {
+    const dono = { clinicaId: user.clinicaId, psicologoId: user.psicologoId };
+    try {
+      const excluidoEm = await this.tenant.runComoUsuario(user, async (tx) => {
+        const achado = await tx.paciente.findFirst({
+          where: { id, ...dono, excluidoEm: null },
+          select: { id: true },
+        });
+        if (!achado) throw new NotFoundException(NAO_ENCONTRADO);
+        const docs = await tx.documento.findMany({
+          where: { pacienteId: id, ...dono },
+          select: { id: true },
+        });
+        // Geracao PRONTA ja nao tem texto cifrado (zerado no PRONTO): fica como esta.
+        const geracoes = await tx.geracaoIa.findMany({
+          where: { pacienteId: id, ...dono, estado: { not: 'PRONTO' } },
+          select: { id: true },
+        });
+        const tombDocs: Record<string, string> = {};
+        for (const d of docs) {
+          tombDocs[d.id] = this.cripto.cifrar(
+            user.clinicaId,
+            TOMBSTONE_CONTEUDO,
+            aadDe('Documento', 'conteudoCifrado', d.id, user.psicologoId),
+          );
+        }
+        const tombGer: Record<string, { texto: string; mapa: string }> = {};
+        for (const g of geracoes) {
+          tombGer[g.id] = {
+            texto: this.cripto.cifrar(
+              user.clinicaId,
+              TOMBSTONE_CONTEUDO,
+              aadGeracao('textoCifrado', g.id, user.psicologoId),
+            ),
+            mapa: this.cripto.cifrar(
+              user.clinicaId,
+              TOMBSTONE_MAPA,
+              aadGeracao('mapaCifrado', g.id, user.psicologoId),
+            ),
+          };
+        }
+        const nomeT = this.cripto.cifrar(
+          user.clinicaId,
+          TOMBSTONE_NOME,
+          aadDe('Paciente', 'nomeCifrado', id, user.psicologoId),
+        );
+        const [linha] = await tx.$queryRaw<{ excluidoEm: Date }[]>`
+          SELECT anonimizar_paciente(${id}, ${nomeT}, ${JSON.stringify(tombDocs)}::jsonb, ${JSON.stringify(tombGer)}::jsonb) AS "excluidoEm"`;
+        // Trilha na MESMA transacao: se ela falhar, a exclusao inteira desfaz.
+        await this.auditoria.registrar(tx, user, 'EXCLUIU', 'Paciente', id);
+        return linha.excluidoEm;
+      });
+      return { excluidoEm: excluidoEm.toISOString() };
+    } catch (e) {
+      throw this.traduzirErroDaFuncao(e);
+    }
+  }
+
+  // Erro da funcao SQL vira resposta de negocio; qualquer outro erro sobe como esta.
+  private traduzirErroDaFuncao(e: unknown): unknown {
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      const codigo = (e.meta as { code?: string } | undefined)?.code;
+      if (codigo === SQL_NAO_ENCONTRADO) return new NotFoundException(NAO_ENCONTRADO);
+      if (codigo === SQL_TOMBSTONE_AUSENTE) {
+        return new ConflictException(
+          'Paciente mudou durante a exclusao; tente de novo',
+        );
+      }
+    }
+    return e;
+  }
+
   async atualizar(
     user: UsuarioAutenticado,
     id: string,
@@ -130,7 +218,12 @@ export class PacientesService {
     }
     const linha = await this.tenant.runComoUsuario(user, async (tx) => {
       const r = await tx.paciente.updateMany({
-        where: { id, clinicaId: user.clinicaId, psicologoId: user.psicologoId },
+        where: {
+          id,
+          clinicaId: user.clinicaId,
+          psicologoId: user.psicologoId,
+          excluidoEm: null,
+        },
         data: cifrados,
       });
       if (r.count !== 1) return null;
@@ -147,7 +240,12 @@ export class PacientesService {
     id: string,
   ) {
     return tx.paciente.findFirst({
-      where: { id, clinicaId: user.clinicaId, psicologoId: user.psicologoId },
+      where: {
+        id,
+        clinicaId: user.clinicaId,
+        psicologoId: user.psicologoId,
+        excluidoEm: null,
+      },
     });
   }
 

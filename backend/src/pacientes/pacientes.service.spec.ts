@@ -1,13 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
+  ConflictException,
   InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { ConsentimentoService } from '../consentimento/consentimento.service';
-import { CriptografiaService } from '../criptografia/criptografia.service';
+import {
+  aadDe,
+  CriptografiaService,
+} from '../criptografia/criptografia.service';
+import { aadGeracao } from '../geracao-ia/geracao-ia.tipos';
 import { TenantPrismaService } from '../prisma/tenant-prisma.service';
 import { PacientesService } from './pacientes.service';
 
@@ -152,6 +157,7 @@ describe('PacientesService.listar', () => {
     expect(args.where).toEqual({
       clinicaId: user.clinicaId,
       psicologoId: user.psicologoId,
+      excluidoEm: null,
     });
     expect(args.take).toBe(500);
     expect(lista.map((p) => p.nome)).toEqual([
@@ -203,6 +209,7 @@ describe('PacientesService.obter', () => {
       id,
       clinicaId: user.clinicaId,
       psicologoId: user.psicologoId,
+      excluidoEm: null,
     });
     await expect(service.obter(user, randomUUID())).rejects.toEqual(
       new NotFoundException('Paciente nao encontrado'),
@@ -247,6 +254,7 @@ describe('PacientesService.atualizar', () => {
       id,
       clinicaId: user.clinicaId,
       psicologoId: user.psicologoId,
+      excluidoEm: null,
     });
     expect(Object.keys(args.data).sort()).toEqual([
       'emailCifrado',
@@ -310,3 +318,187 @@ describe('PacientesService: trilha de auditoria', () => {
     );
   });
 });
+
+// Exclusao por anonimizacao (item 26). O tx falso so responde o que excluir() le; a funcao
+// anonimizar_paciente e simulada pelo $queryRaw (o e2e prova a funcao de verdade no Postgres).
+function montarExcluir(opcoes: {
+  pacienteAchado?: boolean;
+  docs?: string[];
+  geracoes?: string[];
+  funcao?: () => Promise<unknown>;
+}) {
+  process.env.NOTTA_MASTER_KEY = '0123456789abcdef'.repeat(4);
+  const cripto = new CriptografiaService();
+  const excluidoEm = new Date('2026-11-11T12:00:00Z');
+  const chamadaFuncao = jest.fn<Promise<unknown>, unknown[]>(
+    opcoes.funcao ?? (() => Promise.resolve([{ excluidoEm }])),
+  );
+  const tx = {
+    paciente: {
+      findFirst: jest.fn(() =>
+        Promise.resolve(
+          opcoes.pacienteAchado === false ? null : { id: PID },
+        ),
+      ),
+    },
+    documento: {
+      findMany: jest.fn(() =>
+        Promise.resolve((opcoes.docs ?? []).map((id) => ({ id }))),
+      ),
+    },
+    geracaoIa: {
+      findMany: jest.fn(() =>
+        Promise.resolve((opcoes.geracoes ?? []).map((id) => ({ id }))),
+      ),
+    },
+    $queryRaw: jest.fn((_strings: TemplateStringsArray, ...valores: unknown[]) =>
+      chamadaFuncao(...valores),
+    ),
+  };
+  const tenant = {
+    runComoUsuario: jest.fn(
+      (_u: object, fn: (t: typeof tx) => Promise<unknown>) => fn(tx),
+    ),
+  };
+  const registrar = jest.fn<Promise<void>, unknown[]>(() => Promise.resolve());
+  const service = new PacientesService(
+    tenant as unknown as TenantPrismaService,
+    cripto,
+    { registrar },
+    {} as ConsentimentoService,
+  );
+  return { tx, tenant, service, cripto, registrar, chamadaFuncao, excluidoEm };
+}
+
+const PID = randomUUID();
+const DOC_A = randomUUID();
+const DOC_B = randomUUID();
+const GER_A = randomUUID();
+
+describe('PacientesService.excluir', () => {
+  it('filtra paciente pelo token e so os vivos (excluidoEm null); 1 transacao', async () => {
+    const { tx, tenant, service } = montarExcluir({ docs: [DOC_A], geracoes: [GER_A] });
+    await service.excluir(user, PID);
+    expect(tenant.runComoUsuario).toHaveBeenCalledTimes(1);
+    expect(tenant.runComoUsuario).toHaveBeenCalledWith(user, expect.any(Function));
+    expect(tx.paciente.findFirst.mock.calls[0][0].where).toEqual({
+      id: PID,
+      clinicaId: user.clinicaId,
+      psicologoId: user.psicologoId,
+      excluidoEm: null,
+    });
+    expect(tx.documento.findMany.mock.calls[0][0].where).toEqual({
+      pacienteId: PID,
+      clinicaId: user.clinicaId,
+      psicologoId: user.psicologoId,
+    });
+    expect(tx.geracaoIa.findMany.mock.calls[0][0].where).toEqual({
+      pacienteId: PID,
+      clinicaId: user.clinicaId,
+      psicologoId: user.psicologoId,
+      estado: { not: 'PRONTO' },
+    });
+  });
+
+  it('tombstones decifram com o AAD certo de cada coluna (nome, documento, geracao texto e mapa)', async () => {
+    const { chamadaFuncao, service, cripto } = montarExcluir({
+      docs: [DOC_A, DOC_B],
+      geracoes: [GER_A],
+    });
+    await service.excluir(user, PID);
+    const [, nomeT, docsJson, gerJson] = chamadaFuncao.mock.calls[0] as [
+      string,
+      string,
+      string,
+      string,
+    ];
+    const docs = JSON.parse(docsJson) as Record<string, string>;
+    const ger = JSON.parse(gerJson) as Record<string, { texto: string; mapa: string }>;
+    expect(Object.keys(docs).sort()).toEqual([DOC_A, DOC_B].sort());
+    expect(Object.keys(ger)).toEqual([GER_A]);
+
+    const psic = user.psicologoId;
+    expect(
+      cripto.decifrar(user.clinicaId, nomeT, aadDe('Paciente', 'nomeCifrado', PID, psic)),
+    ).toBe('Paciente excluido');
+    for (const id of [DOC_A, DOC_B]) {
+      expect(
+        cripto.decifrar(user.clinicaId, docs[id], aadDe('Documento', 'conteudoCifrado', id, psic)),
+      ).toBe('Conteudo excluido a pedido (LGPD)');
+    }
+    expect(
+      cripto.decifrar(user.clinicaId, ger[GER_A].texto, aadGeracao('textoCifrado', GER_A, psic)),
+    ).toBe('Conteudo excluido a pedido (LGPD)');
+    expect(
+      cripto.decifrar(user.clinicaId, ger[GER_A].mapa, aadGeracao('mapaCifrado', GER_A, psic)),
+    ).toBe('{}');
+    // Tombstone nao decifra com AAD de outra linha (cada um e vinculado a sua linha).
+    expect(() =>
+      cripto.decifrar(user.clinicaId, docs[DOC_A], aadDe('Documento', 'conteudoCifrado', DOC_B, psic)),
+    ).toThrow();
+  });
+
+  it('nunca grava texto clinico original: os cifrados enviados nao sao o texto', async () => {
+    const { chamadaFuncao, service } = montarExcluir({ docs: [DOC_A], geracoes: [GER_A] });
+    await service.excluir(user, PID);
+    const todos = JSON.stringify(chamadaFuncao.mock.calls[0]);
+    expect(todos).not.toMatch(/Conteudo excluido a pedido \(LGPD\)|Paciente excluido/);
+  });
+
+  it('devolve { excluidoEm } em ISO e audita EXCLUIU na mesma transacao, so quando exclui', async () => {
+    const { tx, service, registrar, excluidoEm } = montarExcluir({ docs: [], geracoes: [] });
+    const r = await service.excluir(user, PID);
+    expect(r).toEqual({ excluidoEm: excluidoEm.toISOString() });
+    expect(registrar).toHaveBeenCalledTimes(1);
+    expect(registrar).toHaveBeenCalledWith(tx, user, 'EXCLUIU', 'Paciente', PID);
+  });
+
+  it('paciente inexistente, alheio ou ja excluido: 404 identico, sem funcao e sem auditoria', async () => {
+    const { chamadaFuncao, service, registrar } = montarExcluir({ pacienteAchado: false });
+    const erro = await service.excluir(user, PID).catch((e: unknown) => e);
+    expect(erro).toBeInstanceOf(NotFoundException);
+    expect((erro as NotFoundException).message).toBe('Paciente nao encontrado');
+    expect(chamadaFuncao).not.toHaveBeenCalled();
+    expect(registrar).not.toHaveBeenCalled();
+  });
+
+  it('no_data_found da funcao (corrida) vira o mesmo 404', async () => {
+    const { service, registrar } = montarExcluir({
+      docs: [],
+      geracoes: [],
+      funcao: () => Promise.reject(erroBruto('P0002', 'Paciente nao encontrado')),
+    });
+    await expect(service.excluir(user, PID)).rejects.toThrow(
+      new NotFoundException('Paciente nao encontrado'),
+    );
+    expect(registrar).not.toHaveBeenCalled();
+  });
+
+  it('tombstone faltando (documento criado no meio) = 409 e nada gravado', async () => {
+    const { service, registrar } = montarExcluir({
+      docs: [DOC_A],
+      geracoes: [],
+      funcao: () => Promise.reject(erroBruto('22023', 'Tombstone de documento ausente')),
+    });
+    await expect(service.excluir(user, PID)).rejects.toThrow(ConflictException);
+    expect(registrar).not.toHaveBeenCalled();
+  });
+
+  it('erro de banco qualquer sobe como esta (falha fechada, sem auditoria)', async () => {
+    const { service, registrar } = montarExcluir({
+      docs: [],
+      geracoes: [],
+      funcao: () => Promise.reject(new Error('banco caiu')),
+    });
+    await expect(service.excluir(user, PID)).rejects.toThrow('banco caiu');
+    expect(registrar).not.toHaveBeenCalled();
+  });
+});
+
+function erroBruto(codigo: string, mensagem: string) {
+  return new Prisma.PrismaClientKnownRequestError(mensagem, {
+    code: 'P2010',
+    clientVersion: '6.19.3',
+    meta: { code: codigo, message: mensagem },
+  });
+}
