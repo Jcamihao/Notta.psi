@@ -73,4 +73,14 @@ describe('PacientesService', () => {
     });
     r.flush(P);
   });
+
+  it('exportar: GET /api/pacientes/:id/exportar com resposta blob (arquivo, nao JSON)', () => {
+    let status = 0;
+    servico.exportar(P.id).subscribe((r) => (status = r.status));
+    const r = ctrl.expectOne(`/api/pacientes/${P.id}/exportar`);
+    expect(r.request.method).toBe('GET');
+    expect(r.request.responseType).toBe('blob');
+    r.flush(new Blob(['{}'], { type: 'application/json' }));
+    expect(status).toBe(200);
+  });
 });

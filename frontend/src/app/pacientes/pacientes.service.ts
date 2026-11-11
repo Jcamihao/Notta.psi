@@ -49,6 +49,15 @@ export class PacientesService {
     return this.http.patch<Paciente>(`/api/pacientes/${id}`, corpo);
   }
 
+  // Exportacao LGPD: arquivo JSON em claro. Pede blob para nao tratar o corpo como JSON; um erro
+  // tambem chega como blob, por isso quem chama so le o status (nunca o corpo).
+  exportar(id: string) {
+    return this.http.get(`/api/pacientes/${id}/exportar`, {
+      responseType: 'blob',
+      observe: 'response',
+    });
+  }
+
   // Exclusao por anonimizacao (LGPD), irreversivel. 200 traz so a data; 404 vale para inexistente,
   // alheio e ja excluido (mesmo corpo).
   excluir(id: string) {
