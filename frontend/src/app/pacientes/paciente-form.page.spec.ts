@@ -752,6 +752,9 @@ describe('PacienteFormPage', () => {
       expect(secao()!.textContent).toContain('Baixar dados do paciente');
       expect(secao()!.textContent).toContain('documentos');
       expect(secao()!.textContent).toContain('não é cifrado');
+      expect(secao()!.textContent).toContain(
+        'Não entram as gerações de IA nem o registro de acessos',
+      );
       expect(abrir().textContent?.trim()).toBe('Baixar dados (JSON)');
     });
 
