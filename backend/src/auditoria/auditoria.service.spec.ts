@@ -25,6 +25,21 @@ describe('AuditoriaService.registrar', () => {
     });
   });
 
+  it('DESCARTOU (retencao de rascunho) e acao valida para Documento, com o id do documento', async () => {
+    const { create, tx, service } = montar();
+    const id = randomUUID();
+    await service.registrar(tx, user, 'DESCARTOU', 'Documento', id);
+    expect(create).toHaveBeenCalledWith({
+      data: {
+        clinicaId: user.clinicaId,
+        psicologoId: user.psicologoId,
+        acao: 'DESCARTOU',
+        recurso: 'Documento',
+        recursoId: id,
+      },
+    });
+  });
+
   it('EXCLUIU (exclusao por anonimizacao, item 26) e acao valida, gravada com o id do paciente', async () => {
     const { create, tx, service } = montar();
     const id = randomUUID();

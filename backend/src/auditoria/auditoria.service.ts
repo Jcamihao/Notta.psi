@@ -22,6 +22,9 @@ export const ACOES = [
   'SAIU_DE_TODOS',
   'EXCLUIU',
   'EXPORTOU',
+  // Descarte automatico de rascunho vencido (comando `npm run descartar`, item 52A). Gravado pela
+  // funcao descartar_rascunhos_vencidos no banco, na mesma transacao do DELETE.
+  'DESCARTOU',
 ] as const;
 export const RECURSOS = [
   'Paciente',

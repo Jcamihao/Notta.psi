@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import type { Documento, Prisma } from '@prisma/client';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { descarteEm } from '../comum/retencao';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
 import { ConsentimentoService } from '../consentimento/consentimento.service';
 import {
@@ -107,6 +108,7 @@ export class DocumentosService {
           substituiId: true,
           geradoPorIa: true,
           criadoEm: true,
+          atualizadoEm: true,
         },
         orderBy: { criadoEm: 'desc' },
         take: TETO_LISTA,
@@ -121,7 +123,11 @@ export class DocumentosService {
       return achadas;
     });
     if (!linhas) throw new NotFoundException(PACIENTE_NAO_ENCONTRADO);
-    return linhas.map((l) => ({ ...l, dataSessao: dia(l.dataSessao) }));
+    return linhas.map(({ atualizadoEm, ...l }) => ({
+      ...l,
+      dataSessao: dia(l.dataSessao),
+      descarteEm: this.descarteDe(l.status, atualizadoEm),
+    }));
   }
 
   async obter(user: UsuarioAutenticado, pacienteId: string, id: string) {
@@ -308,6 +314,11 @@ export class DocumentosService {
     });
   }
 
+  // So rascunho tem data de descarte (atualizadoEm + prazo). Aprovado nunca e apagado: null.
+  private descarteDe(status: string, atualizadoEm: Date): Date | null {
+    return status === 'RASCUNHO' ? descarteEm(atualizadoEm) : null;
+  }
+
   private completo(l: Documento) {
     try {
       return {
@@ -326,6 +337,7 @@ export class DocumentosService {
         geradoPorIa: l.geradoPorIa,
         criadoEm: l.criadoEm,
         atualizadoEm: l.atualizadoEm,
+        descarteEm: this.descarteDe(l.status, l.atualizadoEm),
       };
     } catch (e) {
       // So o tipo: a excecao nao carrega o texto, mas nao arriscamos.

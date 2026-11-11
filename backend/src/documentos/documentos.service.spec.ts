@@ -144,6 +144,8 @@ describe('DocumentosService.criar', () => {
       substituiId: null,
       criadoEm: new Date('2026-11-03T12:00:00Z'),
       atualizadoEm: new Date('2026-11-03T12:00:00Z'),
+      // 7 dias (padrao) sobre atualizadoEm.
+      descarteEm: new Date('2026-11-10T12:00:00Z'),
     });
   });
 
@@ -216,8 +218,14 @@ describe('DocumentosService.listar', () => {
       aprovadoEm: true,
       substituiId: true,
       criadoEm: true,
+      atualizadoEm: true,
     });
     expect(lista).toHaveLength(1);
+    expect(lista[0]).toMatchObject({
+      status: 'RASCUNHO',
+      descarteEm: new Date('2026-11-10T12:00:00Z'),
+    });
+    expect(lista[0]).not.toHaveProperty('atualizadoEm');
     expect(registrar).toHaveBeenLastCalledWith(
       tx,
       user,
@@ -433,5 +441,26 @@ describe('DocumentosService.listar com filtro', () => {
       psicologoId: user.psicologoId,
       status: 'APROVADO',
     });
+  });
+});
+
+describe('DocumentosService.descarteEm na resposta', () => {
+  afterEach(() => {
+    delete process.env.NOTTA_RETENCAO_RASCUNHO_DIAS;
+  });
+
+  it('aprovado devolve descarteEm null (nunca e apagado)', async () => {
+    const { service } = montar();
+    const criado = await service.criar(user, pacienteId, corpo);
+    const aprovado = await service.aprovar(user, pacienteId, criado.id);
+    expect(aprovado.status).toBe('APROVADO');
+    expect(aprovado.descarteEm).toBeNull();
+  });
+
+  it('o prazo vem de NOTTA_RETENCAO_RASCUNHO_DIAS (14 dias = 11-17)', async () => {
+    process.env.NOTTA_RETENCAO_RASCUNHO_DIAS = '14';
+    const { service } = montar();
+    const r = await service.criar(user, pacienteId, corpo);
+    expect(r.descarteEm).toEqual(new Date('2026-11-17T12:00:00Z'));
   });
 });

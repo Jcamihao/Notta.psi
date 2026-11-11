@@ -527,6 +527,7 @@ describe('Correcao (substituiId) e filtro por status', () => {
         'aprovadoEm',
         'criadoEm',
         'dataSessao',
+        'descarteEm',
         'geradoPorIa',
         'id',
         'status',
