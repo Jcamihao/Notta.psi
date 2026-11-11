@@ -271,7 +271,7 @@ describe('podar-backups.sh (item 52B)', () => {
   it('nome com espaco, aspas, -inicial e curinga: apaga so o vencido certo', () => {
     par('com espaco', 40);
     par('-rf', 40);
-    par("aspa'dupla\"", 40);
+    par('aspa\'dupla"', 40);
     par('estrela*', 40);
     par('interroga?', 40);
     par('novo', 1);
