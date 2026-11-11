@@ -1,11 +1,16 @@
 import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { KeyRound, LucideAngularModule, ShieldCheck, UserCheck } from 'lucide-angular';
 
 // Moldura das telas publicas (login e cadastro): formulario de um lado, promessa de sigilo do outro.
-// So afirma o que o produto garante: chave por clinica, acesso so aos proprios pacientes, aprovacao humana.
+// Cada frase do painel precisa continuar verdadeira segundo seguranca.conteudo.ts (ids):
+//   item 1 (dados cifrados, chave por clinica): `cifra`; nao diz "exclusiva" porque o servidor decifra para exibir.
+//   item 2 (cada um ve o seu, RLS FORCE): `isolamento`.
+//   item 3 (IA so propoe rascunho, troca por codigos, aprovacao humana, envio a terceiros): `ia` e `aprovado`.
+// O link leva a /seguranca, onde estao os limites e o que ainda nao esta pronto.
 @Component({
   selector: 'app-acesso',
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, RouterLink],
   template: `
     <main class="acesso-principal">
       <div class="acesso-coluna">
@@ -22,9 +27,12 @@ import { KeyRound, LucideAngularModule, ShieldCheck, UserCheck } from 'lucide-an
               <span class="chip chip-rosa"
                 ><lucide-icon [img]="icones.KeyRound" [size]="13" [strokeWidth]="1.5"
               /></span>
-              Chave própria da clínica
+              Dados cifrados, com chave por clínica
             </dt>
-            <dd>O conteúdo clínico é cifrado com uma chave exclusiva da sua clínica.</dd>
+            <dd>
+              Nome, nascimento, telefone e e-mail do paciente e o texto dos documentos ficam
+              cifrados no banco, com uma chave própria de cada clínica.
+            </dd>
           </div>
           <div>
             <dt>
@@ -45,9 +53,17 @@ import { KeyRound, LucideAngularModule, ShieldCheck, UserCheck } from 'lucide-an
               /></span>
               Você aprova, sempre
             </dt>
-            <dd>A IA só propõe rascunhos. Nada entra no prontuário sem a sua revisão.</dd>
+            <dd>
+              A IA só propõe rascunhos. Antes de enviar, o sistema troca o nome do paciente, CPF,
+              telefone, e-mail e endereço com número por códigos, e você confere o texto. Nada entra
+              no prontuário sem a sua aprovação. O texto vai a um serviço de IA de terceiros, só
+              depois da sua confirmação.
+            </dd>
           </div>
         </dl>
+        <p class="sigilo-link">
+          <a routerLink="/seguranca">Veja o que protegemos e o que ainda não está pronto</a>
+        </p>
       </div>
     </aside>
   `,
@@ -107,6 +123,16 @@ import { KeyRound, LucideAngularModule, ShieldCheck, UserCheck } from 'lucide-an
     }
     .chip-amarelo {
       background: var(--yellow-300);
+    }
+    .sigilo-link {
+      margin: var(--space-8) 0 0;
+    }
+    .sigilo-link a {
+      color: var(--ink-300);
+      text-underline-offset: 3px;
+    }
+    .sigilo-link a:focus-visible {
+      outline-color: var(--pink-300);
     }
     dt {
       display: flex;
