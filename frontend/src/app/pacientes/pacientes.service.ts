@@ -48,4 +48,10 @@ export class PacientesService {
   atualizar(id: string, corpo: AtualizacaoPaciente) {
     return this.http.patch<Paciente>(`/api/pacientes/${id}`, corpo);
   }
+
+  // Exclusao por anonimizacao (LGPD), irreversivel. 200 traz so a data; 404 vale para inexistente,
+  // alheio e ja excluido (mesmo corpo).
+  excluir(id: string) {
+    return this.http.delete<{ excluidoEm: string }>(`/api/pacientes/${id}`);
+  }
 }

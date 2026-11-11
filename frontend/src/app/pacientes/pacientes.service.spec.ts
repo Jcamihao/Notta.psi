@@ -49,6 +49,16 @@ describe('PacientesService', () => {
     r.flush(P);
   });
 
+  it('excluir: DELETE /api/pacientes/:id sem corpo, devolve a data da exclusao', () => {
+    let got: { excluidoEm: string } | undefined;
+    servico.excluir(P.id).subscribe((r) => (got = r));
+    const r = ctrl.expectOne(`/api/pacientes/${P.id}`);
+    expect(r.request.method).toBe('DELETE');
+    expect(r.request.body).toBeNull();
+    r.flush({ excluidoEm: '2026-11-11T12:00:00.000Z' });
+    expect(got).toEqual({ excluidoEm: '2026-11-11T12:00:00.000Z' });
+  });
+
   it('atualizar: PATCH /api/pacientes/:id mandando null para limpar', () => {
     servico
       .atualizar(P.id, { nome: 'Maria', nascimento: null, telefone: null, email: null })
