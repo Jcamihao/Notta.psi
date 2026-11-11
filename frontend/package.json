@@ -11,7 +11,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verificar:csp": "node scripts/verificar-csp.mjs",
-    "test:csp": "node --test scripts/"
+    "test:csp": "node --test scripts/*.test.mjs"
   },
   "prettier": {
     "printWidth": 100,
