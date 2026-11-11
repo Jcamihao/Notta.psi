@@ -52,7 +52,7 @@ export const THROTTLERS = [
   { name: 'renovar', ttl: MINUTO, limit: 30 },
   // Exportacao do paciente (item 26): arquivo com o prontuario inteiro em claro. Por psicologo do
   // token (nao IP). 10 por hora: sobra para quem exporta um paciente por vez; barra varredura.
-  // Conta tambem 404 e 413 (o guard roda antes do servico).
+  // Conta tambem 400, 404 e 413 (o guard roda antes do pipe e do servico): so trava o proprio usuario.
   {
     name: 'exportar',
     ttl: 60 * MINUTO,
