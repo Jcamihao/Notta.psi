@@ -106,6 +106,7 @@ describe('Auditoria: estrutura no banco', () => {
     const p = await owner.$queryRaw<{ policyname: string }[]>`
       SELECT policyname FROM pg_policies WHERE tablename = 'Auditoria' ORDER BY policyname`;
     expect(p.map((x) => x.policyname)).toEqual([
+      'auditoria_descartar_insert',
       'auditoria_dono_delete',
       'auditoria_dono_update',
       'auditoria_insert',

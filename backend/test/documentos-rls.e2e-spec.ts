@@ -130,6 +130,7 @@ describe('Documento: estrutura no banco', () => {
     // 20261110120000: + policy do dono para a anonimizacao (item 26).
     expect(p).toEqual([
       { policyname: 'documento_anonimizar_update' },
+      { policyname: 'documento_descartar_select' },
       { policyname: 'documento_dono_delete' },
       { policyname: 'documento_dono_update' },
       { policyname: 'documento_insert_proprio' },
