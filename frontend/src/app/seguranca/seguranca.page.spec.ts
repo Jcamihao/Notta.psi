@@ -26,7 +26,7 @@ describe('SegurancaPage', () => {
 
   it('tem h1 com o titulo da pagina e a data de atualizacao', () => {
     expect(el().querySelector('h1')?.textContent?.trim()).toBe('Como o Notta.psi protege os dados');
-    expect(el().textContent).toContain('Atualizado em 07/11/2026');
+    expect(el().textContent).toContain('Atualizado em 11/11/2026');
   });
 
   it('usa titulo de aba "Segurança e privacidade"', () => {

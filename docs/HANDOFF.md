@@ -51,7 +51,7 @@ Para subir o app à mão: gere `NOTTA_MASTER_KEY` (`npm run -s chave:gerar`) e `
 
 ## 4. O que já está pronto e verificado
 
-Itens de `docs/FEATURES.md` feitos e verificados (`[x]`): 1 a 23, 25, 41, 42, 44, 45, 46, 49, 51, 57 a 64 e a Fase 1.6. O item 24 está aberto e o 54 está `[~]` (rascunho de `docs/PLANO-DE-INCIDENTE.md` entregue; falta revisão de advogado e um simulado). Resumo do que existe:
+Itens de `docs/FEATURES.md` feitos e verificados (`[x]`): 1 a 23, 25, 26, 41, 42, 44, 45, 46, 49, 51, 57 a 64 e a Fase 1.6. O item 24 está aberto (espera o domínio) e o 54 está `[~]` (rascunho de `docs/PLANO-DE-INCIDENTE.md` entregue; falta revisão de advogado e um simulado). Resumo do que existe:
 
 - **Isolamento:** todo dado de clínica tem `clinicaId` e RLS ENABLE + FORCE. Cada psicólogo lê só os próprios pacientes e documentos (padrão `psicologo_proprio`, `docs/ACESSO.md`); o ADMIN gerencia a equipe e atende os próprios pacientes, mas não lê prontuário de colega. FKs filhas incluem `psicologoId`, porque checagem de FK ignora RLS.
 - **Criptografia:** AES-256-GCM, chave por clínica derivada por HKDF de uma chave mestra, formato `v1.<kid>.<iv>.<tag>.<ct>`, AAD obrigatório (`aadDe(tabela, coluna, id, psicologoId)`), chaveiro com várias chaves (`k1`, `k2`...) e `kid` lido do próprio valor (sem fallback). Paciente (nome, nascimento, telefone, e-mail) e conteúdo de documento ficam cifrados.
@@ -67,6 +67,8 @@ Os contratos de cada item e os relatórios dos agentes estão em `.superpowers/s
 
 ## 5. Onde parou
 
+**Atualização de 2026-11-11:** o item **26 (exportar e excluir dados, LGPD) foi fechado** (`[x]`). Exclusão por anonimização (`DELETE /pacientes/:id`, função SQL `anonimizar_paciente`, tombstones cifrados calculados no app, 404 idêntico, auditoria `EXCLUIU`) e exportação em JSON não cifrado (`GET /pacientes/:id/exportar`, auditoria `EXPORTOU`, 10 por hora, teto de 2000 linhas por lista), com tela na ficha do paciente (confirmação digitando o nome para excluir; confirmação inline para baixar). Texto e evidência em `docs/SEGURANCA-AFIRMACOES.md` (`direitos-dados`); o item de retenção virou `retencao` (item 52, aberto). Ambiente desta sessão: Postgres 16 do sistema na porta 5432 (não 5436), `graphify` e a pasta `.superpowers` não existiam. Backups antigos ainda guardam o dado anterior à exclusão: tratar no 52. A tela de Início (`/`) está vazia e não consta no `FEATURES.md`; escopo proposto: saudação, atalhos, pacientes recentes e estado vazio, aguardando OK do dono. O texto abaixo é de 2026-11-07 e vale para o restante.
+
 Nada está pela metade. O último item fechado foi o **25, backup e rotação da chave mestra** (`[x]`), com desenvolvimento feito por dois agentes Haiku e revisão e correção por um Sonnet (commits `772c080` a `a6e4a75`). O que existe:
 - Chaveiro com várias chaves mestras (`NOTTA_MASTER_KEYS` e `NOTTA_MASTER_KEY_ATUAL`), `npm run -s chave:gerar`, comando `npm run recifrar -- [--clinica <id>] [--lote N] [--dry-run]` (só como `notta_owner`; migration `20261109120000_recifrar_dono`), scripts `backend/scripts/backup.sh` e `verificar-backup.sh` e o guia `docs/BACKUP-E-CHAVES.md`.
 - O revisor rodou todos os mutantes do contrato (todos derrubam teste; lacunas viraram testes), achou e fechou lacunas, corrigiu `umask`, `set --` e documentação, e achou a causa do teste instável `documentos-rls` (`TRUNCATE` pede lock exclusivo antes do trigger barrar): as 3 suites com `TRUNCATE` do dono foram para o grupo serial.
@@ -80,7 +82,7 @@ Item 23 (página pública `/seguranca`): feito por Haiku e revisado por Sonnet, 
 
 ## 6. O que falta (ordem recomendada)
 
-1. **Fase 4 sem dependência externa:** 26 exportar e excluir dados (LGPD; precisa de decisão do dono), 52 retenção e descarte (inclui retenção das tabelas `Sessao` e do que ficou `RESTRICT`). O 54 (plano de incidente) tem rascunho pronto em `docs/PLANO-DE-INCIDENTE.md`: o dono precisa decidir encarregado, qualificação jurídica (controlador ou operador) e fazer um simulado.
+1. **Fase 4 sem dependência externa:** 52 retenção e descarte (inclui retenção das tabelas `Sessao` e do que ficou `RESTRICT`). O 54 (plano de incidente) tem rascunho pronto em `docs/PLANO-DE-INCIDENTE.md`: o dono precisa decidir encarregado, qualificação jurídica (controlador ou operador) e fazer um simulado.
 2. **Depende do dono comprar o domínio** (o provedor de e-mail escolhido é o **Resend**, que exige domínio verificado): 24 recuperar senha e confirmar e-mail, 65 convite por e-mail de uso único (fecha o risco I-1), 47 MFA por código de e-mail, 48 bloqueio de conta e aviso de novo login. O domínio também serve para `NOTTA_APP_URL` e o deploy.
 3. **Antes de abrir para clínicas:** 66 ajustar o texto do painel de sigilo e a mensagem de 503 do login ao que o código realmente garante, 67 transferir pacientes de psicólogo desativado.
 4. **Fase 5 (uso diário):** 27 linha do tempo, 28 busca (o texto é cifrado; a lista de pacientes hoje carrega no máximo 500 e ordena no app, precisa de paginação aqui), 29 ajuste de linguagem técnica, 30 exportar PDF ou Word.

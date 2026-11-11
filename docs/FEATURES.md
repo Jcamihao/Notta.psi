@@ -38,7 +38,7 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 - [x] 23. [F] Página de transparência de segurança
 - [ ] 24. [M] Recuperar senha e confirmar e-mail (DECISÃO DO DONO 2026-11-05: provedor de e-mail = Resend; só começar depois que o dono comprar o domínio, porque o Resend exige domínio verificado; em desenvolvimento o e-mail é só gravado em log local. Destrava os itens 47, 48 e 65)
 - [x] 25. [B] Backup e rotação da chave mestra
-- [ ] 26. [M] Exportar e excluir dados (LGPD)
+- [x] 26. [M] Exportar e excluir dados (LGPD) (feito e verificado em 2026-11-11: exclusão por anonimização irreversível e exportação em JSON não cifrado, só pelo psicólogo dono do paciente; limites e evidências em `docs/SEGURANCA-AFIRMACOES.md`, id `direitos-dados`. Fica para o item 52: descarte de backups antigos, que ainda guardam o dado anterior à exclusão)
 
 ## Fase 5 — Uso diário
 - [ ] 27. [M] Linha do tempo do paciente

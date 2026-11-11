@@ -24,7 +24,7 @@ export interface ConteudoSeguranca {
 }
 
 export const CONTEUDO_SEGURANCA: ConteudoSeguranca = {
-  atualizadoEm: '2026-11-07',
+  atualizadoEm: '2026-11-11',
   abertura:
     'Esta página mostra o que o Notta.psi faz hoje, com os limites de cada proteção, e o que ainda não está pronto.',
   secoes: [
@@ -57,7 +57,14 @@ export const CONTEUDO_SEGURANCA: ConteudoSeguranca = {
           status: 'feito',
           titulo: 'Quem acessou o quê fica registrado.',
           texto:
-            'Criar, ler, listar e editar pacientes e documentos, aprovar documentos, registrar consentimento e usar a IA gravam quem fez, o quê e quando, sem guardar o conteúdo. O aplicativo só consegue acrescentar linhas a esse registro, não alterar nem apagar; o administrador do banco consegue (veja abaixo).',
+            'Criar, ler, listar e editar pacientes e documentos, aprovar documentos, registrar consentimento, usar a IA, baixar os dados de um paciente e excluí-lo gravam quem fez, o quê e quando, sem guardar o conteúdo. O aplicativo só consegue acrescentar linhas a esse registro, não alterar nem apagar; o administrador do banco consegue (veja abaixo).',
+        },
+        {
+          id: 'direitos-dados',
+          status: 'feito',
+          titulo: 'O psicólogo pode baixar e excluir os dados de um paciente.',
+          texto:
+            'Na ficha do paciente há dois botões. "Baixar dados" gera um arquivo JSON com os dados do paciente, o registro de consentimento, os convites e o texto completo dos documentos; o arquivo não é cifrado, então quem o baixa passa a ser responsável por guardá-lo, e há limite de 10 downloads por hora. Não entram no arquivo as gerações de IA nem o registro de acessos. "Excluir paciente" é irreversível e funciona por anonimização: nome, nascimento, telefone, e-mail e o texto de todos os documentos, inclusive os aprovados, são substituídos por um texto fixo, e os convites pendentes são cancelados. O registro de que houve consentimento e atendimento e a trilha de acessos ficam guardados, sem identificar o paciente. Cópias de segurança feitas antes da exclusão continuam com o dado antigo até serem descartadas, e o que já foi enviado ao serviço de IA de terceiros não é apagado por nós. Quem pede e conduz isso é o psicólogo; o paciente ainda não tem um canal próprio para pedir.',
         },
         {
           id: 'ia',
@@ -132,9 +139,9 @@ export const CONTEUDO_SEGURANCA: ConteudoSeguranca = {
           texto: 'Ainda não foi feito.',
         },
         {
-          id: 'lgpd',
+          id: 'retencao',
           status: 'pendente',
-          titulo: 'Exportar e excluir seus dados e prazos de retenção.',
+          titulo: 'Prazos de retenção e descarte automático.',
           texto: 'Planejados: ainda não existem.',
         },
         {
