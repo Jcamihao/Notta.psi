@@ -37,7 +37,10 @@ describe('AcessoComponent (painel de sigilo)', () => {
 
   it('o item de IA diz o que acontece antes do envio e que o texto vai a terceiros', () => {
     const texto = painel().querySelectorAll('dd')[2].textContent!.replace(/\s+/g, ' ').trim();
-    expect(texto).toContain('A IA só propõe rascunhos.');
+    expect(texto).toContain(
+      'A IA só propõe rascunhos e só é usada para pacientes com consentimento.',
+    );
+    expect(texto).toContain('o filtro reduz o risco, mas não é perfeito');
     expect(texto).toContain(
       'troca o nome do paciente, CPF, telefone, e-mail e endereço com número',
     );

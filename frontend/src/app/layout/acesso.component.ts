@@ -54,10 +54,11 @@ import { KeyRound, LucideAngularModule, ShieldCheck, UserCheck } from 'lucide-an
               Você aprova, sempre
             </dt>
             <dd>
-              A IA só propõe rascunhos. Antes de enviar, o sistema troca o nome do paciente, CPF,
-              telefone, e-mail e endereço com número por códigos, e você confere o texto. Nada entra
-              no prontuário sem a sua aprovação. O texto vai a um serviço de IA de terceiros, só
-              depois da sua confirmação.
+              A IA só propõe rascunhos e só é usada para pacientes com consentimento. Antes de
+              enviar, o sistema troca o nome do paciente, CPF, telefone, e-mail e endereço com
+              número por códigos (o filtro reduz o risco, mas não é perfeito) e você confere o
+              texto. Nada entra no prontuário sem a sua aprovação. O texto vai a um serviço de IA de
+              terceiros, só depois da sua confirmação.
             </dd>
           </div>
         </dl>
