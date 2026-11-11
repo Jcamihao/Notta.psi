@@ -266,4 +266,132 @@ describe('podar-backups.sh (item 52B)', () => {
     expect(nomes()).toEqual(depois);
     expect(r.saida).toContain('0 backup(s) vencido(s) apagado(s)');
   });
+
+  it('nome com espaco, aspas, -inicial e curinga: apaga so o vencido certo', () => {
+    par('com espaco', 40);
+    par('-rf', 40);
+    par("aspa'dupla\"", 40);
+    par('estrela*', 40);
+    par('interroga?', 40);
+    par('novo', 1);
+    arquivo('notas.txt', 100);
+    const r = rodar([dir]);
+    expect(r.status).toBe(0);
+    expect(nomes()).toEqual(['notas.txt', 'novo.enc', 'novo.enc.sha256']);
+  });
+
+  it('pasta com espaco no caminho e caminho relativo com ..', () => {
+    const base = join(dir, 'minha pasta');
+    mkdirSync(base);
+    const f = join(base, 'v.enc');
+    writeFileSync(f, CONTEUDO);
+    utimesSync(f, Date.now() / 1000 - 40 * DIA, Date.now() / 1000 - 40 * DIA);
+    const n = join(base, 'n.enc');
+    writeFileSync(n, CONTEUDO);
+    const r = rodar(['./minha pasta/../minha pasta'], {}, dir);
+    expect(r.status).toBe(0);
+    expect(existsSync(f)).toBe(false);
+    expect(existsSync(n)).toBe(true);
+  });
+
+  it('empate de mtime: nenhum dos empatados no topo e apagado', () => {
+    par('a', 40);
+    par('b', 40);
+    const antes = nomes();
+    const r = rodar([dir]);
+    expect(r.status).toBe(0);
+    expect(nomes()).toEqual(antes);
+  });
+
+  it('mtime no futuro: nao conta como o mais recente e nao e apagado', () => {
+    par('futuro', -5);
+    par('real-vencido', 40);
+    par('mais-velho', 90);
+    const r = rodar([dir]);
+    expect(r.status).toBe(0);
+    expect(nomes()).toEqual([
+      'futuro.enc',
+      'futuro.enc.sha256',
+      'real-vencido.enc',
+      'real-vencido.enc.sha256',
+    ]);
+  });
+
+  it('so arquivos no futuro: nada e apagado', () => {
+    par('f1', -5);
+    par('f2', -9);
+    const antes = nomes();
+    expect(rodar([dir]).status).toBe(0);
+    expect(nomes()).toEqual(antes);
+  });
+
+  it.each(['/', 'HOME'])(
+    'link simbolico para %s e recusado depois de resolvido',
+    (alvo) => {
+      par('velho', 400);
+      par('novo', 1);
+      mkdirSync(join(dir, 'home'));
+      const link = join(dir, 'atalho');
+      symlinkSync(alvo === 'HOME' ? join(dir, 'home') : '/', link);
+      const r = rodar([link]);
+      expect(r.status).toBe(2);
+      expect(r.saida).toContain('recusada');
+      expect(existe('velho.enc')).toBe(true);
+    },
+  );
+
+  it('link simbolico para a raiz do repositorio e recusado', () => {
+    const link = join(dir, 'atalho-repo');
+    symlinkSync(RAIZ_REPO, link);
+    const r = rodar([link]);
+    expect(r.status).toBe(2);
+    expect(r.saida).toContain('recusada');
+  });
+
+  it('link simbolico para uma pasta de backups valida poda a pasta real', () => {
+    const real = join(dir, 'real');
+    mkdirSync(real);
+    const v = join(real, 'v.enc');
+    const n = join(real, 'n.enc');
+    writeFileSync(v, CONTEUDO);
+    writeFileSync(n, CONTEUDO);
+    utimesSync(v, Date.now() / 1000 - 40 * DIA, Date.now() / 1000 - 40 * DIA);
+    symlinkSync(real, join(dir, 'atalho'));
+    expect(rodar([join(dir, 'atalho')]).status).toBe(0);
+    expect(existsSync(v)).toBe(false);
+    expect(existsSync(n)).toBe(true);
+  });
+
+  it('--dias repetido vale o ultimo; --dias sem valor antes de outra opcao e exit 2', () => {
+    par('velho', 10);
+    par('novo', 1);
+    expect(rodar([dir, '--dias', '30', '--dias', '5']).status).toBe(0);
+    expect(existe('velho.enc')).toBe(false);
+    par('velho2', 10);
+    expect(rodar([dir, '--dias', '--dry-run']).status).toBe(2);
+    expect(existe('velho2.enc')).toBe(true);
+  });
+
+  it('opcoes antes da pasta funcionam; nada fora da pasta alvo e tocado', () => {
+    const alvo = join(dir, 'alvo');
+    const vizinha = join(dir, 'vizinha');
+    mkdirSync(alvo);
+    mkdirSync(vizinha);
+    for (const p of [alvo, vizinha]) {
+      for (const [n, d] of [
+        ['v.enc', 40],
+        ['n.enc', 1],
+      ] as const) {
+        const f = join(p, n);
+        writeFileSync(f, CONTEUDO);
+        const t = Date.now() / 1000 - d * DIA;
+        utimesSync(f, t, t);
+      }
+    }
+    const r = rodar(['--dry-run', '--dias', '30', alvo]);
+    expect(r.status).toBe(0);
+    expect(rodar(['--dias', '30', alvo]).status).toBe(0);
+    expect(readdirSync(alvo).sort()).toEqual(['n.enc']);
+    expect(readdirSync(vizinha).sort()).toEqual(['n.enc', 'v.enc']);
+  });
 });

@@ -5,7 +5,7 @@
 # Regras:
 # - So casa o padrao exato de backup.sh (*.enc e *.enc.sha256), so no nivel da pasta: sem recursao
 #   e sem seguir link simbolico. Subpastas, links e outros arquivos nunca sao tocados.
-# - Nunca apaga o backup MAIS RECENTE da pasta, mesmo vencido: se o agendamento parar, o ultimo
+# - Nunca apaga o backup MAIS RECENTE da pasta (empate: todos os empatados; data no futuro nao conta), mesmo vencido: se o agendamento parar, o ultimo
 #   bom continua la. Pasta com um backup so nao perde nada.
 # - Um .sha256 so sai junto com o seu .enc. Um .sha256 sem .enc (sobra) fica como esta: nao tem
 #   dado pessoal (so hash e nome).
@@ -158,35 +158,41 @@ for i in "${!ENCS[@]}"; do
   fi
 done
 
-# Backup mais recente = maior mtime (empate: o primeiro na ordem da pasta). Esse nunca e apagado.
-MAIS_RECENTE=-1
+AGORA="$(date +%s)"
+CORTE=$((AGORA - DIAS * 86400))
+
+# Backup mais recente = maior mtime que nao esteja no futuro (relogio errado nao pode proteger um
+# arquivo falso no lugar do ultimo bom). Todo arquivo com esse mesmo mtime (empate) e mantido.
+TOPO=-1
 for i in "${!ENCS[@]}"; do
   [ -n "${MT[$i]}" ] || continue
-  if [ "$MAIS_RECENTE" -lt 0 ] || [ "${MT[$i]}" -gt "${MT[$MAIS_RECENTE]}" ]; then
-    MAIS_RECENTE=$i
+  [ "${MT[$i]}" -le "$AGORA" ] || continue
+  if [ "$TOPO" -lt 0 ] || [ "${MT[$i]}" -gt "$TOPO" ]; then
+    TOPO=${MT[$i]}
   fi
 done
 
-if [ "$MAIS_RECENTE" -lt 0 ]; then
-  echo "nenhum backup (*.enc) legivel em $PASTA_REAL. Nada a fazer."
+if [ "$TOPO" -lt 0 ]; then
+  echo "nenhum backup (*.enc) com data valida em $PASTA_REAL. Nada a fazer."
   exit 0
 fi
-
-AGORA="$(date +%s)"
-CORTE=$((AGORA - DIAS * 86400))
 
 echo "retencao: $DIAS dias (origem: $ORIGEM); pasta: $PASTA_REAL"
 if [ "$SIMULAR" -eq 1 ]; then
   echo "modo --dry-run: nada sera apagado."
 fi
-echo "mantido (mais recente, nunca apagado): $(basename -- "${ENCS[$MAIS_RECENTE]}")"
+for i in "${!ENCS[@]}"; do
+  if [ -n "${MT[$i]}" ] && [ "${MT[$i]}" -eq "$TOPO" ]; then
+    echo "mantido (mais recente, nunca apagado): $(basename -- "${ENCS[$i]}")"
+  fi
+done
 
 PARES=0
 ARQUIVOS=0
 ERROS=0
 for i in "${!ENCS[@]}"; do
   [ -n "${MT[$i]}" ] || continue
-  [ "$i" -ne "$MAIS_RECENTE" ] || continue
+  [ "${MT[$i]}" -ne "$TOPO" ] || continue
   [ "${MT[$i]}" -lt "$CORTE" ] || continue
 
   f="${ENCS[$i]}"
