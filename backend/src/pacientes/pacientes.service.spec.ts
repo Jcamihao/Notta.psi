@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  PayloadTooLargeException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { ConsentimentoService } from '../consentimento/consentimento.service';
@@ -525,3 +526,436 @@ function erroBruto(codigo: string, mensagem: string) {
     meta: { code: codigo, message: mensagem },
   });
 }
+
+// ---- Exportacao do paciente (item 26, portabilidade) ----
+const EXP_PID = randomUUID();
+const EXP_OUTRO_PID = randomUUID();
+const DATA_EXP = new Date('2026-10-31T12:00:00Z');
+const TEXTO_RASCUNHO = 'Paciente relatou insonia recorrente';
+const TEXTO_APROVADO = 'Sessao focada em luto e rotina';
+
+type LinhaExp = {
+  id: string;
+  clinicaId: string;
+  psicologoId: string;
+  nomeCifrado: string;
+  nascimentoCifrado: string | null;
+  telefoneCifrado: string | null;
+  emailCifrado: string | null;
+  excluidoEm: Date | null;
+  criadoEm: Date;
+  atualizadoEm: Date;
+};
+
+function criptoDeTeste() {
+  process.env.NOTTA_MASTER_KEY = '0123456789abcdef'.repeat(4);
+  return new CriptografiaService();
+}
+
+const cifrarAad = (
+  cripto: CriptografiaService,
+  valor: string,
+  tabela: string,
+  coluna: string,
+  id: string,
+) =>
+  cripto.cifrar(
+    user.clinicaId,
+    valor,
+    aadDe(tabela, coluna, id, user.psicologoId),
+  );
+
+function pacienteExp(
+  cripto: CriptografiaService,
+  extra: Partial<LinhaExp> = {},
+): LinhaExp {
+  return {
+    id: EXP_PID,
+    clinicaId: user.clinicaId,
+    psicologoId: user.psicologoId,
+    nomeCifrado: cifrarAad(
+      cripto,
+      'Maria Exportada',
+      'Paciente',
+      'nomeCifrado',
+      EXP_PID,
+    ),
+    nascimentoCifrado: cifrarAad(
+      cripto,
+      '1990-05-17',
+      'Paciente',
+      'nascimentoCifrado',
+      EXP_PID,
+    ),
+    telefoneCifrado: cifrarAad(
+      cripto,
+      '(11) 90000-0000',
+      'Paciente',
+      'telefoneCifrado',
+      EXP_PID,
+    ),
+    emailCifrado: null,
+    excluidoEm: null,
+    criadoEm: DATA_EXP,
+    atualizadoEm: DATA_EXP,
+    ...extra,
+  };
+}
+
+function docExp(
+  cripto: CriptografiaService,
+  id: string,
+  status: 'RASCUNHO' | 'APROVADO',
+  texto: string,
+  pacienteId = EXP_PID,
+  substituiId: string | null = null,
+) {
+  return {
+    id,
+    clinicaId: user.clinicaId,
+    psicologoId: user.psicologoId,
+    pacienteId,
+    tipo: 'EVOLUCAO',
+    status,
+    dataSessao: new Date('2026-10-01T00:00:00Z'),
+    conteudoCifrado: cifrarAad(
+      cripto,
+      texto,
+      'Documento',
+      'conteudoCifrado',
+      id,
+    ),
+    aprovadoEm: status === 'APROVADO' ? DATA_EXP : null,
+    substituiId,
+    geradoPorIa: false,
+    criadoEm: DATA_EXP,
+    atualizadoEm: DATA_EXP,
+  };
+}
+
+function montarExportar(
+  cripto: CriptografiaService,
+  dados: {
+    paciente?: LinhaExp | null;
+    documentos?: object[];
+    consentimentos?: object[];
+    convites?: object[];
+  } = {},
+) {
+  const paciente =
+    dados.paciente === undefined ? pacienteExp(cripto) : dados.paciente;
+  const filtra = (linhas: object[] = []) =>
+    jest.fn(({ where, take }: { where: object; take?: number }) => {
+      const achadas = linhas.filter((l) =>
+        Object.entries(where).every(
+          ([k, v]) => (l as Record<string, unknown>)[k] === v,
+        ),
+      );
+      return Promise.resolve(take ? achadas.slice(0, take) : achadas);
+    });
+  const tx = {
+    paciente: {
+      findFirst: jest.fn(({ where }: { where: Record<string, unknown> }) =>
+        Promise.resolve(
+          paciente &&
+            paciente.id === where.id &&
+            paciente.clinicaId === where.clinicaId &&
+            paciente.psicologoId === where.psicologoId &&
+            paciente.excluidoEm === where.excluidoEm
+            ? paciente
+            : null,
+        ),
+      ),
+    },
+    documento: { findMany: filtra(dados.documentos) },
+    consentimento: { findMany: filtra(dados.consentimentos) },
+    conviteConsentimento: { findMany: filtra(dados.convites) },
+  };
+  const tenant = {
+    runComoUsuario: jest.fn(
+      (_u: object, fn: (t: typeof tx) => Promise<unknown>) => fn(tx),
+    ),
+  };
+  const registrar = jest.fn<Promise<void>, unknown[]>(() => Promise.resolve());
+  const service = new PacientesService(
+    tenant as unknown as TenantPrismaService,
+    cripto,
+    { registrar },
+    {} as ConsentimentoService,
+  );
+  return { tx, tenant, service, registrar };
+}
+
+const consentimentoExp = {
+  id: randomUUID(),
+  clinicaId: user.clinicaId,
+  psicologoId: user.psicologoId,
+  pacienteId: EXP_PID,
+  seq: 1,
+  evento: 'CONCEDIDO',
+  termoVersao: 'v1',
+  origem: 'PSICOLOGO',
+  conviteId: null,
+  criadoEm: DATA_EXP,
+};
+
+describe('PacientesService.exportar', () => {
+  it('formato versionado: versao 1, geradoEm ISO e so as chaves do contrato', async () => {
+    const cripto = criptoDeTeste();
+    const { service } = montarExportar(cripto, {
+      documentos: [docExp(cripto, randomUUID(), 'RASCUNHO', TEXTO_RASCUNHO)],
+      consentimentos: [consentimentoExp],
+    });
+    const r = await service.exportar(user, EXP_PID);
+    expect(r.versao).toBe(1);
+    expect(new Date(r.geradoEm).toISOString()).toBe(r.geradoEm);
+    expect(Object.keys(r).sort()).toEqual(
+      [
+        'aviso',
+        'consentimentos',
+        'convites',
+        'documentos',
+        'geradoEm',
+        'paciente',
+        'versao',
+      ].sort(),
+    );
+    expect(Object.keys(r.paciente).sort()).toEqual(
+      [
+        'atualizadoEm',
+        'criadoEm',
+        'email',
+        'id',
+        'nascimento',
+        'nome',
+        'telefone',
+      ].sort(),
+    );
+    expect(Object.keys(r.consentimentos[0]).sort()).toEqual(
+      [
+        'conviteId',
+        'evento',
+        'id',
+        'origem',
+        'registradoEm',
+        'seq',
+        'termoVersao',
+      ].sort(),
+    );
+    expect(Object.keys(r.documentos[0]).sort()).toEqual(
+      [
+        'aprovadoEm',
+        'atualizadoEm',
+        'conteudo',
+        'criadoEm',
+        'dataSessao',
+        'id',
+        'status',
+        'substituiId',
+        'tipo',
+      ].sort(),
+    );
+    expect(r.aviso.length).toBeGreaterThan(20);
+  });
+
+  it('decifra paciente e documentos com o AAD da propria linha', async () => {
+    const cripto = criptoDeTeste();
+    const docId = randomUUID();
+    const spy = jest.spyOn(cripto, 'decifrar');
+    const { service } = montarExportar(cripto, {
+      documentos: [docExp(cripto, docId, 'RASCUNHO', TEXTO_RASCUNHO)],
+    });
+    const r = await service.exportar(user, EXP_PID);
+    expect(r.paciente.nome).toBe('Maria Exportada');
+    expect(r.paciente.nascimento).toBe('1990-05-17');
+    expect(r.paciente.telefone).toBe('(11) 90000-0000');
+    expect(r.paciente.email).toBeNull();
+    expect(r.documentos[0].conteudo).toBe(TEXTO_RASCUNHO);
+    expect(spy).toHaveBeenCalledWith(
+      user.clinicaId,
+      expect.any(String),
+      aadDe('Documento', 'conteudoCifrado', docId, user.psicologoId),
+    );
+    expect(spy).toHaveBeenCalledWith(
+      user.clinicaId,
+      expect.any(String),
+      aadDe('Paciente', 'nomeCifrado', EXP_PID, user.psicologoId),
+    );
+  });
+
+  it('nao inclui colunas cifradas, tokens, hashes, senha, geracao IA nem texto de termo', async () => {
+    const cripto = criptoDeTeste();
+    const { service } = montarExportar(cripto, {
+      documentos: [docExp(cripto, randomUUID(), 'APROVADO', TEXTO_APROVADO)],
+      consentimentos: [consentimentoExp],
+      convites: [
+        {
+          id: randomUUID(),
+          clinicaId: user.clinicaId,
+          psicologoId: user.psicologoId,
+          pacienteId: EXP_PID,
+          tokenHash: 'a'.repeat(64),
+          termoVersao: 'v1',
+          estado: 'ACEITO',
+          expiraEm: DATA_EXP,
+          criadoEm: DATA_EXP,
+          usadoEm: DATA_EXP,
+        },
+      ],
+    });
+    const json = JSON.stringify(await service.exportar(user, EXP_PID));
+    expect(json).not.toMatch(/Cifrado/);
+    expect(json).not.toMatch(/token|hash|senha|geracao|mapa|termoTexto/i);
+    expect(json).not.toContain('a'.repeat(64));
+    expect(json).not.toContain(user.clinicaId);
+  });
+
+  it('documento de OUTRO paciente do mesmo psicologo nao aparece (where filtra por paciente)', async () => {
+    const cripto = criptoDeTeste();
+    const { service, tx } = montarExportar(cripto, {
+      documentos: [
+        docExp(cripto, randomUUID(), 'RASCUNHO', TEXTO_RASCUNHO),
+        docExp(
+          cripto,
+          randomUUID(),
+          'RASCUNHO',
+          'Outro paciente',
+          EXP_OUTRO_PID,
+        ),
+      ],
+    });
+    const r = await service.exportar(user, EXP_PID);
+    expect(r.documentos).toHaveLength(1);
+    expect(JSON.stringify(r)).not.toContain('Outro paciente');
+    expect(tx.documento.findMany.mock.calls[0][0].where).toEqual({
+      pacienteId: EXP_PID,
+      clinicaId: user.clinicaId,
+      psicologoId: user.psicologoId,
+    });
+  });
+
+  it('paciente: findFirst exige id, clinica, psicologo do token e excluidoEm null; uma unica transacao', async () => {
+    const cripto = criptoDeTeste();
+    const { service, tx, tenant } = montarExportar(cripto);
+    await service.exportar(user, EXP_PID);
+    expect(tenant.runComoUsuario).toHaveBeenCalledTimes(1);
+    expect(tx.paciente.findFirst.mock.calls[0][0].where).toEqual({
+      id: EXP_PID,
+      clinicaId: user.clinicaId,
+      psicologoId: user.psicologoId,
+      excluidoEm: null,
+    });
+  });
+
+  it('inexistente, alheio, de outra clinica e JA EXCLUIDO = o mesmo 404, sem auditoria', async () => {
+    const cripto = criptoDeTeste();
+    const esperado = new NotFoundException('Paciente nao encontrado');
+    const casos = [
+      montarExportar(cripto, { paciente: null }),
+      montarExportar(cripto, {
+        paciente: pacienteExp(cripto, { psicologoId: randomUUID() }),
+      }),
+      montarExportar(cripto, {
+        paciente: pacienteExp(cripto, { clinicaId: randomUUID() }),
+      }),
+      montarExportar(cripto, {
+        paciente: pacienteExp(cripto, { excluidoEm: DATA_EXP }),
+      }),
+    ];
+    for (const { service, registrar } of casos) {
+      await expect(service.exportar(user, EXP_PID)).rejects.toEqual(esperado);
+      expect(registrar).not.toHaveBeenCalled();
+    }
+  });
+
+  it('falha ao decifrar um documento = 500 generico, sem JSON parcial, sem auditoria, log sem texto', async () => {
+    const cripto = criptoDeTeste();
+    const a = docExp(cripto, randomUUID(), 'RASCUNHO', TEXTO_RASCUNHO);
+    const b = docExp(cripto, randomUUID(), 'RASCUNHO', 'Texto da outra nota');
+    // cifrado de outra nota: o AAD (id) nao confere
+    a.conteudoCifrado = b.conteudoCifrado;
+    const { service, registrar } = montarExportar(cripto, {
+      documentos: [a, b],
+    });
+    const log = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    const erro = await service.exportar(user, EXP_PID).catch((e: unknown) => e);
+    expect(erro).toBeInstanceOf(InternalServerErrorException);
+    expect(registrar).not.toHaveBeenCalled();
+    const logado = JSON.stringify(log.mock.calls);
+    expect(logado).not.toContain('Texto da outra nota');
+    expect(logado).not.toContain('Maria');
+    log.mockRestore();
+  });
+
+  it('falha ao decifrar o nome do paciente = 500 generico, sem auditoria', async () => {
+    const cripto = criptoDeTeste();
+    const paciente = pacienteExp(cripto);
+    paciente.nomeCifrado = cifrarAad(
+      cripto,
+      'Outro',
+      'Paciente',
+      'nomeCifrado',
+      EXP_OUTRO_PID,
+    );
+    const { service, registrar } = montarExportar(cripto, { paciente });
+    const log = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    await expect(service.exportar(user, EXP_PID)).rejects.toBeInstanceOf(
+      InternalServerErrorException,
+    );
+    expect(registrar).not.toHaveBeenCalled();
+    log.mockRestore();
+  });
+
+  it('audita EXPORTOU (recurso Paciente, id do paciente) na mesma transacao, so quando exporta', async () => {
+    const cripto = criptoDeTeste();
+    const { service, tx, registrar } = montarExportar(cripto);
+    await service.exportar(user, EXP_PID);
+    expect(registrar).toHaveBeenCalledTimes(1);
+    expect(registrar).toHaveBeenCalledWith(
+      tx,
+      user,
+      'EXPORTOU',
+      'Paciente',
+      EXP_PID,
+    );
+  });
+
+  it('filtra consentimentos e convites pelo paciente e pelo dono do token', async () => {
+    const cripto = criptoDeTeste();
+    const { service, tx } = montarExportar(cripto);
+    await service.exportar(user, EXP_PID);
+    const dono = {
+      pacienteId: EXP_PID,
+      clinicaId: user.clinicaId,
+      psicologoId: user.psicologoId,
+    };
+    expect(tx.consentimento.findMany.mock.calls[0][0].where).toEqual(dono);
+    expect(tx.conviteConsentimento.findMany.mock.calls[0][0].where).toEqual(
+      dono,
+    );
+  });
+
+  it('mais de 2000 documentos = 413 com mensagem fixa, sem montar nada, sem auditoria', async () => {
+    const cripto = criptoDeTeste();
+    const base = docExp(cripto, randomUUID(), 'RASCUNHO', TEXTO_RASCUNHO);
+    const muitos = Array.from({ length: 2001 }, () => ({
+      ...base,
+      id: randomUUID(),
+    }));
+    const { service, registrar, tx } = montarExportar(cripto, {
+      documentos: muitos,
+    });
+    const erro = await service.exportar(user, EXP_PID).catch((e: unknown) => e);
+    expect(erro).toBeInstanceOf(PayloadTooLargeException);
+    expect((erro as Error).message).toBe(
+      'Paciente com historico grande demais para exportar de uma vez',
+    );
+    // o teto le ate 2001 linhas (uma a mais que o teto) e nao mais que isso
+    expect(tx.documento.findMany.mock.calls[0][0].take).toBe(2001);
+    expect(registrar).not.toHaveBeenCalled();
+  });
+});

@@ -7,8 +7,11 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { UsuarioAtual, type UsuarioAutenticado } from '../auth/jwt-auth.guard';
+import { LimiteExportar } from '../limite-tentativas/limite-tentativas.guard';
 import { CriarPacienteDto, EditarPacienteDto } from './pacientes.dto';
 import { PacientesService } from './pacientes.service';
 
@@ -56,5 +59,23 @@ export class PacientesController {
     @Param('id', ParseUUIDPipe) id: string,
   ) {
     return this.pacientes.excluir(user, id);
+  }
+
+  // Exportacao (LGPD, item 26, portabilidade): JSON com o paciente em claro, anexo. Cabecalhos so
+  // depois do sucesso (um erro nao leva `attachment` nem `no-store` junto). Nome do arquivo = uuid.
+  @LimiteExportar()
+  @Get(':id/exportar')
+  async exportar(
+    @UsuarioAtual() user: UsuarioAutenticado,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const dados = await this.pacientes.exportar(user, id);
+    res.set({
+      'Content-Type': 'application/json; charset=utf-8',
+      'Content-Disposition': `attachment; filename="paciente-${id}.json"`,
+      'Cache-Control': 'no-store',
+    });
+    return dados;
   }
 }

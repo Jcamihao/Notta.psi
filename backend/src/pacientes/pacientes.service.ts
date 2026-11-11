@@ -6,8 +6,9 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  PayloadTooLargeException,
 } from '@nestjs/common';
-import { Prisma, type Paciente } from '@prisma/client';
+import { Prisma, type Documento, type Paciente } from '@prisma/client';
 import type { UsuarioAutenticado } from '../auth/jwt-auth.guard';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { ConsentimentoService } from '../consentimento/consentimento.service';
@@ -27,6 +28,15 @@ const TOMBSTONE_NOME = 'Paciente excluido';
 const TOMBSTONE_CONTEUDO = 'Conteudo excluido a pedido (LGPD)';
 // O mapa da geracao e uma LISTA JSON (o executor itera sobre ele).
 const TOMBSTONE_MAPA = '[]';
+// Exportacao (item 26, portabilidade): formato versionado. Teto de 2000 linhas por lista (documentos,
+// consentimentos e convites): acima disso = 413, sem montar o arquivo em memoria.
+export const VERSAO_EXPORTACAO = 1;
+const TETO_EXPORTACAO = 2000;
+const EXPORTACAO_GRANDE =
+  'Paciente com historico grande demais para exportar de uma vez';
+// Texto fixo: o arquivo sai com dado clinico em claro. Sem palavras de segredo (o e2e confere).
+const AVISO_EXPORTACAO =
+  'Este arquivo contem dado clinico em claro. Guarde com seguranca e nao o envie por canal sem protecao.';
 // SQLSTATE e codigo da funcao: P0002 = no_data_found; 22023 = tombstone faltando (corrida).
 const SQL_NAO_ENCONTRADO = 'P0002';
 const SQL_TOMBSTONE_AUSENTE = '22023';
@@ -132,6 +142,118 @@ export class PacientesService {
     );
     if (!linha) throw new NotFoundException(NAO_ENCONTRADO);
     return { ...this.paraResposta(linha), consentimento: estado };
+  }
+
+  // Exportacao do paciente (LGPD, item 26): tudo o que o sistema guarda sobre UM paciente seu, em
+  // claro. UMA transacao: as leituras, a decifra e a auditoria EXPORTOU. Se a decifra falha, a
+  // auditoria nao e gravada e nada parcial sai (500). Sem I/O de rede. 404 = mesmo do resto.
+  // Fora do arquivo: GeracaoIa (texto anonimizado e mapa sao transitorios), trilha de auditoria,
+  // hashes, tokens, colunas *Cifrado e termo de consentimento (texto longo; sai so a versao).
+  async exportar(user: UsuarioAutenticado, id: string) {
+    const dono = {
+      pacienteId: id,
+      clinicaId: user.clinicaId,
+      psicologoId: user.psicologoId,
+    };
+    return this.tenant.runComoUsuario(user, async (tx) => {
+      const paciente = await this.buscar(tx, user, id);
+      // 404 nao grava: nada foi exportado.
+      if (!paciente) throw new NotFoundException(NAO_ENCONTRADO);
+      // Teto = TETO + 1 linhas: basta saber se passou do limite, sem ler mais que isso.
+      const consentimentos = await tx.consentimento.findMany({
+        where: dono,
+        orderBy: { seq: 'asc' },
+        take: TETO_EXPORTACAO + 1,
+        select: {
+          id: true,
+          seq: true,
+          evento: true,
+          termoVersao: true,
+          origem: true,
+          conviteId: true,
+          criadoEm: true,
+        },
+      });
+      const documentos = await tx.documento.findMany({
+        where: dono,
+        orderBy: { criadoEm: 'asc' },
+        take: TETO_EXPORTACAO + 1,
+      });
+      const convites = await tx.conviteConsentimento.findMany({
+        where: dono,
+        orderBy: { criadoEm: 'asc' },
+        take: TETO_EXPORTACAO + 1,
+        select: {
+          id: true,
+          estado: true,
+          criadoEm: true,
+          expiraEm: true,
+          usadoEm: true,
+        },
+      });
+      if (
+        documentos.length > TETO_EXPORTACAO ||
+        consentimentos.length > TETO_EXPORTACAO ||
+        convites.length > TETO_EXPORTACAO
+      ) {
+        throw new PayloadTooLargeException(EXPORTACAO_GRANDE);
+      }
+      const corpo = {
+        versao: VERSAO_EXPORTACAO,
+        geradoEm: new Date().toISOString(),
+        paciente: {
+          ...this.paraResposta(paciente),
+          atualizadoEm: paciente.atualizadoEm,
+        },
+        consentimentos: consentimentos.map((c) => ({
+          id: c.id,
+          seq: c.seq,
+          evento: c.evento,
+          termoVersao: c.termoVersao,
+          origem: c.origem,
+          conviteId: c.conviteId,
+          registradoEm: c.criadoEm,
+        })),
+        documentos: documentos.map((d) => ({
+          id: d.id,
+          tipo: d.tipo,
+          status: d.status,
+          dataSessao: d.dataSessao
+            ? d.dataSessao.toISOString().slice(0, 10)
+            : null,
+          conteudo: this.textoDocumento(d),
+          criadoEm: d.criadoEm,
+          atualizadoEm: d.atualizadoEm,
+          aprovadoEm: d.aprovadoEm,
+          substituiId: d.substituiId,
+        })),
+        convites: convites.map((c) => ({
+          id: c.id,
+          estado: c.estado,
+          criadoEm: c.criadoEm,
+          expiraEm: c.expiraEm,
+          usadoEm: c.usadoEm,
+        })),
+        aviso: AVISO_EXPORTACAO,
+      };
+      // Trilha na MESMA transacao: sem ela, o arquivo nao sai.
+      await this.auditoria.registrar(tx, user, 'EXPORTOU', 'Paciente', id);
+      return corpo;
+    });
+  }
+
+  // Texto de uma nota para a exportacao. Falha = 500 generico (nunca parcial), so o tipo no log.
+  private textoDocumento(d: Documento): string {
+    try {
+      return this.cripto.decifrar(
+        d.clinicaId,
+        d.conteudoCifrado,
+        aadDe('Documento', 'conteudoCifrado', d.id, d.psicologoId),
+      );
+    } catch (e) {
+      this.logger.error(`falha ao decifrar documento: ${(e as Error).name}`);
+      throw new InternalServerErrorException();
+    }
   }
 
   // Exclusao por ANONIMIZACAO (LGPD, item 26). Tudo numa transacao: a funcao SQL troca o
