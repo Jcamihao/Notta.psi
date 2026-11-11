@@ -270,6 +270,15 @@ describe('PacienteFormPage', () => {
     });
   });
 
+  describe('exclusao so no detalhe', () => {
+    beforeEach(() => montar(null));
+
+    it('em /pacientes/novo nao ha botao nem secao Excluir paciente', () => {
+      expect(el().querySelector('[data-teste="excluir-abrir"]')).toBeNull();
+      expect(el().textContent).not.toContain('Excluir paciente');
+    });
+  });
+
   describe('ver e editar', () => {
     beforeEach(() => montar(ID));
 
@@ -400,6 +409,211 @@ describe('PacienteFormPage', () => {
       await falhar(ctrl.expectOne(`/api/pacientes/${ID}`), 400);
       expect(alerta()).toContain('inválidos');
       expect(el().querySelector('[data-teste="confirmacao"]')).toBeNull();
+    });
+
+    describe('excluir paciente', () => {
+      const urlExcluir = `/api/pacientes/${ID}`;
+      const abrir = () => el().querySelector('[data-teste="excluir-abrir"]') as HTMLButtonElement;
+      const confirmacao = () => el().querySelector('[data-teste="confirmacao-excluir"]');
+      const nomeInput = () => el().querySelector('#pc-excluir-nome') as HTMLInputElement;
+      const botaoExcluir = () =>
+        el().querySelector('[data-teste="excluir-confirmar"]') as HTMLButtonElement | null;
+      const botaoCancelar = () =>
+        el().querySelector('[data-teste="excluir-cancelar"]') as HTMLButtonElement | null;
+      const erroExcluir = () =>
+        el().querySelector('[data-teste="erro-excluir"]')?.textContent?.trim() ?? '';
+      const digitarNome = (valor: string) => {
+        const i = nomeInput();
+        i.value = valor;
+        i.dispatchEvent(new Event('input'));
+        fixture.detectChanges();
+      };
+      const abrirConfirmacao = async () => {
+        abrir().click();
+        await fixture.whenStable();
+      };
+      const confirmar = async () => {
+        botaoExcluir()!.click();
+        await fixture.whenStable();
+      };
+      const escape = () => {
+        confirmacao()!.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+        );
+        fixture.detectChanges();
+      };
+      // Nome, nascimento, telefone ou e-mail vazados em console, storage, history ou URL.
+      const vazouNome = (nome: string): boolean => {
+        const textos: string[] = [JSON.stringify(history.state), location.href];
+        for (const m of ['log', 'info', 'warn', 'error', 'debug'] as const) {
+          for (const c of (console[m] as jasmine.Spy).calls.allArgs())
+            textos.push(JSON.stringify(c));
+        }
+        for (const st of [localStorage, sessionStorage]) {
+          for (let i = 0; i < st.length; i++) textos.push(st.getItem(st.key(i)!) ?? '');
+        }
+        return textos.some((t) => t.includes(nome));
+      };
+
+      beforeEach(() => {
+        for (const m of ['log', 'info', 'warn', 'error', 'debug'] as const) spyOn(console, m);
+      });
+
+      it('o botao abre a confirmacao sem chamar a API, com o que some e o que fica', async () => {
+        await carregar();
+        expect(confirmacao()).toBeNull();
+        await abrirConfirmacao();
+        const texto = confirmacao()?.textContent ?? '';
+        expect(texto).toContain('nome, data de nascimento, telefone e e-mail');
+        expect(texto).toContain('o texto de todos os documentos, inclusive os aprovados');
+        expect(texto).toContain('sem identificar o paciente');
+        expect(texto).toContain('Não dá para desfazer.');
+        expect(abrir().getAttribute('aria-expanded')).toBe('true');
+        ctrl.expectNone(urlExcluir);
+      });
+
+      it('foco vai para o campo do nome; Cancelar e Escape fecham e devolvem o foco ao botao', async () => {
+        await carregar();
+        await abrirConfirmacao();
+        expect(document.activeElement).toBe(nomeInput());
+        botaoCancelar()!.click();
+        await fixture.whenStable();
+        expect(confirmacao()).toBeNull();
+        expect(document.activeElement).toBe(abrir());
+        await abrirConfirmacao();
+        escape();
+        await fixture.whenStable();
+        expect(confirmacao()).toBeNull();
+        expect(document.activeElement).toBe(abrir());
+        ctrl.expectNone(urlExcluir);
+      });
+
+      it('campo do nome: label, spellcheck="false" e autocomplete="off"', async () => {
+        await carregar();
+        await abrirConfirmacao();
+        const label = el().querySelector('label[for="pc-excluir-nome"]');
+        expect(label?.textContent?.trim()).toBe('Nome do paciente');
+        expect(nomeInput().getAttribute('spellcheck')).toBe('false');
+        expect(nomeInput().getAttribute('autocomplete')).toBe('off');
+      });
+
+      it('Excluir definitivamente comeca desabilitado e so libera com o nome certo', async () => {
+        await carregar({ ...P, nome: 'José Antônio' });
+        await abrirConfirmacao();
+        expect(botaoExcluir()!.disabled).toBeTrue();
+        for (const errado of ['', 'José', 'José Antônio Silva', 'Antônio José']) {
+          digitarNome(errado);
+          expect(botaoExcluir()!.disabled).withContext(`"${errado}"`).toBeTrue();
+        }
+        for (const certo of [
+          'José Antônio',
+          'josé antônio',
+          'JOSÉ ANTÔNIO',
+          'Jose Antonio',
+          '  José Antônio  ',
+        ]) {
+          digitarNome(certo);
+          expect(botaoExcluir()!.disabled).withContext(`"${certo}"`).toBeFalse();
+        }
+      });
+
+      it('uma unica chamada DELETE mesmo com cliques repetidos; botao mostra "Excluindo…"', async () => {
+        await carregar();
+        await abrirConfirmacao();
+        digitarNome(P.nome);
+        botaoExcluir()!.click();
+        botaoExcluir()!.click();
+        botaoExcluir()!.click();
+        await fixture.whenStable();
+        const r = ctrl.expectOne(urlExcluir);
+        expect(r.request.method).toBe('DELETE');
+        ctrl.expectNone(urlExcluir);
+        expect(botaoExcluir()!.textContent?.trim()).toBe('Excluindo…');
+        expect(botaoExcluir()!.disabled).toBeTrue();
+        expect(botaoCancelar()!.disabled).toBeTrue();
+        // Durante a chamada, Escape nao fecha a confirmacao.
+        escape();
+        expect(confirmacao()).not.toBeNull();
+        r.flush({ excluidoEm: '2026-11-11T12:00:00.000Z' });
+        await fixture.whenStable();
+      });
+
+      it('200: navega para /pacientes com o aviso "excluido" e nenhum dado de paciente', async () => {
+        await carregar();
+        await abrirConfirmacao();
+        digitarNome(P.nome);
+        await confirmar();
+        ctrl.expectOne(urlExcluir).flush({ excluidoEm: '2026-11-11T12:00:00.000Z' });
+        await fixture.whenStable();
+        expect(navegar).toHaveBeenCalledOnceWith('/pacientes', {
+          state: { aviso: 'excluido' },
+        });
+        expect(vazouNome(P.nome)).toBeFalse();
+        expect(vazouNome('maria@exemplo.com')).toBeFalse();
+      });
+
+      it('404: volta para /pacientes com o aviso de nao encontrado, sem mostrar o corpo', async () => {
+        await carregar();
+        await abrirConfirmacao();
+        digitarNome(P.nome);
+        await confirmar();
+        ctrl
+          .expectOne(urlExcluir)
+          .flush({ message: 'nao encontrado' }, { status: 404, statusText: 'Not Found' });
+        await fixture.whenStable();
+        expect(navegar).toHaveBeenCalledOnceWith('/pacientes', {
+          state: { aviso: 'nao-encontrado-exclusao' },
+        });
+      });
+
+      it('409: "Algo mudou enquanto excluíamos. Tente de novo." com a confirmacao aberta e sem corpo vazado', async () => {
+        await carregar();
+        await abrirConfirmacao();
+        digitarNome(P.nome);
+        await confirmar();
+        ctrl
+          .expectOne(urlExcluir)
+          .flush({ message: 'DOCUMENTO-CRIADO-XYZ' }, { status: 409, statusText: 'Conflict' });
+        await fixture.whenStable();
+        expect(navegar).not.toHaveBeenCalled();
+        expect(confirmacao()).not.toBeNull();
+        expect(erroExcluir()).toBe('Algo mudou enquanto excluíamos. Tente de novo.');
+        expect(el().textContent).not.toContain('XYZ');
+        expect(botaoExcluir()!.disabled).toBeFalse();
+        expect(document.activeElement).toBe(nomeInput());
+        expect(nomeInput().getAttribute('aria-describedby')).toContain('pc-excluir-erro');
+      });
+
+      it('erro generico (500 e rede): mensagem generica, sem corpo do erro, confirmacao aberta', async () => {
+        await carregar();
+        await abrirConfirmacao();
+        digitarNome(P.nome);
+        await confirmar();
+        ctrl
+          .expectOne(urlExcluir)
+          .flush({ message: 'SEGREDO-INTERNO-500' }, { status: 500, statusText: 'Erro' });
+        await fixture.whenStable();
+        expect(erroExcluir()).toBe('Não foi possível excluir agora. Tente de novo.');
+        expect(el().textContent).not.toContain('SEGREDO-INTERNO');
+        expect(confirmacao()).not.toBeNull();
+        expect(navegar).not.toHaveBeenCalled();
+
+        await confirmar();
+        ctrl.expectOne(urlExcluir).error(new ProgressEvent('error'));
+        await fixture.whenStable();
+        expect(erroExcluir()).toBe('Não foi possível excluir agora. Tente de novo.');
+        expect(navegar).not.toHaveBeenCalled();
+      });
+
+      it('sigilo: nome nunca vai para console, storage, history.state ou URL', async () => {
+        await carregar();
+        await abrirConfirmacao();
+        digitarNome(P.nome);
+        await confirmar();
+        ctrl.expectOne(urlExcluir).flush({ message: 'x' }, { status: 409, statusText: 'Conflict' });
+        await fixture.whenStable();
+        expect(vazouNome(P.nome)).toBeFalse();
+      });
     });
 
     describe('secao Documentos', () => {

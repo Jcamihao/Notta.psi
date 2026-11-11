@@ -54,3 +54,53 @@
 .formulario .campo-data [app-button] {
   margin-top: 0;
 }
+
+// Excluir paciente: mesmo cartao plano da ficha; a confirmacao usa o cream da confirmacao da Equipe.
+.paciente-perigo {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 32rem;
+  padding: var(--space-8);
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
+  @media (max-width: 40rem) {
+    padding: var(--space-6);
+  }
+  h2 {
+    margin-bottom: 0;
+  }
+  .paciente-lead {
+    margin: 0;
+  }
+}
+.perigo-confirma {
+  display: grid;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-6);
+  background: var(--cream-200);
+  border-radius: var(--radius-card);
+  p {
+    margin: 0;
+  }
+  .campo {
+    margin: var(--space-2) 0 0;
+  }
+}
+.perigo-titulo {
+  font-weight: var(--fw-medium);
+}
+.perigo-lista {
+  margin: 0;
+  padding-left: var(--space-7);
+}
+.perigo-aviso {
+  font-weight: var(--fw-medium);
+}
+.perigo-acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

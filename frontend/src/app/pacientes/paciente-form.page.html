@@ -157,6 +157,97 @@
           <app-pedidos-ia-secao [pacienteId]="id" />
         }
       }
+
+      <section class="paciente-perigo" aria-labelledby="pc-perigo-titulo">
+        <h2 id="pc-perigo-titulo">Excluir paciente</h2>
+        <p class="paciente-lead">
+          Apaga os dados pessoais e o conteúdo dos documentos. Não dá para desfazer.
+        </p>
+        <button
+          app-button
+          type="button"
+          variant="soft"
+          id="pc-excluir-abrir"
+          data-teste="excluir-abrir"
+          [attr.aria-expanded]="confirmandoExclusao()"
+          aria-controls="pc-excluir-confirma"
+          (click)="pedirExclusao()"
+        >
+          Excluir paciente
+        </button>
+
+        @if (confirmandoExclusao()) {
+          <div
+            id="pc-excluir-confirma"
+            class="perigo-confirma"
+            role="group"
+            aria-labelledby="pc-excluir-titulo"
+            data-teste="confirmacao-excluir"
+            (keydown.escape)="cancelarExclusao()"
+          >
+            <p id="pc-excluir-titulo" class="perigo-titulo">Excluir este paciente de vez?</p>
+            <p>Vai ser apagado:</p>
+            <ul class="perigo-lista">
+              <li>nome, data de nascimento, telefone e e-mail;</li>
+              <li>o texto de todos os documentos, inclusive os aprovados.</li>
+            </ul>
+            <p>Fica guardado, sem identificar o paciente:</p>
+            <ul class="perigo-lista">
+              <li>o registro de que houve atendimento;</li>
+              <li>o registro do consentimento.</li>
+            </ul>
+            <p class="perigo-aviso">Não dá para desfazer.</p>
+
+            <div class="campo">
+              <label for="pc-excluir-nome">Nome do paciente</label>
+              <p id="pc-excluir-dica" class="campo-dica">
+                Para confirmar, digite exatamente: <strong>{{ nomeSalvo() }}</strong>
+              </p>
+              <input
+                id="pc-excluir-nome"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                [value]="nomeDigitado()"
+                [disabled]="excluindo()"
+                aria-describedby="pc-excluir-dica pc-excluir-erro"
+                (input)="digitarNome($event)"
+              />
+            </div>
+
+            @if (erroExclusao()) {
+              <p id="pc-excluir-erro" class="aviso-erro" role="alert" data-teste="erro-excluir">
+                <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
+                  erroExclusao()
+                }}
+              </p>
+            }
+
+            <div class="perigo-acoes">
+              <button
+                app-button
+                type="button"
+                [variant]="excluindo() ? 'progress' : podeExcluir() ? 'primary' : 'disabled'"
+                [disabled]="!podeExcluir() || excluindo()"
+                data-teste="excluir-confirmar"
+                (click)="excluirPaciente()"
+              >
+                {{ excluindo() ? 'Excluindo…' : 'Excluir definitivamente' }}
+              </button>
+              <button
+                app-button
+                type="button"
+                variant="soft"
+                data-teste="excluir-cancelar"
+                [disabled]="excluindo()"
+                (click)="cancelarExclusao()"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        }
+      </section>
     }
   }
 </div>

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, Injector, afterNextRender, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ArrowLeft, CircleAlert, CircleCheck, LucideAngularModule } from 'lucide-angular';
@@ -42,6 +42,11 @@ const AVISOS_DETALHE: Record<AvisoDetalhe, { texto: string; ok: boolean }> = {
   'documento-criado': { texto: 'Documento criado como rascunho.', ok: true },
 };
 
+// Confirmacao do nome na exclusao: sem espacos nas pontas, sem diferenciar maiusculas nem acentos.
+function normalizarNome(s: string): string {
+  return s.trim().normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('pt-BR');
+}
+
 // Criar (/pacientes/novo) e ver/editar (/pacientes/:id) usam a mesma tela: o id da rota decide.
 @Component({
   selector: 'app-paciente-form-page',
@@ -74,12 +79,25 @@ export class PacienteFormPage {
   readonly enviando = signal(false);
   readonly erroGeral = signal('');
   readonly confirmacao = signal('');
+  // Exclusao (so no detalhe): confirmacao inline com o nome digitado; `excluindo` trava a chamada.
+  readonly confirmandoExclusao = signal(false);
+  readonly excluindo = signal(false);
+  readonly erroExclusao = signal('');
+  readonly nomeDigitado = signal('');
+  // Nome salvo (o que aparece na lista), nao o que esta editado no campo.
+  readonly nomeSalvo = signal('');
+  readonly podeExcluir = computed(() => {
+    const alvo = normalizarNome(this.nomeSalvo());
+    return alvo !== '' && normalizarNome(this.nomeDigitado()) === alvo;
+  });
   readonly form = new FormGroup({
     nome: new FormControl('', { nonNullable: true, validators: [preenchido, nomeCurto] }),
     nascimento: new FormControl('', { nonNullable: true, validators: [nascimentoValido] }),
     telefone: new FormControl('', { nonNullable: true, validators: [telefoneValido] }),
     email: new FormControl('', { nonNullable: true, validators: [emailOpcional] }),
   });
+
+  private readonly injector = inject(Injector);
 
   constructor() {
     if (this.id) this.carregar(this.id);
@@ -164,6 +182,55 @@ export class PacienteFormPage {
       });
   }
 
+  pedirExclusao(): void {
+    this.erroExclusao.set('');
+    this.nomeDigitado.set('');
+    this.confirmandoExclusao.set(true);
+    this.focar('pc-excluir-nome');
+  }
+
+  digitarNome(evento: Event): void {
+    this.nomeDigitado.set((evento.target as HTMLInputElement).value);
+  }
+
+  cancelarExclusao(): void {
+    if (this.excluindo()) return;
+    this.confirmandoExclusao.set(false);
+    this.nomeDigitado.set('');
+    this.erroExclusao.set('');
+    this.focar('pc-excluir-abrir');
+  }
+
+  excluirPaciente(): void {
+    if (this.excluindo() || !this.podeExcluir() || !this.id) return;
+    this.excluindo.set(true);
+    this.erroExclusao.set('');
+    this.servico.excluir(this.id).subscribe({
+      // Sucesso: a tela sai. O botao fica travado (nada de segundo DELETE antes de navegar).
+      next: () => void this.router.navigateByUrl('/pacientes', { state: { aviso: 'excluido' } }),
+      error: (e: HttpErrorResponse) => this.falharExclusao(e),
+    });
+  }
+
+  private falharExclusao(e: HttpErrorResponse): void {
+    // 404 (inexistente, alheio ou ja excluido): a lista explica. O botao segue travado.
+    if (e.status === 404) {
+      this.voltar('nao-encontrado-exclusao');
+      return;
+    }
+    this.excluindo.set(false);
+    this.erroExclusao.set(
+      e.status === 409
+        ? 'Algo mudou enquanto excluíamos. Tente de novo.'
+        : 'Não foi possível excluir agora. Tente de novo.',
+    );
+    this.focar('pc-excluir-nome');
+  }
+
+  private focar(id: string): void {
+    afterNextRender(() => document.getElementById(id)?.focus(), { injector: this.injector });
+  }
+
   private lerAviso(): { texto: string; ok: boolean } | null {
     const codigo = this.router.getCurrentNavigation()?.extras.state?.['aviso'] as
       AvisoDetalhe | undefined;
@@ -171,6 +238,7 @@ export class PacienteFormPage {
   }
 
   private preencher(p: Paciente): void {
+    this.nomeSalvo.set(p.nome);
     this.form.reset({
       nome: p.nome,
       nascimento: p.nascimento ?? '',
