@@ -800,6 +800,32 @@ describe('PacienteFormPage', () => {
       await fixture.whenStable();
     });
 
+    it('a trava vale na logica, nao so no botao: duas chamadas diretas geram um unico GET e Escape nao fecha', async () => {
+      await abrirDetalhe([{ provide: BAIXAR_ARQUIVO, useValue: baixar }]);
+      await clicar(abrir());
+      fixture.componentInstance.exportarPaciente();
+      fixture.componentInstance.exportarPaciente();
+      confirmacao()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      fixture.detectChanges();
+      expect(confirmacao()).not.toBeNull();
+      ctrl.expectOne(URL_EXPORTAR).flush(corpoBlob('{}'));
+      await fixture.whenStable();
+      expect(baixar).toHaveBeenCalledTimes(1);
+    });
+
+    it('200: o arquivo nao fica guardado em nenhum campo ou signal do componente', async () => {
+      await abrirDetalhe([{ provide: BAIXAR_ARQUIVO, useValue: baixar }]);
+      await pedirArquivo();
+      const arquivo = corpoBlob('{"segredo":1}');
+      ctrl.expectOne(URL_EXPORTAR).flush(arquivo);
+      await fixture.whenStable();
+      const comp = fixture.componentInstance as unknown as Record<string, unknown>;
+      for (const v of Object.values(comp)) {
+        const valor = typeof v === 'function' && 'set' in v ? (v as unknown as () => unknown)() : v;
+        expect(valor).not.toBe(arquivo);
+      }
+    });
+
     it('200: baixa com o nome paciente-<id da rota>.json, mostra o aviso de guarda e fecha a confirmacao', async () => {
       await abrirDetalhe([{ provide: BAIXAR_ARQUIVO, useValue: baixar }]);
       await pedirArquivo();
