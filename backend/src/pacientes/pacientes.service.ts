@@ -25,7 +25,8 @@ const NAO_ENCONTRADO = 'Paciente nao encontrado';
 // da propria linha (nunca reaproveitado de outra).
 const TOMBSTONE_NOME = 'Paciente excluido';
 const TOMBSTONE_CONTEUDO = 'Conteudo excluido a pedido (LGPD)';
-const TOMBSTONE_MAPA = '{}';
+// O mapa da geracao e uma LISTA JSON (o executor itera sobre ele).
+const TOMBSTONE_MAPA = '[]';
 // SQLSTATE e codigo da funcao: P0002 = no_data_found; 22023 = tombstone faltando (corrida).
 const SQL_NAO_ENCONTRADO = 'P0002';
 const SQL_TOMBSTONE_AUSENTE = '22023';
@@ -139,11 +140,8 @@ export class PacientesService {
     const dono = { clinicaId: user.clinicaId, psicologoId: user.psicologoId };
     try {
       const excluidoEm = await this.tenant.runComoUsuario(user, async (tx) => {
-        const achado = await tx.paciente.findFirst({
-          where: { id, ...dono, excluidoEm: null },
-          select: { id: true },
-        });
-        if (!achado) throw new NotFoundException(NAO_ENCONTRADO);
+        // Sem pre-checagem: inexistente, alheio e ja excluido saem todos como P0002 da funcao
+        // (mesmo 404), que tambem trava a linha do paciente.
         const docs = await tx.documento.findMany({
           where: { pacienteId: id, ...dono },
           select: { id: true },

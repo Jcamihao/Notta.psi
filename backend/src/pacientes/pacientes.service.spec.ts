@@ -322,7 +322,6 @@ describe('PacientesService: trilha de auditoria', () => {
 // Exclusao por anonimizacao (item 26). O tx falso so responde o que excluir() le; a funcao
 // anonimizar_paciente e simulada pelo $queryRaw (o e2e prova a funcao de verdade no Postgres).
 function montarExcluir(opcoes: {
-  pacienteAchado?: boolean;
   docs?: string[];
   geracoes?: string[];
   funcao?: () => Promise<unknown>;
@@ -334,11 +333,6 @@ function montarExcluir(opcoes: {
     opcoes.funcao ?? (() => Promise.resolve([{ excluidoEm }])),
   );
   const tx = {
-    paciente: {
-      findFirst: jest.fn(() =>
-        Promise.resolve(opcoes.pacienteAchado === false ? null : { id: PID }),
-      ),
-    },
     documento: {
       findMany: jest.fn(() =>
         Promise.resolve((opcoes.docs ?? []).map((id) => ({ id }))),
@@ -375,7 +369,7 @@ const DOC_B = randomUUID();
 const GER_A = randomUUID();
 
 describe('PacientesService.excluir', () => {
-  it('filtra paciente pelo token e so os vivos (excluidoEm null); 1 transacao', async () => {
+  it('filtra documentos e geracoes pelo token; 1 transacao', async () => {
     const { tx, tenant, service } = montarExcluir({
       docs: [DOC_A],
       geracoes: [GER_A],
@@ -386,12 +380,6 @@ describe('PacientesService.excluir', () => {
       user,
       expect.any(Function),
     );
-    expect(tx.paciente.findFirst.mock.calls[0][0].where).toEqual({
-      id: PID,
-      clinicaId: user.clinicaId,
-      psicologoId: user.psicologoId,
-      excluidoEm: null,
-    });
     expect(tx.documento.findMany.mock.calls[0][0].where).toEqual({
       pacienteId: PID,
       clinicaId: user.clinicaId,
@@ -455,7 +443,7 @@ describe('PacientesService.excluir', () => {
         ger[GER_A].mapa,
         aadGeracao('mapaCifrado', GER_A, psic),
       ),
-    ).toBe('{}');
+    ).toBe('[]');
     // Tombstone nao decifra com AAD de outra linha (cada um e vinculado a sua linha).
     expect(() =>
       cripto.decifrar(
@@ -495,18 +483,7 @@ describe('PacientesService.excluir', () => {
     );
   });
 
-  it('paciente inexistente, alheio ou ja excluido: 404 identico, sem funcao e sem auditoria', async () => {
-    const { chamadaFuncao, service, registrar } = montarExcluir({
-      pacienteAchado: false,
-    });
-    const erro = await service.excluir(user, PID).catch((e: unknown) => e);
-    expect(erro).toBeInstanceOf(NotFoundException);
-    expect((erro as NotFoundException).message).toBe('Paciente nao encontrado');
-    expect(chamadaFuncao).not.toHaveBeenCalled();
-    expect(registrar).not.toHaveBeenCalled();
-  });
-
-  it('no_data_found da funcao (corrida) vira o mesmo 404', async () => {
+  it('no_data_found da funcao (inexistente, alheio, ja excluido ou corrida) vira 404 e nao audita', async () => {
     const { service, registrar } = montarExcluir({
       docs: [],
       geracoes: [],

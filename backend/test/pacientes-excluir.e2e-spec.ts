@@ -15,6 +15,7 @@ import {
   criarAppSemLimite,
 } from './criar-app-sem-limite';
 import {
+  depoisDe,
   ok,
   RASCUNHO_PADRAO,
   status,
@@ -506,7 +507,7 @@ describe('DELETE /pacientes/:id (item 26, LGPD)', () => {
           g.mapaCifrado!,
           aadGeracao('mapaCifrado', g.id, dono.psicologoId),
         ),
-      ).toBe('{}');
+      ).toBe('[]');
     }
 
     // Nenhum texto original em nenhuma coluna decifrada (o nome aparece dentro do documento
@@ -542,6 +543,44 @@ describe('DELETE /pacientes/:id (item 26, LGPD)', () => {
     const inexistente = await excluir(dono, randomUUID()).expect(404);
     expect(perdedora.body).toEqual(inexistente.body);
     expect((await lerTudo(dono, p.pid)).exclusoes).toHaveLength(1);
+  });
+
+  it('exclusao com a IA em voo: a chamada termina, nada novo e criado e o pedido vira FALHOU (texto so tombstone)', async () => {
+    const dono = await novaClinica(email('dono9'));
+    const pid = corpo<{ id: string }>(
+      await com(dono.token, http().post('/pacientes'))
+        .send({ nome: NOME })
+        .expect(201),
+    ).id;
+    await com(dono.token, http().post(`/pacientes/${pid}/consentimento`))
+      .send({ evento: 'CONCEDIDO' })
+      .expect(201);
+    const origem = await criarDoc(dono, pid, CLINICO_RASCUNHO);
+    const g = await previa(dono, pid, origem);
+    falso.responder(depoisDe(1200, ok(RASCUNHO_PADRAO)));
+    const chamadasAntes = falso.chamadas.length;
+    await com(dono.token, http().post(`/geracoes-ia/${g}/confirmar`)).expect(
+      202,
+    );
+    for (let i = 0; i < 100 && falso.chamadas.length === chamadasAntes; i++)
+      await dormir(20);
+    expect(falso.chamadas.length).toBe(chamadasAntes + 1);
+
+    // Exclui com a chamada ainda pendurada (PENDENTE no banco).
+    await excluir(dono, pid).expect(200);
+
+    let t = await lerTudo(dono, pid);
+    for (let i = 0; i < 200; i++) {
+      t = await lerTudo(dono, pid);
+      if (t.geracoes[0].estado !== 'PENDENTE') break;
+      await dormir(50);
+    }
+    expect(t.geracoes[0].estado).toBe('FALHOU');
+    // So a nota original (tombstone); o documento da IA nao foi criado (trigger barra o INSERT).
+    expect(t.documentos).toHaveLength(1);
+    const claros = decifrarTudo(dono, t).join('\n');
+    for (const proibido of PROIBIDOS) expect(claros).not.toContain(proibido);
+    expect(claros).not.toContain('melhora do sono');
   });
 
   it('falha no meio (auditoria cai depois da funcao): 500 e TUDO intacto', async () => {
