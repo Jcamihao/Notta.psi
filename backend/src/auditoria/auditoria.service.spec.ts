@@ -25,6 +25,21 @@ describe('AuditoriaService.registrar', () => {
     });
   });
 
+  it('EXCLUIU (exclusao por anonimizacao, item 26) e acao valida, gravada com o id do paciente', async () => {
+    const { create, tx, service } = montar();
+    const id = randomUUID();
+    await service.registrar(tx, user, 'EXCLUIU', 'Paciente', id);
+    expect(create).toHaveBeenCalledWith({
+      data: {
+        clinicaId: user.clinicaId,
+        psicologoId: user.psicologoId,
+        acao: 'EXCLUIU',
+        recurso: 'Paciente',
+        recursoId: id,
+      },
+    });
+  });
+
   it('sem recursoId grava null (LISTOU)', async () => {
     const { create, tx, service } = montar();
     await service.registrar(tx, user, 'LISTOU', 'Paciente');
