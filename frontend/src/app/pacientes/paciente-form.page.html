@@ -158,6 +158,90 @@
         }
       }
 
+      <section class="paciente-exportar" aria-labelledby="pc-exportar-titulo">
+        <h2 id="pc-exportar-titulo">Baixar dados do paciente</h2>
+        <p class="paciente-lead">
+          O arquivo traz os dados do paciente, os consentimentos, os documentos com o texto completo
+          e os convites de consentimento.
+        </p>
+        <p class="paciente-lead">
+          <strong>O arquivo não é cifrado.</strong> Guarde em local seguro e apague quando não
+          precisar mais.
+        </p>
+        <button
+          app-button
+          type="button"
+          variant="soft"
+          id="pc-exportar-abrir"
+          data-teste="exportar-abrir"
+          [attr.aria-expanded]="confirmandoExportacao()"
+          aria-controls="pc-exportar-confirma"
+          (click)="pedirExportacao()"
+        >
+          Baixar dados (JSON)
+        </button>
+
+        @if (sucessoExportacao()) {
+          <p class="aviso-ok" role="status" data-teste="sucesso-exportar">
+            <lucide-icon [img]="icones.CircleCheck" [size]="18" [strokeWidth]="1.5" />{{
+              sucessoExportacao()
+            }}
+          </p>
+        }
+
+        @if (confirmandoExportacao()) {
+          <div
+            id="pc-exportar-confirma"
+            class="perigo-confirma"
+            role="group"
+            aria-labelledby="pc-exportar-pergunta"
+            data-teste="confirmacao-exportar"
+            (keydown.escape)="cancelarExportacao()"
+          >
+            <p id="pc-exportar-pergunta" class="perigo-titulo">
+              O arquivo contém dado clínico em claro. Continuar?
+            </p>
+            <div class="perigo-acoes">
+              <button
+                app-button
+                type="button"
+                id="pc-exportar-confirmar"
+                [variant]="exportando() ? 'progress' : 'primary'"
+                [disabled]="exportando()"
+                data-teste="exportar-confirmar"
+                (click)="exportarPaciente()"
+              >
+                {{ exportando() ? 'Preparando arquivo…' : 'Baixar arquivo' }}
+              </button>
+              <button
+                app-button
+                type="button"
+                variant="soft"
+                data-teste="exportar-cancelar"
+                [disabled]="exportando()"
+                (click)="cancelarExportacao()"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (erroExportacao()) {
+          <p
+            id="pc-exportar-erro"
+            class="aviso-erro"
+            role="alert"
+            tabindex="-1"
+            data-teste="erro-exportar"
+          >
+            <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
+              erroExportacao()
+            }}
+          </p>
+        }
+      </section>
+
       <section class="paciente-perigo" aria-labelledby="pc-perigo-titulo">
         <h2 id="pc-perigo-titulo">Excluir paciente</h2>
         <p class="paciente-lead">

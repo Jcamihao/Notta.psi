@@ -55,8 +55,9 @@
   margin-top: 0;
 }
 
-// Excluir paciente: mesmo cartao plano da ficha; a confirmacao usa o cream da confirmacao da Equipe.
-.paciente-perigo {
+// Excluir paciente e Baixar dados: mesmo cartao plano da ficha; a confirmacao usa o cream da confirmacao da Equipe.
+.paciente-perigo,
+.paciente-exportar {
   display: grid;
   justify-items: start;
   gap: var(--space-4);

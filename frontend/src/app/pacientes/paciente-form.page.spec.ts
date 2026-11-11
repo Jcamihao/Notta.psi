@@ -4,8 +4,10 @@ import {
   provideHttpClientTesting,
   TestRequest,
 } from '@angular/common/http/testing';
+import type { Provider } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, provideRouter, Router } from '@angular/router';
+import { BAIXAR_ARQUIVO } from '../core/download';
 import { hojeLocal } from '../core/formulario';
 import { PacienteFormPage } from './paciente-form.page';
 import { Paciente } from './pacientes.service';
@@ -47,7 +49,7 @@ describe('PacienteFormPage', () => {
   let ctrl: HttpTestingController;
   let navegar: jasmine.Spy;
 
-  const montar = async (id: string | null, aviso?: string) => {
+  const montar = async (id: string | null, aviso?: string, extra: Provider[] = []) => {
     TestBed.configureTestingModule({
       imports: [PacienteFormPage],
       providers: [
@@ -58,6 +60,7 @@ describe('PacienteFormPage', () => {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: { get: () => id } } },
         },
+        ...extra,
       ],
     });
     ctrl = TestBed.inject(HttpTestingController);
@@ -91,6 +94,17 @@ describe('PacienteFormPage', () => {
   const falhar = async (req: TestRequest, status: number) => {
     req.flush({ statusCode: status, message: ['x'] }, { status, statusText: 'Erro' });
     await fixture.whenStable();
+  };
+  // Nome, nascimento, telefone ou e-mail vazados em console, storage, history ou URL.
+  const vazouNome = (nome: string): boolean => {
+    const textos: string[] = [JSON.stringify(history.state), location.href];
+    for (const m of ['log', 'info', 'warn', 'error', 'debug'] as const) {
+      for (const c of (console[m] as jasmine.Spy).calls.allArgs()) textos.push(JSON.stringify(c));
+    }
+    for (const st of [localStorage, sessionStorage]) {
+      for (let i = 0; i < st.length; i++) textos.push(st.getItem(st.key(i)!) ?? '');
+    }
+    return textos.some((t) => t.includes(nome));
   };
 
   describe('novo', () => {
@@ -442,18 +456,6 @@ describe('PacienteFormPage', () => {
         );
         fixture.detectChanges();
       };
-      // Nome, nascimento, telefone ou e-mail vazados em console, storage, history ou URL.
-      const vazouNome = (nome: string): boolean => {
-        const textos: string[] = [JSON.stringify(history.state), location.href];
-        for (const m of ['log', 'info', 'warn', 'error', 'debug'] as const) {
-          for (const c of (console[m] as jasmine.Spy).calls.allArgs())
-            textos.push(JSON.stringify(c));
-        }
-        for (const st of [localStorage, sessionStorage]) {
-          for (let i = 0; i < st.length; i++) textos.push(st.getItem(st.key(i)!) ?? '');
-        }
-        return textos.some((t) => t.includes(nome));
-      };
 
       beforeEach(() => {
         for (const m of ['log', 'info', 'warn', 'error', 'debug'] as const) spyOn(console, m);
@@ -688,6 +690,215 @@ describe('PacienteFormPage', () => {
         await carregar(P, 'CONCEDIDO');
         expect(novoDoc().tagName).toBe('A');
       });
+    });
+  });
+
+  describe('baixar dados do paciente (exportacao LGPD)', () => {
+    const URL_EXPORTAR = `/api/pacientes/${ID}/exportar`;
+    const TEXTO_CONFIRMA = 'O arquivo contém dado clínico em claro. Continuar?';
+    let baixar: jasmine.Spy;
+
+    beforeEach(() => {
+      for (const m of ['log', 'info', 'warn', 'error', 'debug'] as const) spyOn(console, m);
+      baixar = jasmine.createSpy('baixar');
+    });
+
+    // Abre a ficha (ver/editar) ate a tela estar pronta: paciente, consentimento e listas.
+    const abrirDetalhe = async (extra: Provider[] = []) => {
+      await montar(ID, undefined, extra);
+      ctrl.expectOne(`/api/pacientes/${ID}`).flush(P);
+      await fixture.whenStable();
+      ctrl
+        .expectOne(`/api/pacientes/${ID}/consentimento`)
+        .flush({ estado: 'NENHUM', desde: null, historico: [] });
+      await fixture.whenStable();
+      await listas(ctrl, () => fixture.whenStable(), ID);
+    };
+    const secao = () => el().querySelector('section[aria-labelledby="pc-exportar-titulo"]');
+    const abrir = () => el().querySelector('[data-teste="exportar-abrir"]') as HTMLButtonElement;
+    const confirmacao = () => el().querySelector('[data-teste="confirmacao-exportar"]');
+    const botaoConfirmar = () =>
+      el().querySelector('[data-teste="exportar-confirmar"]') as HTMLButtonElement | null;
+    const botaoCancelar = () =>
+      el().querySelector('[data-teste="exportar-cancelar"]') as HTMLButtonElement | null;
+    const erroExportar = () =>
+      el().querySelector('[data-teste="erro-exportar"]')?.textContent?.trim() ?? '';
+    const sucesso = () =>
+      el().querySelector('[data-teste="sucesso-exportar"]')?.textContent?.trim() ?? '';
+    const clicar = async (b: HTMLButtonElement | null) => {
+      b!.click();
+      await fixture.whenStable();
+    };
+    const pedirArquivo = async () => {
+      await clicar(abrir());
+      await clicar(botaoConfirmar());
+    };
+    const corpoBlob = (texto: string, tipo = 'application/json') =>
+      new Blob([texto], { type: tipo });
+
+    it('em /pacientes/novo nao ha secao nem botao de baixar', async () => {
+      await montar(null);
+      expect(abrir()).toBeNull();
+      expect(el().textContent).not.toContain('Baixar dados do paciente');
+    });
+
+    it('fica antes de "Excluir paciente" e explica o conteudo e que o arquivo nao e cifrado', async () => {
+      await abrirDetalhe();
+      const excluir = el().querySelector('[data-teste="excluir-abrir"]')!;
+      expect(secao()).not.toBeNull();
+      expect(
+        secao()!.compareDocumentPosition(excluir) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(secao()!.textContent).toContain('Baixar dados do paciente');
+      expect(secao()!.textContent).toContain('documentos');
+      expect(secao()!.textContent).toContain('não é cifrado');
+      expect(abrir().textContent?.trim()).toBe('Baixar dados (JSON)');
+    });
+
+    it('o botao abre a confirmacao sem chamar a API, com foco em "Baixar arquivo"', async () => {
+      await abrirDetalhe([{ provide: BAIXAR_ARQUIVO, useValue: baixar }]);
+      expect(confirmacao()).toBeNull();
+      expect(abrir().getAttribute('aria-expanded')).toBe('false');
+      await clicar(abrir());
+      ctrl.expectNone(URL_EXPORTAR);
+      expect(confirmacao()!.textContent).toContain(TEXTO_CONFIRMA);
+      expect(abrir().getAttribute('aria-expanded')).toBe('true');
+      expect(botaoConfirmar()!.textContent?.trim()).toBe('Baixar arquivo');
+      expect(document.activeElement).toBe(botaoConfirmar());
+    });
+
+    it('Cancelar e Escape fecham a confirmacao sem chamar a API e devolvem o foco ao botao', async () => {
+      await abrirDetalhe([{ provide: BAIXAR_ARQUIVO, useValue: baixar }]);
+      await clicar(abrir());
+      await clicar(botaoCancelar());
+      expect(confirmacao()).toBeNull();
+      expect(document.activeElement).toBe(abrir());
+
+      await clicar(abrir());
+      confirmacao()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      fixture.detectChanges();
+      expect(confirmacao()).toBeNull();
+      expect(document.activeElement).toBe(abrir());
+      ctrl.expectNone(URL_EXPORTAR);
+      expect(baixar).not.toHaveBeenCalled();
+    });
+
+    it('uma unica chamada mesmo com cliques repetidos; o botao mostra "Preparando arquivo…"', async () => {
+      await abrirDetalhe([{ provide: BAIXAR_ARQUIVO, useValue: baixar }]);
+      await pedirArquivo();
+      botaoConfirmar()!.click();
+      botaoConfirmar()!.click();
+      fixture.detectChanges();
+      expect(botaoConfirmar()!.textContent?.trim()).toBe('Preparando arquivo…');
+      expect(botaoConfirmar()!.disabled).toBeTrue();
+      const r = ctrl.expectOne(URL_EXPORTAR);
+      expect(r.request.method).toBe('GET');
+      r.flush(corpoBlob('{}'));
+      await fixture.whenStable();
+    });
+
+    it('200: baixa com o nome paciente-<id da rota>.json, mostra o aviso de guarda e fecha a confirmacao', async () => {
+      await abrirDetalhe([{ provide: BAIXAR_ARQUIVO, useValue: baixar }]);
+      await pedirArquivo();
+      const arquivo = corpoBlob('{"paciente":{}}');
+      ctrl.expectOne(URL_EXPORTAR).flush(arquivo);
+      await fixture.whenStable();
+      expect(baixar).toHaveBeenCalledOnceWith(arquivo, `paciente-${ID}.json`);
+      expect(sucesso()).toBe('Arquivo baixado. Guarde em local seguro.');
+      expect(el().querySelector('[data-teste="sucesso-exportar"]')!.getAttribute('role')).toBe(
+        'status',
+      );
+      expect(confirmacao()).toBeNull();
+      expect(document.activeElement).toBe(abrir());
+      expect(vazouNome(P.nome)).toBeFalse();
+    });
+
+    it('200: a URL do blob e criada e revogada, e o <a download> sai do DOM', async () => {
+      spyOn(URL, 'createObjectURL').and.returnValue('blob:teste-export');
+      spyOn(URL, 'revokeObjectURL');
+      const cliques: HTMLAnchorElement[] = [];
+      spyOn(HTMLAnchorElement.prototype, 'click').and.callFake(function (this: HTMLAnchorElement) {
+        cliques.push(this);
+      });
+      await abrirDetalhe();
+      await pedirArquivo();
+      ctrl.expectOne(URL_EXPORTAR).flush(corpoBlob('{}'));
+      await fixture.whenStable();
+      expect(cliques.length).toBe(1);
+      expect(cliques[0].download).toBe(`paciente-${ID}.json`);
+      expect(URL.revokeObjectURL).toHaveBeenCalledOnceWith('blob:teste-export');
+      expect(document.querySelector('a[download]')).toBeNull();
+    });
+
+    it('404: volta para /pacientes com o aviso de nao encontrado, sem ler o corpo', async () => {
+      const text = spyOn(Blob.prototype, 'text');
+      await abrirDetalhe([{ provide: BAIXAR_ARQUIVO, useValue: baixar }]);
+      await pedirArquivo();
+      ctrl
+        .expectOne(URL_EXPORTAR)
+        .flush(corpoBlob('SEGREDO-EXPORT-404'), { status: 404, statusText: 'Not Found' });
+      await fixture.whenStable();
+      expect(navegar).toHaveBeenCalledOnceWith('/pacientes', {
+        state: { aviso: 'nao-encontrado-exclusao' },
+      });
+      expect(text).not.toHaveBeenCalled();
+      expect(baixar).not.toHaveBeenCalled();
+      expect(el().textContent).not.toContain('SEGREDO-EXPORT');
+    });
+
+    const casosErro: [string, number, string][] = [
+      [
+        '413: historico grande demais',
+        413,
+        'Este paciente tem histórico grande demais para baixar de uma vez.',
+      ],
+      [
+        '429: limite por hora',
+        429,
+        'Você atingiu o limite de downloads por hora. Tente de novo mais tarde.',
+      ],
+      ['500: erro generico', 500, 'Não foi possível baixar agora. Tente de novo.'],
+    ];
+    for (const [nome, status, texto] of casosErro) {
+      it(`${nome}: mostra a mensagem certa em alerta com foco, sem ler o corpo, confirmacao aberta`, async () => {
+        const text = spyOn(Blob.prototype, 'text');
+        await abrirDetalhe([{ provide: BAIXAR_ARQUIVO, useValue: baixar }]);
+        await pedirArquivo();
+        ctrl
+          .expectOne(URL_EXPORTAR)
+          .flush(corpoBlob('SEGREDO-EXPORT-' + status), { status, statusText: 'Erro' });
+        await fixture.whenStable();
+        expect(erroExportar()).toBe(texto);
+        expect(el().querySelector('[data-teste="erro-exportar"]')!.getAttribute('role')).toBe(
+          'alert',
+        );
+        expect(document.activeElement).toBe(el().querySelector('[data-teste="erro-exportar"]'));
+        expect(confirmacao()).not.toBeNull();
+        expect(botaoConfirmar()!.disabled).toBeFalse();
+        expect(text).not.toHaveBeenCalled();
+        expect(el().textContent).not.toContain('SEGREDO-EXPORT');
+        expect(baixar).not.toHaveBeenCalled();
+        expect(navegar).not.toHaveBeenCalled();
+      });
+    }
+
+    it('erro de rede: mensagem generica, sem corpo', async () => {
+      await abrirDetalhe([{ provide: BAIXAR_ARQUIVO, useValue: baixar }]);
+      await pedirArquivo();
+      ctrl.expectOne(URL_EXPORTAR).error(new ProgressEvent('error'));
+      await fixture.whenStable();
+      expect(erroExportar()).toBe('Não foi possível baixar agora. Tente de novo.');
+      expect(baixar).not.toHaveBeenCalled();
+    });
+
+    it('sigilo: nome e contato nunca vao para console, storage, history.state ou URL', async () => {
+      await abrirDetalhe([{ provide: BAIXAR_ARQUIVO, useValue: baixar }]);
+      await pedirArquivo();
+      ctrl.expectOne(URL_EXPORTAR).flush(corpoBlob('{}'));
+      await fixture.whenStable();
+      expect(vazouNome(P.nome)).toBeFalse();
+      expect(vazouNome(P.email!)).toBeFalse();
+      expect(vazouNome(P.telefone!)).toBeFalse();
     });
   });
 

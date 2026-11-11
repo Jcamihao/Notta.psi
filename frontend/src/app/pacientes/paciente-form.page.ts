@@ -16,6 +16,7 @@ import {
 } from '../core/formulario';
 import { DocumentosSecaoComponent } from '../documentos/documentos-secao.component';
 import { PedidosIaSecaoComponent } from '../ia/pedidos-ia-secao.component';
+import { BAIXAR_ARQUIVO } from '../core/download';
 import { ButtonComponent } from '../ui/button.component';
 import { ConsentimentoCardComponent } from './consentimento-card.component';
 import { EstadoConsentimento } from './consentimento.service';
@@ -41,6 +42,11 @@ const AVISOS_DETALHE: Record<AvisoDetalhe, { texto: string; ok: boolean }> = {
   'documento-nao-encontrado': { texto: 'Documento não encontrado.', ok: false },
   'documento-criado': { texto: 'Documento criado como rascunho.', ok: true },
 };
+
+// Exportacao (LGPD): so a mensagem fixa aparece; o corpo do erro nunca e lido nem mostrado.
+const ERRO_EXPORTAR_GERAL = 'Não foi possível baixar agora. Tente de novo.';
+const ERRO_EXPORTAR_413 = 'Este paciente tem histórico grande demais para baixar de uma vez.';
+const ERRO_EXPORTAR_429 = 'Você atingiu o limite de downloads por hora. Tente de novo mais tarde.';
 
 // Confirmacao do nome na exclusao: sem espacos nas pontas, sem diferenciar maiusculas nem acentos.
 function normalizarNome(s: string): string {
@@ -86,6 +92,12 @@ export class PacienteFormPage {
   readonly nomeDigitado = signal('');
   // Nome salvo (o que aparece na lista), nao o que esta editado no campo.
   readonly nomeSalvo = signal('');
+  // Exportacao (so no detalhe): confirmacao inline; `exportando` trava a chamada (uma so por vez).
+  readonly baixar = inject(BAIXAR_ARQUIVO);
+  readonly confirmandoExportacao = signal(false);
+  readonly exportando = signal(false);
+  readonly erroExportacao = signal('');
+  readonly sucessoExportacao = signal('');
   readonly podeExcluir = computed(() => {
     const alvo = normalizarNome(this.nomeSalvo());
     return alvo !== '' && normalizarNome(this.nomeDigitado()) === alvo;
@@ -225,6 +237,64 @@ export class PacienteFormPage {
         : 'Não foi possível excluir agora. Tente de novo.',
     );
     this.focar('pc-excluir-nome');
+  }
+
+  pedirExportacao(): void {
+    this.erroExportacao.set('');
+    this.sucessoExportacao.set('');
+    this.confirmandoExportacao.set(true);
+    this.focar('pc-exportar-confirmar');
+  }
+
+  cancelarExportacao(): void {
+    if (this.exportando()) return;
+    this.confirmandoExportacao.set(false);
+    this.erroExportacao.set('');
+    this.focar('pc-exportar-abrir');
+  }
+
+  exportarPaciente(): void {
+    if (this.exportando() || !this.id) return;
+    this.exportando.set(true);
+    this.erroExportacao.set('');
+    this.sucessoExportacao.set('');
+    this.servico.exportar(this.id).subscribe({
+      next: (resposta) => this.receberExportacao(resposta.body),
+      error: (e: HttpErrorResponse) => this.falharExportacao(e),
+    });
+  }
+
+  private receberExportacao(arquivo: Blob | null): void {
+    this.exportando.set(false);
+    try {
+      if (!arquivo) throw new Error('sem arquivo');
+      this.baixar(arquivo, `paciente-${this.id}.json`);
+    } catch {
+      this.erroExportacao.set(ERRO_EXPORTAR_GERAL);
+      this.focar('pc-exportar-erro');
+      return;
+    }
+    // Sucesso: a confirmacao fecha e o foco volta ao botao; nada do arquivo fica guardado.
+    this.confirmandoExportacao.set(false);
+    this.sucessoExportacao.set('Arquivo baixado. Guarde em local seguro.');
+    this.focar('pc-exportar-abrir');
+  }
+
+  private falharExportacao(e: HttpErrorResponse): void {
+    // Erro chega como blob: so o status e usado. 404 volta para a lista, como na exclusao.
+    this.exportando.set(false);
+    if (e.status === 404) {
+      this.voltar('nao-encontrado-exclusao');
+      return;
+    }
+    this.erroExportacao.set(
+      e.status === 413
+        ? ERRO_EXPORTAR_413
+        : e.status === 429
+          ? ERRO_EXPORTAR_429
+          : ERRO_EXPORTAR_GERAL,
+    );
+    this.focar('pc-exportar-erro');
   }
 
   private focar(id: string): void {
