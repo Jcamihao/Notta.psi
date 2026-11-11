@@ -466,7 +466,9 @@ describe('PacienteFormPage', () => {
         const texto = confirmacao()?.textContent ?? '';
         expect(texto).toContain('nome, data de nascimento, telefone e e-mail');
         expect(texto).toContain('o texto de todos os documentos, inclusive os aprovados');
+        expect(texto).toContain('os convites de consentimento ainda pendentes');
         expect(texto).toContain('sem identificar o paciente');
+        expect(texto).toContain('o histórico de ações no sistema');
         expect(texto).toContain('Não dá para desfazer.');
         expect(abrir().getAttribute('aria-expanded')).toBe('true');
         ctrl.expectNone(urlExcluir);
