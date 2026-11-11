@@ -90,7 +90,7 @@ Relatório completo em `.superpowers/sdd/fase-1/review-fase-1.md`. 0 críticos, 
 - [x] 63. [B] Padrão `psicologo_proprio`: FK filha inclui `psicologoId` (hoje um colega pendura linha no paciente do outro) e colega não grava `papel`/`senhaHash` de ninguém
 - [x] 64. [B] AAD no AES-GCM (antes de existir dado cifrado; depois exige recifrar tudo)
 - [ ] 65. [M] Convite por e-mail de uso único para o colega (fecha o I-1 da 2ª revisão: o ADMIN nunca tem a credencial; depende do item 24)
-- [ ] 66. [F] Antes de abrir para clínicas: ajustar o texto do painel de sigilo ao que o código já garante (cifra em uso, IA) e mensagem de 503 ("muita demanda, tente de novo") no login
+- [x] 66. [F] Antes de abrir para clínicas: ajustar o texto do painel de sigilo ao que o código já garante (cifra em uso, IA) e mensagem de 503 ("muita demanda, tente de novo") no login (feito e verificado em 2026-11-11: painel só afirma o que `seguranca.conteudo.ts` sustenta, inclui consentimento, filtro imperfeito, IA de terceiros e link para /seguranca; 503 mostra "muita demanda" com o Retry-After quando válido. Pendência pequena: as telas de IA mostram "IA desligada" para qualquer 503, inclusive o do banco ocupado)
 
 ## Fase 1.6 — Correções da 2ª revisão (feita e verificada em 2026-10-31)
 Commits ef7836a (app), 20c4860 e 8b3f537 (banco e testes). Back: 191 unit + 159 e2e verdes. Risco I-1 aceito e documentado em docs/ACESSO.md; o item 65 o fecha. A migration nova exige rodar `backend/prisma/bootstrap/endurecer-banco.sql` uma vez por banco como superuser (revoke de lo_create).
