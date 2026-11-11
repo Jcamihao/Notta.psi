@@ -129,3 +129,33 @@ Se algo der errado no meio: a chave antiga continua na lista. O sistema segue fu
 - `pg_dump`, `pg_restore` e `psql` precisam ser da mesma versao do servidor (ou mais nova): o `pg_dump` 16 recusa um servidor 18 ("server version mismatch"). Use os binarios do proprio servidor, por exemplo via `PGDUMP_CMD`.
 - A verificacao de restauracao prova uma amostra por coluna, nao o banco inteiro linha a linha.
 - A verificacao precisa da chave certa do ambiente. Se a chave nao bate, o backup esta bom mas a verificacao falha: isso e de proposito, para nao dar falsa seguranca.
+
+## 8. Quanto tempo guardar (30 dias)
+
+**Regra (decisao do dono, LGPD):** backup e apagado 30 dias depois de gravado. Dado excluido no app (exclusao de paciente, descarte de rascunho aos 7 dias) continua nos backups feitos antes da exclusao; o prazo limita ate quando.
+
+Comando (em `backend/`; use caminho absoluto):
+
+```bash
+npm run podar-backups -- /caminho/seguro/backups --dry-run   # so lista o que apagaria
+npm run podar-backups -- /caminho/seguro/backups             # apaga de verdade
+```
+
+- Padrao 30 dias. Outro prazo: `--dias N`, ou `NOTTA_BACKUP_RETENCAO_DIAS` (inteiro de 1 a 36500). Valor invalido (inclusive vazio) = sai com codigo 2 e nao apaga nada.
+- Apaga o par `<nome>.enc` + `<nome>.enc.sha256` pela data de modificacao do `.enc`. So mexe em arquivos com esse padrao, so no nivel da pasta: subpastas, links e outros arquivos ficam.
+- **Nunca apaga o backup mais recente da pasta**, mesmo vencido: se o agendamento parar, o ultimo bom continua la. Pasta com um backup so nao perde nada.
+- Recusa `/`, a sua pasta pessoal e a raiz do repositorio. Saida: so nomes de arquivo e contagens. Codigos: 0 ok, 1 erro de IO, 2 uso ou configuracao.
+
+**Agendamento: ainda NAO instalado.** O agendamento entra no item 56. Exemplo de linha de cron para depois (todo dia, 03:17):
+
+```
+17 3 * * * cd /caminho/do/repo/backend && npm run -s podar-backups -- /caminho/seguro/backups >> /caminho/seguro/podar.log 2>&1
+```
+
+**Limites (leia):**
+
+- Backup feito antes de uma exclusao guarda o dado antigo ate vencer. Com 30 dias, dado excluido pode continuar nos backups por ate 30 dias depois da exclusao.
+- Nao ha arquivamento de WAL no projeto. Se ele for ligado no futuro, o WAL precisa do mesmo prazo de 30 dias.
+- Copias fora do servidor (disco do dono, nuvem) nao sao podadas por este comando: precisam seguir o mesmo prazo na mao.
+- A data usada e a de modificacao. Copia feita com `cp` sem `-p` ganha data nova e fica mais tempo do que deveria: use `cp -p`.
+- A poda apaga arquivos de backup. Nao apaga nada de dentro do banco; o banco segue a regra de retencao de rascunhos (`docs/ACESSO.md`).

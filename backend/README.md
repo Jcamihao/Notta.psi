@@ -170,5 +170,8 @@ Contrato: `.superpowers/sdd/fase-1/contrato.md` (secao "Onda B"). Modulo `src/ge
 - Comando: `npm run descartar -- [--dry-run] [--clinica <id>] [--lote N]` (precisa de `npm run build` antes e de `DATABASE_URL_OWNER`; recusa `notta_app`). Apaga rascunho sem edicao ha mais de `NOTTA_RETENCAO_RASCUNHO_DIAS` dias (padrao 7), com as geracoes de IA ligadas. Nunca apaga aprovado. Regras e o que sai ou fica: `docs/ACESSO.md`, secao "Retencao de rascunhos".
 - Nao ha agendador: o comando roda na mao ate o item 56 (deploy) agendar.
 
+## Retencao de backups (item 52B)
+- Backups (`.enc` e `.enc.sha256`) sao apagados depois de 30 dias por `npm run podar-backups -- <pasta> [--dias N] [--dry-run]`, que nunca apaga o mais recente. Detalhes e limites: `docs/BACKUP-E-CHAVES.md`, secao "Quanto tempo guardar (30 dias)".
+
 ## Varredura de segredos (item 42)
 `npm run scan:segredos` (`scripts/scan-segredos.mjs`): le `git ls-files` e procura `x-selah-api-key` com valor, `NOTTA_*`/`SELAHIA_API_KEY` com 32+ caracteres, chave privada PEM e 64 hex em atribuicao. Sai com 1 e imprime so `arquivo:linha:tipo`, nunca o valor. Allowlist curta no topo do script (testes e `.env.example`, so para `NOTTA_*` e hex64). Arquivo novo so entra depois de `git add`. Tornar obrigatorio no CI e o item 43.

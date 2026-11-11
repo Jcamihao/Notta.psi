@@ -259,6 +259,7 @@ Decisao do dono (2026-11-05): **previa obrigatoria** (o psicologo ve e confirma 
 - Ainda nao agendado: o comando roda na mao. O agendamento e do item 56 (deploy).
 - Para a tela (fatia 52C): a API devolve `descarteEm` (ISO = `atualizadoEm` + prazo) em cada rascunho, nas respostas de listar, obter, criar e editar. Em aprovado vem `null`.
 - Testes: `test/descartar-rascunhos.e2e-spec.ts` (banco, com envelhecimento feito pelo dono), `src/ferramentas/descartar.spec.ts` e `src/comum/retencao.spec.ts`.
+- Backups (item 52B) guardam 30 dias e sao apagados por `npm run podar-backups`: ver `docs/BACKUP-E-CHAVES.md`, secao "Quanto tempo guardar (30 dias)".
 
 ## Exclusao de paciente por anonimizacao (item 26, fatia do back)
 
