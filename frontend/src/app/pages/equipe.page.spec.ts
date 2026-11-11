@@ -303,9 +303,7 @@ describe('EquipePage', () => {
       await pedir();
       await confirmar();
       await falhar(503);
-      expect(erroEquipe()).toBe(
-        'Não foi possível concluir agora. Confira sua conexão e tente de novo.',
-      );
+      expect(erroEquipe()).toBe('Estamos com muita demanda agora. Tente de novo em instantes.');
       expect(grupo()).toBeNull();
       expect(document.activeElement).toBe(botaoDesativar('Bruno Lima'));
       expect(linhas()[1].querySelector('button')).not.toBeNull();
@@ -472,13 +470,11 @@ describe('EquipePage', () => {
       expect(alerta()).toBe('Muitas tentativas. Aguarde um pouco e tente de novo.');
     });
 
-    it('5xx e rede mostram mensagem generica', async () => {
+    it('503 mostra a demanda; rede mostra mensagem generica', async () => {
       preencher();
       await enviar();
       await falharPost(503);
-      expect(alerta()).toBe(
-        'Não foi possível concluir agora. Confira sua conexão e tente de novo.',
-      );
+      expect(alerta()).toBe('Estamos com muita demanda agora. Tente de novo em instantes.');
       preencher();
       await enviar();
       post().error(new ProgressEvent('error'));

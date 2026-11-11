@@ -134,13 +134,26 @@ export function focarPrimeiroErro(form: FormGroup, prefixo: string): void {
   if (nome) document.getElementById(`${prefixo}-${nome}`)?.focus();
 }
 
+// Retry-After so vale como inteiro > 0 (segundos). Outro valor (data HTTP, 0, negativo) = sem contagem.
+function segundosDeEspera(e: HttpErrorResponse): number | null {
+  const s = Number(e.headers.get('Retry-After'));
+  return Number.isInteger(s) && s > 0 ? s : null;
+}
+
+const plural = (s: number) => (s === 1 ? 'segundo' : 'segundos');
+
+// 503 nao le o corpo: vem do teto de logins simultaneos ou do banco ocupado (ambos sem detalhe).
 export function mensagemHttp(e: HttpErrorResponse): string {
   if (e.status === 400) return 'Alguns campos estão inválidos. Revise e tente de novo.';
   if (e.status === 429) {
-    const s = Number(e.headers.get('Retry-After'));
-    if (!Number.isInteger(s) || s <= 0)
-      return 'Muitas tentativas. Aguarde um pouco e tente de novo.';
-    return `Muitas tentativas. Tente de novo em ${s} ${s === 1 ? 'segundo' : 'segundos'}.`;
+    const s = segundosDeEspera(e);
+    if (s === null) return 'Muitas tentativas. Aguarde um pouco e tente de novo.';
+    return `Muitas tentativas. Tente de novo em ${s} ${plural(s)}.`;
+  }
+  if (e.status === 503) {
+    const s = segundosDeEspera(e);
+    if (s === null) return 'Estamos com muita demanda agora. Tente de novo em instantes.';
+    return `Estamos com muita demanda agora. Tente de novo em ${s} ${plural(s)}.`;
   }
   return 'Não foi possível concluir agora. Confira sua conexão e tente de novo.';
 }

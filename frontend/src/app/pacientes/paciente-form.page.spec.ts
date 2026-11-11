@@ -236,9 +236,7 @@ describe('PacienteFormPage', () => {
       digitar('nome', 'Maria');
       await enviar();
       await falhar(ctrl.expectOne('/api/pacientes'), 503);
-      expect(alerta()).toBe(
-        'Não foi possível concluir agora. Confira sua conexão e tente de novo.',
-      );
+      expect(alerta()).toBe('Estamos com muita demanda agora. Tente de novo em instantes.');
       await enviar();
       await falhar(ctrl.expectOne('/api/pacientes'), 401);
       expect(alerta()).not.toBe('');

@@ -119,6 +119,53 @@ describe('LoginPage', () => {
     expect(alerta()).toBe('Muitas tentativas. Tente de novo em 42 segundos.');
   });
 
+  it('503 com Retry-After mostra a demanda com os segundos, sem tratar como credencial invalida', async () => {
+    preencher();
+    await enviar();
+    ctrl
+      .expectOne('/api/auth/login')
+      .flush(
+        { statusCode: 503, message: 'Servico indisponivel' },
+        { status: 503, statusText: 'Service Unavailable', headers: { 'Retry-After': '7' } },
+      );
+    await fixture.whenStable();
+    expect(alerta()).toBe('Estamos com muita demanda agora. Tente de novo em 7 segundos.');
+    expect(input('login-senha').value).toBe('senha-forte-1');
+    expect(input('login-email').value).toBe('Ana@Clinica.com');
+    expect(navegar).not.toHaveBeenCalled();
+  });
+
+  it('503 sem Retry-After mostra a demanda sem contagem e nao limpa os campos', async () => {
+    preencher();
+    await enviar();
+    ctrl
+      .expectOne('/api/auth/login')
+      .flush(
+        { statusCode: 503, message: 'Servico indisponivel' },
+        { status: 503, statusText: 'Service Unavailable' },
+      );
+    await fixture.whenStable();
+    expect(alerta()).toBe('Estamos com muita demanda agora. Tente de novo em instantes.');
+    expect(alerta()).not.toBe('E-mail ou senha incorretos.');
+    expect(input('login-senha').value).toBe('senha-forte-1');
+    expect(input('login-email').value).toBe('Ana@Clinica.com');
+  });
+
+  it('500 mostra mensagem generica e nao limpa os campos', async () => {
+    preencher();
+    await enviar();
+    ctrl
+      .expectOne('/api/auth/login')
+      .flush(
+        { statusCode: 500, message: 'x' },
+        { status: 500, statusText: 'Internal Server Error' },
+      );
+    await fixture.whenStable();
+    expect(alerta()).toBe('Não foi possível concluir agora. Confira sua conexão e tente de novo.');
+    expect(input('login-senha').value).toBe('senha-forte-1');
+    expect(input('login-email').value).toBe('Ana@Clinica.com');
+  });
+
   it('formulario vazio nao envia, marca os campos e foca o primeiro erro', async () => {
     await enviar();
     ctrl.expectNone('/api/auth/login');

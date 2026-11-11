@@ -202,10 +202,18 @@ describe('CadastroPage', () => {
     expect(alerta()).toBe('Não foi possível concluir agora. Confira sua conexão e tente de novo.');
   });
 
-  it('5xx mostra mensagem generica', async () => {
+  it('503 mostra a mensagem de demanda', async () => {
     preencher();
     await enviar();
     falhar('/api/clinicas', 503);
+    await fixture.whenStable();
+    expect(alerta()).toBe('Estamos com muita demanda agora. Tente de novo em instantes.');
+  });
+
+  it('500 mostra mensagem generica', async () => {
+    preencher();
+    await enviar();
+    falhar('/api/clinicas', 500);
     await fixture.whenStable();
     expect(alerta()).toBe('Não foi possível concluir agora. Confira sua conexão e tente de novo.');
   });

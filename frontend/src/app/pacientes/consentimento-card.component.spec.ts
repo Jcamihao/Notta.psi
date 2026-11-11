@@ -336,7 +336,7 @@ describe('ConsentimentoCardComponent', () => {
       await carregar(NENHUM);
       await clicar('Registrar consentimento');
       await flush(ctrl.expectOne(URL), {}, 503);
-      expect(texto('[data-teste="erro"]')).toContain('Confira sua conexão');
+      expect(texto('[data-teste="erro"]')).toContain('muita demanda');
       expect(botao('Registrar consentimento')!.disabled).toBeFalse();
       await clicar('Registrar consentimento');
       ctrl.expectOne(URL).error(new ProgressEvent('error'));
