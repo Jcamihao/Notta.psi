@@ -40,6 +40,8 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 - [x] 25. [B] Backup e rotação da chave mestra
 - [x] 26. [M] Exportar e excluir dados (LGPD) (feito e verificado em 2026-11-11: exclusão por anonimização irreversível e exportação em JSON não cifrado, só pelo psicólogo dono do paciente; limites e evidências em `docs/SEGURANCA-AFIRMACOES.md`, id `direitos-dados`. Fica para o item 52: descarte de backups antigos, que ainda guardam o dado anterior à exclusão)
 
+- [x] 79. [F] Tela de Início (feita e verificada em 2026-11-11, fora da lista original: saudação, resumo com total e pacientes sem consentimento concedido, atalhos, últimos 5 pacientes CADASTRADOS e passo a passo no estado vazio; uma só chamada a `GET /pacientes`; fora do escopo de propósito: rascunhos pendentes, agenda e indicadores, que dependem de rota nova ou das Fases 5 e 8)
+
 ## Fase 5 — Uso diário
 - [ ] 27. [M] Linha do tempo do paciente
 - [ ] 28. [M] Busca e filtros (só metadados; o texto é cifrado) (a psicóloga pediu busca por palavra-chave nos registros; com o texto cifrado isso exige decifrar no app só os documentos do próprio psicólogo; decisão do dono, ver item 28 nas decisões abertas)
