@@ -24,6 +24,7 @@
     "recifrar": "node dist/ferramentas/recifrar.js",
     "descartar": "node dist/ferramentas/descartar.js",
     "backup": "bash scripts/backup.sh",
+    "podar-backups": "bash scripts/podar-backups.sh",
     "verificar:backup": "bash scripts/verificar-backup.sh"
   },
   "dependencies": {
