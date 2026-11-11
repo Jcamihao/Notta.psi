@@ -306,6 +306,101 @@ describe('GET /pacientes/:id/exportar (item 26, portabilidade)', () => {
   });
 });
 
+describe('GET /pacientes/:id/exportar: lacunas do contrato', () => {
+  it('GeracaoIa (texto anonimizado e mapa) existe no banco e fica FORA do arquivo', async () => {
+    const dono = await novaClinica(email('geracao'));
+    const p = await pacienteComHistorico(dono);
+    await comoOwner(
+      dono.clinicaId,
+      (tx) =>
+        tx.geracaoIa.create({
+          data: {
+            id: randomUUID(),
+            clinicaId: dono.clinicaId,
+            psicologoId: dono.psicologoId,
+            pacienteId: p.pid,
+            origemId: p.rascunho,
+            tipoDocumento: 'EVOLUCAO',
+            abordagem: 'TCC',
+            estado: 'PREVIA',
+            textoCifrado: 'GERACAO-TEXTO-ANONIMIZADO',
+            mapaCifrado: 'GERACAO-MAPA-PSEUDONIMOS',
+            expiraEm: new Date(Date.now() + 60_000),
+          },
+        }),
+      { psicologoId: dono.psicologoId },
+    );
+    const texto = (await exportar(dono, p.pid).expect(200)).text;
+    expect(texto).not.toContain('GERACAO-TEXTO-ANONIMIZADO');
+    expect(texto).not.toContain('GERACAO-MAPA-PSEUDONIMOS');
+    expect(texto).not.toMatch(/geracao|mapa|textoCifrado/i);
+    expect(JSON.parse(texto)).not.toHaveProperty('geracoes');
+  });
+
+  it('documento que nao decifra: 500 generico, sem arquivo parcial e sem auditoria EXPORTOU', async () => {
+    const dono = await novaClinica(email('quebrado'));
+    const p = await pacienteComHistorico(dono);
+    // Troca o cifrado do rascunho pelo do aprovado: o AAD (id) nao confere mais.
+    await comoOwner(
+      dono.clinicaId,
+      async (tx) => {
+        const aprovado = await tx.documento.findFirstOrThrow({
+          where: { id: p.aprovado },
+        });
+        await tx.documento.update({
+          where: { id: p.rascunho },
+          data: { conteudoCifrado: aprovado.conteudoCifrado },
+        });
+      },
+      { psicologoId: dono.psicologoId },
+    );
+    const r = await exportar(dono, p.pid).expect(500);
+    expect(r.body).toEqual({
+      statusCode: 500,
+      message: 'Internal Server Error',
+    });
+    expect(r.headers['content-disposition']).toBeUndefined();
+    expect(r.text).not.toContain(APROVADO);
+    expect(r.text).not.toContain(NOME);
+    expect(await exportacoesAuditadas(dono, p.pid)).toBe(0);
+  });
+
+  it('convite aceito pelo paciente: consentimento origem PACIENTE com o conviteId, convite ACEITO, sem token', async () => {
+    const dono = await novaClinica(email('aceito'));
+    const pid = await criarPaciente(dono);
+    const convite = await com(
+      dono.token,
+      http().post(`/pacientes/${pid}/convites-consentimento`),
+    ).expect(201);
+    const { link } = corpo<{ link: string }>(convite);
+    const token = link.slice(link.lastIndexOf('/') + 1);
+    await http()
+      .post(`/publico/consentimento/${token}/aceitar`)
+      .send({ aceito: true })
+      .expect(200);
+    const r = await exportar(dono, pid).expect(200);
+    const d = corpo<{
+      consentimentos: {
+        evento: string;
+        origem: string;
+        conviteId: string | null;
+      }[];
+      convites: { id: string; estado: string; usadoEm: string | null }[];
+    }>(r);
+    expect(d.convites).toHaveLength(1);
+    expect(d.convites[0].estado).toBe('ACEITO');
+    expect(d.convites[0].usadoEm).not.toBeNull();
+    expect(d.consentimentos).toHaveLength(1);
+    expect(d.consentimentos[0]).toMatchObject({
+      evento: 'CONCEDIDO',
+      origem: 'PACIENTE',
+      conviteId: d.convites[0].id,
+    });
+    expect(r.text).not.toContain(token);
+    expect(r.text).not.toMatch(/token|hash/i);
+  });
+});
+
 describe('GET /pacientes/:id/exportar: limite por psicologo', () => {
   it('10 por hora por psicologo: a 11a = 429 com Retry-After; a leitura normal do paciente segue 200', async () => {
     const dono = await novaClinica(email('limite'));
