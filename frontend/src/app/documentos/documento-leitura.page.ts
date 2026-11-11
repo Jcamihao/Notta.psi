@@ -13,6 +13,7 @@ import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ArrowLeft, CircleAlert, CircleCheck, LucideAngularModule } from 'lucide-angular';
 import { dataHoraBr } from '../core/datas';
+import { AGORA, descarteUrgente, textoDescarte } from '../core/descarte';
 import { detectarDados } from '../core/dados-identificaveis';
 import {
   conteudoMaximo,
@@ -76,6 +77,7 @@ export class DocumentoLeituraPage implements OnDestroy {
   private readonly pacientes = inject(PacientesService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
+  private readonly agora = inject(AGORA);
   readonly pacienteId = inject(ActivatedRoute).snapshot.paramMap.get('id')!;
   private docId = '';
 
@@ -121,6 +123,17 @@ export class DocumentoLeituraPage implements OnDestroy {
         this.reiniciar();
         this.carregar();
       });
+  }
+
+  // Rascunho: o prazo de descarte vem do servidor (data, nunca o numero de dias).
+  avisoDescarte(d: Documento): string {
+    const prazo = textoDescarte(d.descarteEm, this.agora());
+    const orientacao = 'Aprovar guarda o documento. Editar renova o prazo.';
+    return prazo ? `${prazo} ${orientacao}` : orientacao;
+  }
+
+  urgenteDescarte(d: Documento): boolean {
+    return descarteUrgente(d.descarteEm, this.agora());
   }
 
   erro(nome: keyof typeof OBRIGATORIO): string {

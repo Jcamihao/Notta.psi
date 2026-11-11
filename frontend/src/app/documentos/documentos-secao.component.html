@@ -88,6 +88,11 @@
                 <time [attr.datetime]="d.criadoEm">{{ dataHora(d.criadoEm) }}</time></span
               >
             </span>
+            @if (descarte(d); as aviso) {
+              <p class="documentos-descarte" [class.urgente]="urgente(d)" data-teste="descarte">
+                {{ aviso }}
+              </p>
+            }
           </li>
         }
       </ul>

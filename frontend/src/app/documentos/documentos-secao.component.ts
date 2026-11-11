@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { dataHoraBr } from '../core/datas';
+import { AGORA, descarteUrgente, textoDescarte } from '../core/descarte';
 import { EstadoConsentimento } from '../pacientes/consentimento.service';
 import { dataBr } from '../pacientes/pacientes.page';
 import { ButtonComponent } from '../ui/button.component';
@@ -29,6 +30,7 @@ export class DocumentosSecaoComponent implements OnInit {
   // As duas listas terminaram (com ou sem erro): a pagina pode pedir a proxima secao.
   readonly carregada = output<void>();
   private readonly servico = inject(DocumentosService);
+  private readonly agora = inject(AGORA);
 
   readonly dataBr = dataBr;
   readonly dataHora = dataHoraBr;
@@ -39,6 +41,15 @@ export class DocumentosSecaoComponent implements OnInit {
   readonly rascunhos = signal<DocumentoResumo[] | null>(null);
   readonly erroAprovados = signal(false);
   readonly erroRascunhos = signal(false);
+
+  // Aviso de descarte do rascunho (so rascunho tem prazo). Calculado ao renderizar, sem timer.
+  descarte(d: DocumentoResumo): string | null {
+    return textoDescarte(d.descarteEm, this.agora());
+  }
+
+  urgente(d: DocumentoResumo): boolean {
+    return descarteUrgente(d.descarteEm, this.agora());
+  }
 
   ngOnInit(): void {
     this.carregar('APROVADO', () => this.carregar('RASCUNHO', () => this.carregada.emit()));

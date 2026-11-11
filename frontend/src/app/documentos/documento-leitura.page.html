@@ -26,6 +26,16 @@
         Rascunho gerado por IA. Revise antes de aprovar.
       </p>
     }
+    @if (d.status === 'RASCUNHO') {
+      <p
+        class="leitura-faixa"
+        [class.leitura-faixa-urgente]="urgenteDescarte(d)"
+        role="status"
+        data-teste="descarte-leitura"
+      >
+        {{ avisoDescarte(d) }}
+      </p>
+    }
     @if (d.status === 'APROVADO' && d.aprovadoEm; as aprovadoEm) {
       <p id="de-faixa" class="leitura-faixa" tabindex="-1" data-teste="faixa">
         Aprovado em <time [attr.datetime]="aprovadoEm">{{ dataHora(aprovadoEm) }}</time

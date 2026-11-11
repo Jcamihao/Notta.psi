@@ -6,6 +6,7 @@ import {
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { AGORA } from '../core/descarte';
 import { EstadoConsentimento } from '../pacientes/consentimento.service';
 import { DocumentosSecaoComponent } from './documentos-secao.component';
 import { DocumentoResumo } from './documentos.service';
@@ -15,6 +16,8 @@ const URL = `/api/pacientes/${PID}/documentos`;
 const URL_APROVADOS = `${URL}?status=APROVADO`;
 const URL_RASCUNHOS = `${URL}?status=RASCUNHO`;
 const BLOQUEIO = 'Registre o consentimento para criar documentos.';
+// "Agora" fixo para o prazo de descarte: 11/11/2026 12:00 UTC.
+const AGORA_FIXO = new Date('2026-11-11T12:00:00.000Z');
 
 const APROVADOS: DocumentoResumo[] = [
   {
@@ -26,6 +29,7 @@ const APROVADOS: DocumentoResumo[] = [
     aprovadoEm: '2026-11-03T15:30:00.000Z',
     substituiId: null,
     geradoPorIa: false,
+    descarteEm: null,
   },
   {
     id: 'p2',
@@ -36,6 +40,7 @@ const APROVADOS: DocumentoResumo[] = [
     aprovadoEm: '2026-11-01T14:00:00.000Z',
     substituiId: 'p9',
     geradoPorIa: false,
+    descarteEm: null,
   },
 ];
 const RASCUNHOS: DocumentoResumo[] = [
@@ -48,6 +53,7 @@ const RASCUNHOS: DocumentoResumo[] = [
     aprovadoEm: null,
     substituiId: null,
     geradoPorIa: false,
+    descarteEm: '2026-11-20T12:00:00.000Z',
   },
   {
     id: 'r2',
@@ -58,6 +64,7 @@ const RASCUNHOS: DocumentoResumo[] = [
     aprovadoEm: null,
     substituiId: null,
     geradoPorIa: false,
+    descarteEm: '2026-11-12T12:00:00.000Z',
   },
 ];
 
@@ -68,7 +75,12 @@ describe('DocumentosSecaoComponent', () => {
   const montar = async (estado: EstadoConsentimento) => {
     TestBed.configureTestingModule({
       imports: [DocumentosSecaoComponent],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AGORA, useValue: () => AGORA_FIXO },
+      ],
     });
     ctrl = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(DocumentosSecaoComponent);
@@ -264,6 +276,54 @@ describe('DocumentosSecaoComponent', () => {
     await flush(ctrl.expectOne(URL_RASCUNHOS), []);
     ctrl.expectNone(URL_APROVADOS);
     expect(el().querySelector('[data-teste="vazio-rascunhos"]')).not.toBeNull();
+  });
+
+  describe('aviso de descarte do rascunho', () => {
+    const avisos = () => Array.from(secao(1).querySelectorAll('[data-teste="descarte"]'));
+    const textoDe = (p: Element) => p.textContent?.replace(/\s+/g, ' ').trim();
+
+    it('prazo longo: "em N dias" sem destaque', async () => {
+      await montar('CONCEDIDO');
+      await carregar([], [RASCUNHOS[0]]);
+      expect(avisos().length).toBe(1);
+      expect(textoDe(avisos()[0])).toBe('Será apagado em 9 dias se não for editado.');
+      expect(avisos()[0].classList.contains('urgente')).toBeFalse();
+    });
+
+    it('ate 2 dias: texto e destaque (nao so a cor)', async () => {
+      await montar('CONCEDIDO');
+      await carregar([], [RASCUNHOS[1]]);
+      expect(textoDe(avisos()[0])).toBe('Será apagado amanhã se não for editado.');
+      expect(avisos()[0].classList.contains('urgente')).toBeTrue();
+    });
+
+    it('prazo vencido: frase de prazo acabado, com destaque', async () => {
+      await montar('CONCEDIDO');
+      await carregar([], [{ ...RASCUNHOS[1], descarteEm: '2026-11-11T11:00:00.000Z' }]);
+      expect(textoDe(avisos()[0])).toBe(
+        'O prazo acabou. Será apagado na próxima limpeza. Edite ou aprove para guardar.',
+      );
+      expect(avisos()[0].classList.contains('urgente')).toBeTrue();
+    });
+
+    it('rascunho sem prazo informado nao mostra aviso', async () => {
+      await montar('CONCEDIDO');
+      await carregar([], [{ ...RASCUNHOS[0], descarteEm: null }]);
+      expect(avisos().length).toBe(0);
+    });
+
+    it('lista de aprovados (prontuario) nunca tem aviso de descarte', async () => {
+      await montar('CONCEDIDO');
+      await carregar(APROVADOS, []);
+      expect(secao(0).querySelector('[data-teste="descarte"]')).toBeNull();
+    });
+
+    it('textos de descarte nao contem o numero 7 solto', async () => {
+      await montar('CONCEDIDO');
+      await carregar([], RASCUNHOS);
+      expect(avisos().length).toBe(2);
+      for (const p of avisos()) expect(textoDe(p)).not.toMatch(/\b7\b/);
+    });
   });
 
   it('titulos ligados as secoes', async () => {

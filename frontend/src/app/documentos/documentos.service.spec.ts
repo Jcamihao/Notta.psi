@@ -18,6 +18,7 @@ const COMPLETO: Documento = {
   aprovadoEm: null,
   substituiId: null,
   geradoPorIa: false,
+  descarteEm: '2026-11-10T10:00:00.000Z',
   atualizadoEm: '2026-11-03T10:00:00.000Z',
 };
 
@@ -65,6 +66,7 @@ describe('DocumentosService', () => {
         aprovadoEm: 'y',
         substituiId: null,
         geradoPorIa: false,
+        descarteEm: null,
       },
     ];
     r.flush(lista);

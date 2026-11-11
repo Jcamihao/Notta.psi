@@ -84,6 +84,10 @@
 .leitura-faixa-ia {
   background: var(--yellow-300);
 }
+// Prazo de descarte perto do fim: mesmo destaque de aviso do app (o texto ja diz o prazo).
+.leitura-faixa-urgente {
+  background: var(--pink-200);
+}
 .leitura-corrige {
   margin: 0;
   color: var(--text-secondary);

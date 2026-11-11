@@ -90,6 +90,12 @@ describe('DocumentoNovoPage', () => {
     expect(opcoes).toEqual(['Selecione', 'Nota bruta', 'Evolução', 'Anamnese']);
   });
 
+  it('explica que rascunho sem edicao e apagado e que aprovar guarda (sem numero de dias)', () => {
+    const lead = el().querySelector('.documento-lead')?.textContent?.replace(/\s+/g, ' ').trim();
+    expect(lead).toContain('Rascunho sem edição é apagado automaticamente; aprove para guardar.');
+    expect(lead).not.toMatch(/\b7\b/);
+  });
+
   it('textarea sem corretor e sem autocompletar', () => {
     const t = campo<HTMLTextAreaElement>('conteudo');
     expect(t.getAttribute('spellcheck')).toBe('false');
@@ -391,6 +397,7 @@ describe('DocumentoNovoPage (correcao, ?corrige=)', () => {
     aprovadoEm: '2026-10-21T10:00:00.000Z',
     substituiId: null,
     geradoPorIa: false,
+    descarteEm: null,
   };
   let fixture: ComponentFixture<DocumentoNovoPage>;
   let ctrl: HttpTestingController;

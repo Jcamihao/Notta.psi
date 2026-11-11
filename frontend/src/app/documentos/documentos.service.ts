@@ -17,6 +17,8 @@ export interface DocumentoResumo {
   substituiId: string | null;
   // Rascunho criado pela IA (itens 20 e 21): marca fixa, nunca muda.
   geradoPorIa: boolean;
+  // Rascunho: data em que sera apagado sem edicao (ISO); aprovado: null.
+  descarteEm: string | null;
 }
 
 export interface Documento extends DocumentoResumo {

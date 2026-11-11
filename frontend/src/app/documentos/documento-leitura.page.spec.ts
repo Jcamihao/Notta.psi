@@ -7,6 +7,7 @@ import {
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
+import { AGORA } from '../core/descarte';
 import { DocumentoLeituraPage } from './documento-leitura.page';
 import { Documento } from './documentos.service';
 
@@ -28,13 +29,17 @@ const RASCUNHO: Documento = {
   aprovadoEm: null,
   substituiId: null,
   geradoPorIa: false,
+  descarteEm: '2026-11-14T12:00:00.000Z',
 };
 const APROVADO: Documento = {
   ...RASCUNHO,
   status: 'APROVADO',
   aprovadoEm: '2026-11-04T15:30:00.000Z',
+  descarteEm: null,
 };
 const PACIENTE = { id: PID, nome: 'Maria da Silva', nascimento: null, telefone: null, email: null };
+// "Agora" fixo: 11/11/2026 12:00 UTC.
+const AGORA_FIXO = new Date('2026-11-11T12:00:00.000Z');
 
 describe('DocumentoLeituraPage', () => {
   let fixture: ComponentFixture<DocumentoLeituraPage>;
@@ -50,6 +55,7 @@ describe('DocumentoLeituraPage', () => {
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: AGORA, useValue: () => AGORA_FIXO },
         {
           provide: ActivatedRoute,
           useValue: { snapshot: { paramMap: params.value }, paramMap: params },
@@ -406,6 +412,53 @@ describe('DocumentoLeituraPage', () => {
       await montar(RASCUNHO);
       await abrirEdicao();
       expect(campo('conteudo')).not.toBeNull();
+    });
+  });
+
+  describe('aviso de descarte do rascunho', () => {
+    const aviso = () => el().querySelector('[data-teste="descarte-leitura"]');
+    const ORIENTACAO = 'Aprovar guarda o documento. Editar renova o prazo.';
+
+    it('rascunho: role=status com o prazo (dias) e a orientacao', async () => {
+      await montar(RASCUNHO);
+      expect(aviso()?.getAttribute('role')).toBe('status');
+      expect(texto('[data-teste="descarte-leitura"]')).toBe(
+        `Será apagado em 3 dias se não for editado. ${ORIENTACAO}`,
+      );
+      expect(aviso()!.classList.contains('leitura-faixa-urgente')).toBeFalse();
+    });
+
+    it('ate 2 dias: destaque e texto ("amanha")', async () => {
+      await montar({ ...RASCUNHO, descarteEm: '2026-11-12T12:00:00.000Z' });
+      expect(texto('[data-teste="descarte-leitura"]')).toBe(
+        `Será apagado amanhã se não for editado. ${ORIENTACAO}`,
+      );
+      expect(aviso()!.classList.contains('leitura-faixa-urgente')).toBeTrue();
+    });
+
+    it('prazo vencido: frase de prazo acabado com a orientacao', async () => {
+      await montar({ ...RASCUNHO, descarteEm: '2026-11-10T12:00:00.000Z' });
+      expect(texto('[data-teste="descarte-leitura"]')).toBe(
+        `O prazo acabou. Será apagado na próxima limpeza. Edite ou aprove para guardar. ${ORIENTACAO}`,
+      );
+    });
+
+    it('aprovado: nenhum aviso de descarte', async () => {
+      await montar(APROVADO);
+      expect(aviso()).toBeNull();
+    });
+
+    it('convive com a faixa de IA, sem repetir a ideia', async () => {
+      await montar({ ...RASCUNHO, geradoPorIa: true });
+      expect(texto('[data-teste="faixa-ia"]')).toBe(
+        'Rascunho gerado por IA. Revise antes de aprovar.',
+      );
+      expect(aviso()).not.toBeNull();
+    });
+
+    it('textos de descarte nao contem o numero 7 solto', async () => {
+      await montar(RASCUNHO);
+      expect(texto('[data-teste="descarte-leitura"]')).not.toMatch(/\b7\b/);
     });
   });
 
