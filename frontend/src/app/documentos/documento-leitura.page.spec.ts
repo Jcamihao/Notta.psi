@@ -460,6 +460,31 @@ describe('DocumentoLeituraPage', () => {
       await montar(RASCUNHO);
       expect(texto('[data-teste="descarte-leitura"]')).not.toMatch(/\b7\b/);
     });
+
+    it('apos editar, usa o prazo novo devolvido pelo servidor (renovado)', async () => {
+      await montar({ ...RASCUNHO, descarteEm: '2026-11-12T12:00:00.000Z' });
+      expect(aviso()!.classList.contains('leitura-faixa-urgente')).toBeTrue();
+      await abrirEdicao();
+      await digitar('conteudo', 'versao 2');
+      await submeter();
+      await flush(ctrl.expectOne(URL), {
+        ...RASCUNHO,
+        conteudo: 'versao 2',
+        descarteEm: '2026-11-19T12:00:00.000Z',
+      });
+      expect(texto('[data-teste="descarte-leitura"]')).toBe(
+        `Será apagado em 8 dias se não for editado. ${ORIENTACAO}`,
+      );
+      expect(aviso()!.classList.contains('leitura-faixa-urgente')).toBeFalse();
+    });
+
+    it('apos aprovar, o aviso some', async () => {
+      await montar(RASCUNHO);
+      await clicar('Aprovar documento');
+      await clicar('Confirmar aprovação');
+      await flush(ctrl.expectOne(`${URL}/aprovar`), APROVADO);
+      expect(aviso()).toBeNull();
+    });
   });
 
   describe('marcas de IA e cartao "Gerar com IA" (itens 20 e 21)', () => {
