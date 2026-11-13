@@ -21,9 +21,12 @@ const TAG_BYTES = 16;
 const HEX_RE = /^[0-9a-fA-F]{64}$/;
 
 // HKDF-SHA256: IKM = a chave mestra do kid, salt vazio (RFC 5869: vira 32 bytes zero),
-// info = notta-psi|clinica|<clinicaId>, 32 bytes de saida. ROTULO CRIPTOGRAFICO CONGELADO: ele vem do
-// nome antigo do produto (Notta.psi) e NUNCA pode ser renomeado, senao toda chave de clinica muda e
-// todo dado e todo backup ja cifrado fica ilegivel. O teste de vetor conhecido (HKDF feito em Python) protege isso.
+// info = praxis-psi|clinica|<clinicaId>, 32 bytes de saida. ROTULO CRIPTOGRAFICO CONGELADO: ele entra
+// na derivacao da chave de cada clinica; mudar qualquer caractere troca todas as chaves e torna
+// ilegivel todo dado e todo backup ja cifrado. Foi trocado UMA vez, de `notta-psi` para `praxis-psi`
+// em 2026-11-13, enquanto ainda nao existia dado real (o banco de desenvolvimento foi recriado).
+// NUNCA mais mude sem uma migracao que recifre tudo. O teste de vetor conhecido (HKDF e GCM feitos em
+// Python, independentes) protege isso.
 export function derivarChaveClinica(
   masterKey: Buffer,
   clinicaId: string,
@@ -33,7 +36,7 @@ export function derivarChaveClinica(
       'sha256',
       masterKey,
       Buffer.alloc(0),
-      `notta-psi|clinica|${clinicaId}`,
+      `praxis-psi|clinica|${clinicaId}`,
       32,
     ),
   );

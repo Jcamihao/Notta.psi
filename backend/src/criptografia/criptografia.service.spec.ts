@@ -249,7 +249,7 @@ describe('CriptografiaService', () => {
         '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f';
       const kat = new CriptografiaService();
       const valor =
-        'v1.k1.AAECAwQFBgcICQoL.UtRQmYiumFT16wf5vg42lg.Ix22cjLVbmN5';
+        'v1.k1.AAECAwQFBgcICQoL.F--CYtC9l6-2WKv6DuiY9g.we0W9N_WQsKo';
       expect(kat.decifrar('clinica-teste-123', valor, AAD)).toBe('Sessão 1');
       falhaGenerica(() =>
         kat.decifrar(
@@ -345,7 +345,7 @@ describe('derivarChaveClinica', () => {
     );
     expect(
       derivarChaveClinica(master, 'clinica-teste-123').toString('hex'),
-    ).toBe('2b5c2aaf86d96fe2dcef3c208bb3a1d2dd858abfc5bd283493a960ea31c69370');
+    ).toBe('8dcbbd7072d1dde66dc38a55010671169df898e0fca2f4ebc33d4ccee75279b0');
   });
 
   it('32 bytes, deterministica, difere por clinica e por chave mestra', () => {
