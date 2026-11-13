@@ -248,3 +248,202 @@ describe('PacientesPage (aviso da navegacao)', () => {
     ctrl.verify();
   });
 });
+
+describe('PacientesPage (busca e filtros)', () => {
+  let fixture: ComponentFixture<PacientesPage>;
+  let ctrl: HttpTestingController;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [PacientesPage],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    ctrl = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(PacientesPage);
+    await fixture.whenStable();
+  });
+  afterEach(() => ctrl.verify());
+
+  const el = () => fixture.nativeElement as HTMLElement;
+  const campo = () => el().querySelector('input[type="search"]') as HTMLInputElement;
+  const botao = (rotulo: string) =>
+    Array.from(el().querySelectorAll('button')).find((b) => b.textContent?.trim() === rotulo) as
+      HTMLButtonElement | undefined;
+  const nomes = () =>
+    Array.from(el().querySelectorAll('tbody th a')).map((a) => a.textContent?.trim());
+  const contagem = () => el().querySelector('[data-teste="contagem"]');
+  const passo = async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+  };
+  const digitar = async (texto: string) => {
+    campo().value = texto;
+    campo().dispatchEvent(new Event('input'));
+    await passo();
+  };
+  const clicar = async (rotulo: string) => {
+    botao(rotulo)!.click();
+    await passo();
+  };
+  const carregar = async (l: Paciente[]) => {
+    ctrl.expectOne('/api/pacientes').flush(l);
+    await passo();
+  };
+  const muitos = (n: number): Paciente[] =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `p${i}`,
+      nome: `Paciente ${i}`,
+      nascimento: null,
+      telefone: null,
+      email: null,
+      criadoEm: '2026-10-01T10:00:00.000Z',
+      consentimento: 'NENHUM',
+    }));
+
+  it('campo "Buscar paciente" com label visível, dentro de form role="search", sem recursos do navegador', async () => {
+    await carregar(LISTA);
+    const form = el().querySelector('form[role="search"]') as HTMLFormElement;
+    expect(form).not.toBeNull();
+    expect(form.contains(campo())).toBeTrue();
+    const label = form.querySelector('label') as HTMLLabelElement;
+    expect(label.textContent?.trim()).toBe('Buscar paciente');
+    expect(label.htmlFor).toBe(campo().id);
+    expect(campo().getAttribute('autocomplete')).toBe('off');
+    expect(campo().getAttribute('spellcheck')).toBe('false');
+    expect(campo().getAttribute('autocapitalize')).toBe('off');
+    expect(campo().hasAttribute('name')).toBeFalse();
+  });
+
+  it('Enter (submit do form) nao recarrega a pagina', async () => {
+    await carregar(LISTA);
+    const form = el().querySelector('form[role="search"]') as HTMLFormElement;
+    const evento = new Event('submit', { cancelable: true });
+    form.dispatchEvent(evento);
+    expect(evento.defaultPrevented).toBeTrue();
+  });
+
+  it('digitar filtra a tabela e atualiza a contagem em aria-live', async () => {
+    await carregar(LISTA);
+    expect(nomes().length).toBe(4);
+    expect(contagem()?.textContent?.trim()).toBe('4 de 4 pacientes');
+    expect(contagem()?.getAttribute('aria-live')).toBe('polite');
+    await digitar('ana');
+    expect(nomes()).toEqual(['Ana Lima']);
+    expect(contagem()?.textContent?.trim()).toBe('1 de 4 pacientes');
+  });
+
+  it('contagem no singular quando a lista tem um paciente', async () => {
+    await carregar([LISTA[0]]);
+    expect(contagem()?.textContent?.trim()).toBe('1 de 1 paciente');
+  });
+
+  it('filtro de consentimento: grupo rotulado, aria-pressed no ativo, Todos por padrão', async () => {
+    await carregar(LISTA);
+    const grupo = el().querySelector('[role="group"][aria-label="Filtrar por consentimento"]');
+    expect(grupo).not.toBeNull();
+    const rotulos = Array.from(grupo!.querySelectorAll('button')).map((b) => b.textContent?.trim());
+    expect(rotulos).toEqual(['Todos', 'Concedido', 'Não registrado', 'Revogado']);
+    expect(botao('Todos')?.getAttribute('aria-pressed')).toBe('true');
+    expect(botao('Revogado')?.getAttribute('aria-pressed')).toBe('false');
+    await clicar('Revogado');
+    expect(nomes()).toEqual(['Carla Dias']);
+    expect(botao('Revogado')?.getAttribute('aria-pressed')).toBe('true');
+    expect(botao('Todos')?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('"Não registrado" pega NENHUM, inclusive quem não tem o campo', async () => {
+    await carregar(LISTA);
+    await clicar('Não registrado');
+    expect(nomes()).toEqual(['Bruno Alves', 'Davi Reis']);
+  });
+
+  it('busca e filtro combinados (os dois valem)', async () => {
+    await carregar(LISTA);
+    await clicar('Não registrado');
+    await digitar('a');
+    expect(nomes()).toEqual(['Bruno Alves', 'Davi Reis']);
+    expect(contagem()?.textContent?.trim()).toBe('2 de 4 pacientes');
+    await digitar('bruno');
+    expect(nomes()).toEqual(['Bruno Alves']);
+  });
+
+  it('nenhum resultado: role="status", botao limpar devolve tudo e foca o campo', async () => {
+    await carregar(LISTA);
+    await clicar('Revogado');
+    await digitar('zzz');
+    const status = el().querySelector('[role="status"][data-teste="sem-resultado"]');
+    expect(status?.textContent).toContain('Nenhum paciente encontrado.');
+    expect(el().querySelector('table')).toBeNull();
+    expect(contagem()?.textContent?.trim()).toBe('0 de 4 pacientes');
+    await clicar('Limpar busca e filtros');
+    expect(nomes().length).toBe(4);
+    expect(campo().value).toBe('');
+    expect(botao('Todos')?.getAttribute('aria-pressed')).toBe('true');
+    expect(document.activeElement).toBe(campo());
+  });
+
+  it('o botao "Limpar busca e filtros" só aparece com busca ou filtro ativo', async () => {
+    await carregar(LISTA);
+    expect(botao('Limpar busca e filtros')).toBeUndefined();
+    await digitar('   ');
+    expect(botao('Limpar busca e filtros')).toBeUndefined();
+    await digitar('an');
+    expect(botao('Limpar busca e filtros')).toBeDefined();
+  });
+
+  it('nota de limite só quando a lista chega a 500 pacientes', async () => {
+    await carregar(muitos(499));
+    expect(el().querySelector('[role="note"]')).toBeNull();
+    fixture.destroy();
+    fixture = TestBed.createComponent(PacientesPage);
+    await fixture.whenStable();
+    await carregar(muitos(500));
+    const nota = el().querySelector('[role="note"]');
+    expect(nota?.textContent).toContain(
+      'A lista mostra no máximo 500 pacientes, e a busca só procura entre eles.',
+    );
+  });
+
+  it('sem nenhum paciente cadastrado: sem busca, sem filtro e sem nota', async () => {
+    await carregar([]);
+    expect(el().querySelector('[data-teste="vazio"]')).not.toBeNull();
+    expect(el().querySelector('form[role="search"]')).toBeNull();
+    expect(el().querySelector('[role="group"]')).toBeNull();
+    expect(el().querySelector('[role="note"]')).toBeNull();
+  });
+
+  it('digitar e filtrar nao disparam nenhuma requisicao extra', async () => {
+    await carregar(LISTA);
+    await digitar('a');
+    await digitar('an');
+    await clicar('Revogado');
+    await clicar('Todos');
+    expect(ctrl.match(() => true).length).toBe(0);
+  });
+
+  it('o termo digitado e o filtro nao vao para URL, console, storage nem history.state', async () => {
+    const router = TestBed.inject(Router);
+    const logs = [
+      spyOn(console, 'log'),
+      spyOn(console, 'info'),
+      spyOn(console, 'warn'),
+      spyOn(console, 'error'),
+      spyOn(console, 'debug'),
+    ];
+    await carregar(LISTA);
+    await digitar('sigilo-xyz');
+    await clicar('Revogado');
+    const armazenado = (s: Storage) =>
+      Object.keys(s)
+        .map((k) => k + s.getItem(k))
+        .join('');
+    expect(location.href).not.toContain('sigilo');
+    expect(router.url).not.toContain('sigilo');
+    expect(JSON.stringify(history.state ?? null)).not.toContain('sigilo');
+    expect(armazenado(localStorage)).not.toContain('sigilo');
+    expect(armazenado(sessionStorage)).not.toContain('sigilo');
+    for (const spy of logs) {
+      expect(JSON.stringify(spy.calls.allArgs())).not.toContain('sigilo');
+    }
+  });
+});

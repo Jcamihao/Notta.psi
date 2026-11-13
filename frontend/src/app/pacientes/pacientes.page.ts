@@ -1,13 +1,18 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
-import { CircleAlert, CircleCheck, LucideAngularModule } from 'lucide-angular';
+import { CircleAlert, CircleCheck, LucideAngularModule, Search } from 'lucide-angular';
 import { filter, map } from 'rxjs';
 import { AvatarComponent } from '../ui/avatar.component';
 import { ButtonComponent } from '../ui/button.component';
 import { PillComponent } from '../ui/pill.component';
+import { filtrarPacientes, FiltroConsentimento } from './busca-pacientes';
 import { ROTULO_CONSENTIMENTO, TOM_CONSENTIMENTO } from './consentimento.service';
 import { Paciente, PacientesService } from './pacientes.service';
+
+// Mesmo valor de TETO_LISTA em backend/src/pacientes/pacientes.service.ts: o servidor entrega no
+// maximo 500 pacientes, e a busca so procura entre eles. Se mudar um, mude o outro.
+export const LIMITE_LISTA = 500;
 
 // Recado que a tela anterior deixa no state da navegacao (so um codigo fixo, nunca dado de
 // paciente: o state vai para o historico do navegador).
@@ -27,15 +32,31 @@ export function dataBr(iso: string): string {
   styleUrl: './pacientes.page.scss',
 })
 export class PacientesPage {
-  readonly icones = { CircleAlert, CircleCheck };
+  readonly icones = { CircleAlert, CircleCheck, Search };
   private readonly servico = inject(PacientesService);
   private readonly router = inject(Router);
 
   readonly dataBr = dataBr;
   readonly rotulo = ROTULO_CONSENTIMENTO;
   readonly tom = TOM_CONSENTIMENTO;
+  readonly limite = LIMITE_LISTA;
   readonly lista = signal<Paciente[] | null>(null);
   readonly erroLista = signal(false);
+
+  // Busca e filtro so em signals: nunca em URL, storage, history.state ou console (sigilo).
+  readonly termo = signal('');
+  readonly estado = signal<FiltroConsentimento>('TODOS');
+  readonly filtrosConsentimento: { valor: FiltroConsentimento; rotulo: string }[] = [
+    { valor: 'TODOS', rotulo: 'Todos' },
+    { valor: 'CONCEDIDO', rotulo: ROTULO_CONSENTIMENTO.CONCEDIDO },
+    { valor: 'NENHUM', rotulo: ROTULO_CONSENTIMENTO.NENHUM },
+    { valor: 'REVOGADO', rotulo: ROTULO_CONSENTIMENTO.REVOGADO },
+  ];
+  readonly temFiltro = computed(() => this.termo().trim() !== '' || this.estado() !== 'TODOS');
+  readonly filtrados = computed(() =>
+    filtrarPacientes(this.lista() ?? [], this.termo(), this.estado()),
+  );
+  readonly campoBusca = viewChild<ElementRef<HTMLInputElement>>('campoBusca');
   readonly aviso = toSignal(
     this.router.events.pipe(
       filter((e) => e instanceof NavigationEnd),
@@ -50,6 +71,21 @@ export class PacientesPage {
 
   constructor() {
     this.carregar();
+  }
+
+  aoDigitar(evento: Event): void {
+    this.termo.set((evento.target as HTMLInputElement).value);
+  }
+
+  limpar(): void {
+    this.termo.set('');
+    this.estado.set('TODOS');
+    // O campo continua no DOM: zera o valor e devolve o foco para ele.
+    const campo = this.campoBusca()?.nativeElement;
+    if (campo) {
+      campo.value = '';
+      campo.focus();
+    }
   }
 
   carregar(): void {

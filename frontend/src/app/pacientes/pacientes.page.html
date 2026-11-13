@@ -38,65 +38,130 @@
   <section class="pacientes-lista" aria-label="Lista de pacientes">
     @if (lista(); as l) {
       @if (l.length) {
-        <table class="tabela">
-          <caption>
-            Seus pacientes,
-            {{
-              l.length
-            }}
-            {{
-              l.length === 1 ? 'cadastrado' : 'cadastrados'
-            }}
-          </caption>
-          <thead>
-            <tr>
-              <th scope="col">Nome</th>
-              <th scope="col">Nascimento</th>
-              <th scope="col">Telefone</th>
-              <th scope="col">E-mail</th>
-              <th scope="col">Consentimento</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (p of l; track p.id) {
-              <tr>
-                <th scope="row">
-                  <span class="pessoa">
-                    <app-avatar [name]="p.nome" [size]="28" />
-                    <a [routerLink]="['/pacientes', p.id]">{{ p.nome }}</a>
-                  </span>
-                </th>
-                <td data-rotulo="Nascimento" class="tabela-num">
-                  @if (p.nascimento; as n) {
-                    <time [attr.datetime]="n">{{ dataBr(n) }}</time>
-                  } @else {
-                    <span class="sem-dado">Não informado</span>
-                  }
-                </td>
-                <td data-rotulo="Telefone" class="tabela-num">
-                  @if (p.telefone; as v) {
-                    <span>{{ v }}</span>
-                  } @else {
-                    <span class="sem-dado">Não informado</span>
-                  }
-                </td>
-                <td data-rotulo="E-mail" class="tabela-email">
-                  @if (p.email; as v) {
-                    <span>{{ v }}</span>
-                  } @else {
-                    <span class="sem-dado">Não informado</span>
-                  }
-                </td>
-                <td data-rotulo="Consentimento">
-                  @let estado = p.consentimento ?? 'NENHUM';
-                  <app-pill [tone]="tom[estado]" [dashed]="estado === 'NENHUM'">{{
-                    rotulo[estado]
-                  }}</app-pill>
-                </td>
-              </tr>
+        <div class="busca">
+          <form role="search" class="busca-form" (submit)="$event.preventDefault()">
+            <div class="campo busca-campo">
+              <label for="busca-pacientes">Buscar paciente</label>
+              <div class="busca-entrada">
+                <lucide-icon
+                  class="busca-lupa"
+                  aria-hidden="true"
+                  [img]="icones.Search"
+                  [size]="18"
+                  [strokeWidth]="1.5"
+                />
+                <input
+                  #campoBusca
+                  id="busca-pacientes"
+                  type="search"
+                  autocomplete="off"
+                  spellcheck="false"
+                  autocapitalize="off"
+                  placeholder="Nome, e-mail ou telefone"
+                  (input)="aoDigitar($event)"
+                />
+              </div>
+            </div>
+          </form>
+
+          <div class="busca-filtro" role="group" aria-label="Filtrar por consentimento">
+            @for (f of filtrosConsentimento; track f.valor) {
+              <button
+                app-button
+                type="button"
+                [variant]="estado() === f.valor ? 'primary' : 'soft'"
+                [attr.aria-pressed]="estado() === f.valor"
+                (click)="estado.set(f.valor)"
+              >
+                {{ f.rotulo }}
+              </button>
             }
-          </tbody>
-        </table>
+          </div>
+        </div>
+
+        @if (l.length >= limite) {
+          <p class="busca-nota" role="note">
+            A lista mostra no máximo {{ limite }} pacientes, e a busca só procura entre eles.
+          </p>
+        }
+
+        <div class="busca-resumo">
+          <p class="busca-contagem" aria-live="polite" data-teste="contagem">
+            {{ filtrados().length }} de {{ l.length }}
+            {{ l.length === 1 ? 'paciente' : 'pacientes' }}
+          </p>
+          @if (temFiltro()) {
+            <button app-button type="button" variant="soft" (click)="limpar()">
+              Limpar busca e filtros
+            </button>
+          }
+        </div>
+
+        @if (filtrados().length) {
+          <table class="tabela">
+            <caption>
+              Seus pacientes,
+              {{
+                l.length
+              }}
+              {{
+                l.length === 1 ? 'cadastrado' : 'cadastrados'
+              }}
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Nome</th>
+                <th scope="col">Nascimento</th>
+                <th scope="col">Telefone</th>
+                <th scope="col">E-mail</th>
+                <th scope="col">Consentimento</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of filtrados(); track p.id) {
+                <tr>
+                  <th scope="row">
+                    <span class="pessoa">
+                      <app-avatar [name]="p.nome" [size]="28" />
+                      <a [routerLink]="['/pacientes', p.id]">{{ p.nome }}</a>
+                    </span>
+                  </th>
+                  <td data-rotulo="Nascimento" class="tabela-num">
+                    @if (p.nascimento; as n) {
+                      <time [attr.datetime]="n">{{ dataBr(n) }}</time>
+                    } @else {
+                      <span class="sem-dado">Não informado</span>
+                    }
+                  </td>
+                  <td data-rotulo="Telefone" class="tabela-num">
+                    @if (p.telefone; as v) {
+                      <span>{{ v }}</span>
+                    } @else {
+                      <span class="sem-dado">Não informado</span>
+                    }
+                  </td>
+                  <td data-rotulo="E-mail" class="tabela-email">
+                    @if (p.email; as v) {
+                      <span>{{ v }}</span>
+                    } @else {
+                      <span class="sem-dado">Não informado</span>
+                    }
+                  </td>
+                  <td data-rotulo="Consentimento">
+                    @let estado = p.consentimento ?? 'NENHUM';
+                    <app-pill [tone]="tom[estado]" [dashed]="estado === 'NENHUM'">{{
+                      rotulo[estado]
+                    }}</app-pill>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        } @else {
+          <p class="busca-vazio" role="status" data-teste="sem-resultado">
+            Nenhum paciente encontrado.
+          </p>
+        }
       } @else {
         <div class="vazio" data-teste="vazio">
           <h2>Nenhum paciente ainda</h2>

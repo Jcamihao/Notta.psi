@@ -27,6 +27,61 @@
 .pacientes-lista {
   overflow-x: auto;
 }
+
+// Cartao plano com a busca e os filtros: lado a lado em tela larga, empilhados abaixo de 40rem.
+.busca {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-6);
+  padding: var(--space-6);
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
+}
+.busca-form {
+  min-width: 0;
+  margin: 0;
+}
+.busca-campo {
+  gap: var(--space-2);
+}
+.busca-entrada {
+  position: relative;
+  display: grid;
+}
+.busca-entrada input {
+  padding-left: var(--space-9);
+}
+.busca-lupa {
+  position: absolute;
+  top: 50%;
+  left: var(--space-6);
+  translate: 0 -50%;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+.busca-filtro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.busca-nota,
+.busca-contagem,
+.busca-vazio {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-day);
+}
+.busca-resumo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+}
+.busca-vazio {
+  padding: var(--space-6) 0;
+}
 .pacientes-carregando {
   margin: 0;
   color: var(--text-secondary);
@@ -106,6 +161,9 @@
 }
 
 @container (max-width: 40rem) {
+  .busca {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .tabela {
     &,
     caption,
