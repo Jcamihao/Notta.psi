@@ -43,7 +43,7 @@ Status: `[ ]` a fazer · `[~]` em andamento · `[x]` feito e verificado.
 - [x] 79. [F] Tela de Início (feita e verificada em 2026-11-11, fora da lista original: saudação, resumo com total e pacientes sem consentimento concedido, atalhos, últimos 5 pacientes CADASTRADOS e passo a passo no estado vazio; uma só chamada a `GET /pacientes`; fora do escopo de propósito: rascunhos pendentes, agenda e indicadores, que dependem de rota nova ou das Fases 5 e 8)
 
 ## Fase 5 — Uso diário
-- [ ] 27. [M] Linha do tempo do paciente
+- [x] 27. [M] Linha do tempo do paciente (feito e verificado em 2026-11-13, só no front: página `/pacientes/:id/linha-do-tempo` com cadastro, consentimento, termos enviados por link e documentos em ordem cronológica, por mês, com filtro; nunca mostra texto clínico; cartão na ficha. Escopo decidido pelo agente por falta de detalhe no plano: se o dono quiser outros eventos, é ajuste de `linha-do-tempo.service.ts`)
 - [ ] 28. [M] Busca e filtros (só metadados; o texto é cifrado) (a psicóloga pediu busca por palavra-chave nos registros; com o texto cifrado isso exige decifrar no app só os documentos do próprio psicólogo; decisão do dono, ver item 28 nas decisões abertas)
 - [ ] 29. [M] Ajuste de linguagem técnica
 - [ ] 30. [M] Exportar em PDF ou Word
