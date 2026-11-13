@@ -49,6 +49,10 @@ model Psicologo {
   pacientes       Paciente[]
   auditorias      Auditoria[]
   sessoes         Sessao[]
+  pedidosOrigem   PedidoTransferencia[] @relation("PedidoOrigem")
+  pedidosDestino  PedidoTransferencia[] @relation("PedidoDestino")
+  pedidosCriados  PedidoTransferencia[] @relation("PedidoCriador")
+  pedidosDecididos PedidoTransferencia[] @relation("PedidoDecisor")
 
   // Alvo das FKs compostas (x, clinicaId) das fases futuras.
   @@unique([id, clinicaId])
@@ -233,4 +237,28 @@ model Sessao {
 
   @@index([clinicaId, psicologoId])
   @@index([familia])
+}
+
+// Transferencia de pacientes (item 67): pedido do ADMIN, aceite do DESTINO, lotes executados pelo
+// DESTINO. Escrita SO pelas funcoes SECURITY DEFINER (migration 20261114120000); praxis_app so le.
+// Maquina de estados e identidade: trigger pedido_transferencia_barreira. Um pedido ABERTO por origem:
+// indice unico parcial (nao expressavel aqui). `expiraEm` = criadoEm + 14 dias (CHECK).
+model PedidoTransferencia {
+  id            String     @id @db.Uuid
+  clinicaId     String
+  origemId      String
+  origem        Psicologo  @relation("PedidoOrigem", fields: [origemId, clinicaId], references: [id, clinicaId])
+  destinoId     String
+  destino       Psicologo  @relation("PedidoDestino", fields: [destinoId, clinicaId], references: [id, clinicaId])
+  criadoPorId   String
+  criadoPor     Psicologo  @relation("PedidoCriador", fields: [criadoPorId, clinicaId], references: [id, clinicaId])
+  estado        String
+  criadoEm      DateTime
+  expiraEm      DateTime
+  decididoEm    DateTime?
+  decididoPorId String?
+  decidido      Psicologo? @relation("PedidoDecisor", fields: [decididoPorId, clinicaId], references: [id, clinicaId])
+  concluidoEm   DateTime?
+
+  @@index([clinicaId, destinoId])
 }
