@@ -12,6 +12,7 @@ import { LimiteTentativasModule } from './limite-tentativas/limite-tentativas.mo
 import { PacientesModule } from './pacientes/pacientes.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SaudeController } from './saude/saude.controller';
+import { TransferenciasModule } from './transferencias/transferencias.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { SaudeController } from './saude/saude.controller';
     DocumentosModule,
     IaModule,
     GeracaoIaModule,
+    TransferenciasModule,
   ],
   controllers: [SaudeController],
 })

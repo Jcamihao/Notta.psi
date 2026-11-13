@@ -55,6 +55,45 @@ describe('AuditoriaService.registrar', () => {
     });
   });
 
+  it('transferencia de pacientes (item 67): acoes e recurso PedidoTransferencia sao validos, gravados com o id do pedido', async () => {
+    const { create, tx, service } = montar();
+    const id = randomUUID();
+    await service.registrar(
+      tx,
+      user,
+      'PEDIU_TRANSFERENCIA',
+      'PedidoTransferencia',
+      id,
+    );
+    expect(create).toHaveBeenLastCalledWith({
+      data: {
+        clinicaId: user.clinicaId,
+        psicologoId: user.psicologoId,
+        acao: 'PEDIU_TRANSFERENCIA',
+        recurso: 'PedidoTransferencia',
+        recursoId: id,
+      },
+    });
+    for (const acao of [
+      'CANCELOU_TRANSFERENCIA',
+      'ACEITOU_TRANSFERENCIA',
+      'RECUSOU_TRANSFERENCIA',
+      'TRANSFERIU',
+      'TRANSFERIU_PACIENTES',
+      'RECEBEU_PACIENTES',
+    ] as const) {
+      await expect(
+        service.registrar(
+          tx,
+          user,
+          acao,
+          acao === 'TRANSFERIU' ? 'Paciente' : 'Psicologo',
+          id,
+        ),
+      ).resolves.toBeUndefined();
+    }
+  });
+
   it('sem recursoId grava null (LISTOU)', async () => {
     const { create, tx, service } = montar();
     await service.registrar(tx, user, 'LISTOU', 'Paciente');

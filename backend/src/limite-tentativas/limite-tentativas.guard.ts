@@ -51,6 +51,7 @@ export const LimiteCadastroClinica = () => limite('clinicas');
 export const LimiteEquipe = () => limite('equipe');
 export const LimiteTrocarSenha = () => limite('trocar-senha');
 export const LimiteExportar = () => limite('exportar');
+export const LimiteTransferir = () => limite('transferir');
 // Rotas publicas do termo (sem JWT): tracker padrao = IP (/64).
 export const LimiteConsentimentoPublico = () => limite('consentimento-publico');
 // Renovacao da sessao (item 46): sem JWT, tracker padrao = IP (/64).

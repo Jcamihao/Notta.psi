@@ -25,6 +25,15 @@ export const ACOES = [
   // Descarte automatico de rascunho vencido (comando `npm run descartar`, item 52A). Gravado pela
   // funcao descartar_rascunhos_vencidos no banco, na mesma transacao do DELETE.
   'DESCARTOU',
+  // Transferencia de pacientes (item 67). ATOR: PEDIU/CANCELOU = ADMIN; ACEITOU/RECUSOU/TRANSFERIU/
+  // TRANSFERIU_PACIENTES/RECEBEU_PACIENTES = o DESTINO (quem executa o lote).
+  'PEDIU_TRANSFERENCIA',
+  'CANCELOU_TRANSFERENCIA',
+  'ACEITOU_TRANSFERENCIA',
+  'RECUSOU_TRANSFERENCIA',
+  'TRANSFERIU',
+  'TRANSFERIU_PACIENTES',
+  'RECEBEU_PACIENTES',
 ] as const;
 export const RECURSOS = [
   'Paciente',
@@ -34,6 +43,7 @@ export const RECURSOS = [
   'GeracaoIa',
   'ConviteConsentimento',
   'Sessao',
+  'PedidoTransferencia',
 ] as const;
 export type AcaoAuditoria = (typeof ACOES)[number];
 export type RecursoAuditado = (typeof RECURSOS)[number];

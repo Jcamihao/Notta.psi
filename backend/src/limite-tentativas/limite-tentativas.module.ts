@@ -60,6 +60,15 @@ export const THROTTLERS = [
     getTracker: (req: Record<string, any>) =>
       (req.user as { psicologoId: string }).psicologoId,
   },
+  // Transferencia de pacientes (item 67): por psicologo do token. 60 por hora cobre um pedido grande
+  // (lotes de 50) e barra varredura. Conta tambem 4xx (o guard roda antes do pipe e do servico).
+  {
+    name: 'transferir',
+    ttl: 60 * MINUTO,
+    limit: 60,
+    getTracker: (req: Record<string, any>) =>
+      (req.user as { psicologoId: string }).psicologoId,
+  },
   // Uso normal da API por psicologo (somado entre TODAS as rotas autenticadas).
   { name: 'api', ttl: MINUTO, limit: 300 },
 ];
