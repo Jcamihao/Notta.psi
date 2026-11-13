@@ -25,6 +25,9 @@
   margin: 0;
 }
 .pacientes-lista {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
   overflow-x: auto;
 }
 
@@ -50,7 +53,8 @@
   display: grid;
 }
 .busca-entrada input {
-  padding-left: var(--space-9);
+  // Deixa o texto depois da lupa (esquerda + icone de 18 + folga).
+  padding-left: calc(var(--space-9) + var(--space-3));
 }
 .busca-lupa {
   position: absolute;
@@ -200,6 +204,9 @@
       min-width: 0;
       padding: var(--space-1) 0;
       white-space: normal;
+    }
+    tbody td app-pill {
+      justify-self: start;
     }
     tbody td::before {
       content: attr(data-rotulo);
