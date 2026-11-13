@@ -98,10 +98,13 @@ describe('Paciente: estrutura no banco', () => {
     const p = await owner.$queryRaw<{ policyname: string }[]>`
       SELECT policyname FROM pg_policies WHERE tablename = 'Paciente'`;
     // 20261110120000: + policy do dono para a anonimizacao (item 26).
+    // 20261114120000: + policies do dono para a transferencia (item 67), so com a flag app.transferindo.
     expect(p.map((x) => x.policyname).sort()).toEqual([
       'paciente_anonimizar_update',
       'paciente_recifrar_select',
       'paciente_recifrar_update',
+      'paciente_transferir_select',
+      'paciente_transferir_update',
       'psicologo_proprio',
     ]);
     const c = await owner.$queryRaw<{ conname: string }[]>`

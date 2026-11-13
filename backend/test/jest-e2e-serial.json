@@ -2,7 +2,7 @@
   "moduleFileExtensions": ["js", "json", "ts"],
   "rootDir": ".",
   "testEnvironment": "node",
-  "testRegex": "/(acesso|acesso-psicologo|carga-clinicas|documentos-rls|auditoria-rls|consentimento-rls)\\.e2e-spec\\.ts$",
+  "testRegex": "/(acesso|acesso-psicologo|carga-clinicas|documentos-rls|auditoria-rls|consentimento-rls|transferir-pacientes)\\.e2e-spec\\.ts$",
   "maxWorkers": 1,
   "setupFiles": [
     "<rootDir>/permite-segredo-de-teste.ts",

@@ -181,6 +181,8 @@ describe('GeracaoIa: estrutura no banco', () => {
       'geracaoia_recifrar_select',
       'geracaoia_recifrar_update',
       'geracaoia_select_proprio',
+      'geracaoia_transferir_select',
+      'geracaoia_transferir_update',
       'geracaoia_update_proprio',
     ]);
     const c = await owner.$queryRaw<{ conname: string }[]>`

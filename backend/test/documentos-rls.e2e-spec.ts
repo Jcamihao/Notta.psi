@@ -137,6 +137,9 @@ describe('Documento: estrutura no banco', () => {
       { policyname: 'documento_recifrar_select' },
       { policyname: 'documento_recifrar_update' },
       { policyname: 'documento_select_proprio' },
+      // 20261114120000: policies do dono para a transferencia (item 67), so com a flag app.transferindo.
+      { policyname: 'documento_transferir_select' },
+      { policyname: 'documento_transferir_update' },
       { policyname: 'documento_update_proprio' },
     ]);
     const c = await owner.$queryRaw<{ conname: string }[]>`

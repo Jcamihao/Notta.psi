@@ -49,6 +49,25 @@ export async function mudarPapelComoOwner(
 // Limpeza das suites: o praxis_app nao tem DELETE em Psicologo, Clinica, Paciente, Documento, Auditoria nem Consentimento.
 export async function apagarClinicas(ids: string[]) {
   for (const id of ids) {
+    // Pedidos de transferencia (item 67): FK RESTRICT para Psicologo e sem DELETE para o app. Saem antes
+    // dos psicologos, com o desvio de limpeza da suite (trigger pedido_transferencia_barreira).
+    // O RLS de SELECT vale para DELETE: o contexto e o do ADMIN (ele ve todos os pedidos da clinica).
+    const admin = await comoOwner(id, (tx) =>
+      tx.psicologo.findFirst({
+        where: { clinicaId: id, papel: 'ADMIN' },
+        select: { id: true },
+      }),
+    );
+    if (admin) {
+      await comoOwner(
+        id,
+        async (tx) => {
+          await tx.$executeRaw`SELECT set_config('app.limpeza_de_teste', '1', true)`;
+          await tx.pedidoTransferencia.deleteMany({ where: { clinicaId: id } });
+        },
+        { psicologoId: admin.id },
+      );
+    }
     // Paciente (FK RESTRICT, sem DELETE para o app): o owner apaga sob a policy, que exige o
     // psicologo no contexto, entao um psicologo por vez.
     const psicologos = await comoOwner(id, (tx) =>

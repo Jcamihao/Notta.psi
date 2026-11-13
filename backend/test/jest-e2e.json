@@ -5,7 +5,7 @@
   "testRegex": ".e2e-spec.ts$",
   "testPathIgnorePatterns": [
     "/node_modules/",
-    "/(acesso|acesso-psicologo|carga-clinicas|documentos-rls|auditoria-rls|consentimento-rls)\\.e2e-spec\\.ts$"
+    "/(acesso|acesso-psicologo|carga-clinicas|documentos-rls|auditoria-rls|consentimento-rls|transferir-pacientes)\\.e2e-spec\\.ts$"
   ],
   "setupFiles": [
     "<rootDir>/permite-segredo-de-teste.ts",

@@ -159,6 +159,7 @@ describe('ConviteConsentimento: estrutura no banco', () => {
       'convite_por_token_select',
       'convite_por_token_update',
       'convite_select_proprio',
+      'convite_transferir_select',
     ]);
     const g = await owner.$queryRaw<{ tgname: string }[]>`
       SELECT tgname FROM pg_trigger
