@@ -70,20 +70,31 @@
   /* tipografia */
   --font-sans: 'Red Hat Text', 'Helvetica Neue', Arial, sans-serif;
   --font-display: 'Red Hat Display', 'Red Hat Text', 'Helvetica Neue', Arial, sans-serif;
-  --fs-display: 38px;
+  /* escala tipografica do manual de marca praxis (v1): Titulo Display Black 56/100%/-4.5%,
+     Subtitulo Display Bold 28/120%/-2%, Corpo Text Regular 18/150%, Legenda Text Medium 14/140%.
+     Titulo e subtitulo usam clamp() para nao estourar no celular (o manual nao define mobile). */
+  --fs-titulo: clamp(2.25rem, 1.2rem + 3.6vw, 3.5rem);
+  --fs-subtitulo: clamp(1.5rem, 1rem + 1.6vw, 1.75rem);
+  --fs-corpo: 18px;
+  --fs-legenda: 14px;
+  --fs-display: var(--fs-titulo);
   --fs-logo: 34px;
-  --fs-card-title: 14px;
-  --fs-nav: 14px;
-  --fs-day: 13px;
-  --fs-body: 12px;
-  --fs-meta: 11px;
-  --fs-micro: 10px;
+  --fs-card-title: 18px;
+  --fs-nav: var(--fs-legenda);
+  --fs-day: var(--fs-legenda);
+  --fs-body: var(--fs-legenda);
+  --fs-meta: var(--fs-legenda);
+  --fs-micro: var(--fs-legenda);
   --fw-regular: 400;
   --fw-medium: 500;
   --fw-semibold: 600;
   --lh-tight: 1.15;
-  --lh-body: 1.4;
-  --ls-display: -0.025em;
+  --lh-titulo: 1;
+  --lh-subtitulo: 1.2;
+  --lh-body: 1.5;
+  --ls-titulo: -0.045em;
+  --ls-subtitulo: -0.02em;
+  --ls-display: var(--ls-titulo);
   --ls-normal: 0;
 
   /* espacamento, raios e tamanhos */

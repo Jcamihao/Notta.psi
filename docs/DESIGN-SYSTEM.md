@@ -81,6 +81,17 @@ Os valores de cor do bloco abaixo sao os do documento ORIGINAL (historico). Vale
 }
 ```
 
+### ATUALIZACAO 2026-11-13: escala tipografica do manual de marca praxis (decisao do dono)
+Vale hoje (tokens em `frontend/src/styles/tokens.scss`, regras em `frontend/src/styles.scss`); o bloco abaixo e o original, so historico:
+- **Titulo (h1):** Red Hat Display Black 900, 56px, entrelinha 100%, espacamento -4,5% (`--fs-titulo`, com `clamp()` de 36 a 56px para o celular; o manual nao define mobile).
+- **Subtitulo (h2):** Red Hat Display Bold 700, 28px, entrelinha 120%, espacamento -2% (`--fs-subtitulo`, `clamp()` de 24 a 28px).
+- **Titulo de cartao:** Display Bold 700, 18px (`--fs-card-title`).
+- **Corpo:** Red Hat Text Regular 400, 18px, entrelinha 150% (`--fs-corpo`).
+- **Legenda, rotulos, botoes, menu e metadados:** Red Hat Text Medium 500, 14px, entrelinha 140% (`--fs-legenda`, que alimenta `--fs-nav`, `--fs-day`, `--fs-body`, `--fs-meta` e `--fs-micro`).
+- **Logo (wordmark):** Display Black 900, espacamento justo, com o ponto azul.
+- O "Display" de 96px do manual (capa e hero de site) nao tem uso no app; fica para a landing page.
+- Pesos carregados: Text 400, 500, 700; Display 700, 900. Nao usar Display 500 nem Text 600 (nao carregados).
+
 ### Tipografia
 ```css
 :root{

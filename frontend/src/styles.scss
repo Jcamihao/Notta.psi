@@ -6,12 +6,12 @@
   box-sizing: border-box;
 }
 
-// 14px (--fs-nav) e o tamanho de leitura do app: o --fs-body (12px) do original e de grade de
-// agenda densa e fica para metadados. Formularios e paragrafos leem em 14px.
+// Corpo = Red Hat Text Regular 18px/150% (escala do manual de marca praxis); legenda, rotulos,
+// botoes e metadados = Text Medium 14px (--fs-legenda).
 body {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: var(--fs-nav);
+  font-size: var(--fs-corpo);
   font-weight: var(--fw-regular);
   line-height: var(--lh-body);
   color: var(--text-primary);
@@ -28,10 +28,10 @@ body {
 h1 {
   margin: 0 0 var(--space-3);
   font-family: var(--font-display);
-  font-size: var(--fs-display);
-  font-weight: 700;
-  line-height: var(--lh-tight);
-  letter-spacing: var(--ls-display);
+  font-size: var(--fs-titulo);
+  font-weight: 900;
+  line-height: var(--lh-titulo);
+  letter-spacing: var(--ls-titulo);
   text-wrap: balance;
 }
 
@@ -40,10 +40,10 @@ h1 {
 h2 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: var(--fs-subtitulo);
   font-weight: 700;
-  line-height: var(--lh-tight);
-  letter-spacing: -0.01em;
+  line-height: var(--lh-subtitulo);
+  letter-spacing: var(--ls-subtitulo);
 }
 
 a {

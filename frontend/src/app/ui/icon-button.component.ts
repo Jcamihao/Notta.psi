@@ -18,6 +18,7 @@ import { LucideAngularModule, LucideIconData } from 'lucide-angular';
       flex: none;
       place-items: center;
       padding: 0;
+      font: inherit;
       color: var(--text-inverse);
       background: var(--btn-primary-bg);
       border: 0;

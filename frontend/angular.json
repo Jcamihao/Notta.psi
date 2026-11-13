@@ -33,7 +33,6 @@
             "styles": [
               "@fontsource/red-hat-text/latin-400.css",
               "@fontsource/red-hat-text/latin-500.css",
-              "@fontsource/red-hat-text/latin-600.css",
               "@fontsource/red-hat-text/latin-700.css",
               "@fontsource/red-hat-display/latin-700.css",
               "@fontsource/red-hat-display/latin-900.css",

@@ -12,10 +12,10 @@
   gap: var(--space-3);
   h1 {
     margin: 0;
-    font-size: var(--fs-display);
-    font-weight: var(--fw-medium);
-    letter-spacing: var(--ls-display);
-    line-height: var(--lh-tight);
+    font-size: var(--fs-titulo);
+    font-weight: 900;
+    letter-spacing: var(--ls-titulo);
+    line-height: var(--lh-titulo);
     overflow-wrap: anywhere;
   }
 }
@@ -32,7 +32,7 @@
   h2 {
     margin: 0;
     font-size: var(--fs-card-title);
-    font-weight: var(--fw-medium);
+    font-weight: 700;
   }
   p {
     margin: 0;
