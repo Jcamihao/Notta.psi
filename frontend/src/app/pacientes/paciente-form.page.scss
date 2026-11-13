@@ -1,5 +1,6 @@
 :host {
   display: block;
+  container-type: inline-size;
 }
 .paciente {
   display: grid;
@@ -30,7 +31,6 @@
 }
 .paciente-cartao {
   width: 100%;
-  max-width: 32rem;
   padding: var(--space-8);
   background: var(--surface-day);
   border-radius: var(--radius-card);
@@ -62,7 +62,6 @@
   justify-items: start;
   gap: var(--space-4);
   width: 100%;
-  max-width: 32rem;
   padding: var(--space-8);
   background: var(--surface-day);
   border-radius: var(--radius-card);
@@ -104,4 +103,34 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
+}
+
+// Ficha em duas colunas quando ha largura (decisao do dono: usar a largura da tela): dados e
+// consentimento a esquerda, documentos e IA a direita, baixar e excluir numa faixa embaixo.
+.paciente-grade {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+  width: 100%;
+}
+.paciente-grade-novo {
+  max-width: 44rem;
+}
+.paciente-col,
+.paciente-rodape {
+  display: grid;
+  gap: var(--space-6);
+  align-content: start;
+  min-width: 0;
+}
+@container (min-width: 60rem) {
+  .paciente-grade:not(.paciente-grade-novo) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .paciente-rodape {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
 }

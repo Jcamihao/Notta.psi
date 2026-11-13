@@ -313,6 +313,7 @@ import { WordmarkComponent } from '../ui/wordmark.component';
     }
     .shell-conteudo {
       min-width: 0;
+      max-width: 96rem;
       padding: 30px 0 22px;
     }
     @media (max-width: 831.98px) {

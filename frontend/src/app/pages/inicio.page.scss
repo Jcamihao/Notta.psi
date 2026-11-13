@@ -1,11 +1,23 @@
 // Tela inicial: cartoes planos (sem borda, sem sombra) sobre o fundo creme, como as outras telas.
 :host {
   display: block;
+  container-type: inline-size;
 }
 .inicio {
   display: grid;
   gap: var(--space-6);
-  max-width: 44rem;
+}
+// Largura toda da area de trabalho: Resumo e Atalhos lado a lado em tela larga.
+.inicio > :not(.bloco),
+.inicio > [data-teste='recentes'],
+.inicio > [data-teste='vazio'] {
+  grid-column: 1 / -1;
+}
+@container (min-width: 48rem) {
+  .inicio {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
 }
 .inicio-topo {
   display: grid;

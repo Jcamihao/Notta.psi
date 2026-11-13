@@ -27,314 +27,323 @@
       </button>
     </div>
   } @else {
-    <section class="paciente-cartao" aria-label="Dados do paciente">
-      <p class="paciente-lead">
-        @if (id) {
-          Para remover o nascimento, o telefone ou o e-mail, esvazie o campo e salve.
-        } @else {
-          Só o nome é obrigatório. Os dados ficam guardados cifrados e só você os vê.
-        }
-      </p>
-
-      <form class="formulario" [formGroup]="form" (ngSubmit)="salvar()" novalidate>
-        <div class="aviso-regiao" aria-live="polite">
-          @if (erroGeral()) {
-            <p class="aviso-erro" data-teste="erro-geral">
-              <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
-                erroGeral()
-              }}
-            </p>
-          }
-          @if (confirmacao()) {
-            <p class="aviso-ok" data-teste="confirmacao">
-              <lucide-icon [img]="icones.CircleCheck" [size]="18" [strokeWidth]="1.5" />{{
-                confirmacao()
-              }}
-            </p>
-          }
-        </div>
-
-        <div class="campo">
-          <label for="pc-nome">Nome</label>
-          <input
-            id="pc-nome"
-            type="text"
-            formControlName="nome"
-            autocomplete="off"
-            [attr.aria-invalid]="erro('nome') ? 'true' : null"
-            [attr.aria-describedby]="erro('nome') ? 'pc-nome-erro' : null"
-          />
-          <p id="pc-nome-erro" class="campo-erro" aria-live="polite">
-            @if (erro('nome'); as m) {
-              <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+    <div class="paciente-grade" [class.paciente-grade-novo]="!id">
+      <div class="paciente-col">
+        <section class="paciente-cartao" aria-label="Dados do paciente">
+          <p class="paciente-lead">
+            @if (id) {
+              Para remover o nascimento, o telefone ou o e-mail, esvazie o campo e salve.
+            } @else {
+              Só o nome é obrigatório. Os dados ficam guardados cifrados e só você os vê.
             }
           </p>
-        </div>
 
-        <div class="campo">
-          <label for="pc-nascimento">Data de nascimento (opcional)</label>
-          <div class="campo-data">
-            <input
-              id="pc-nascimento"
-              type="date"
-              formControlName="nascimento"
-              min="1900-01-01"
-              [max]="hoje"
-              [attr.aria-invalid]="erro('nascimento') ? 'true' : null"
-              [attr.aria-describedby]="erro('nascimento') ? 'pc-nascimento-erro' : null"
-            />
-            @if (form.controls.nascimento.value) {
-              <button app-button type="button" variant="soft" (click)="limparNascimento()">
-                Limpar data
-              </button>
-            }
-          </div>
-          <p id="pc-nascimento-erro" class="campo-erro" aria-live="polite">
-            @if (erro('nascimento'); as m) {
-              <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
-            }
-          </p>
-        </div>
-
-        <div class="campo">
-          <label for="pc-telefone">Telefone (opcional)</label>
-          <input
-            id="pc-telefone"
-            type="tel"
-            formControlName="telefone"
-            autocomplete="off"
-            inputmode="tel"
-            [attr.aria-invalid]="erro('telefone') ? 'true' : null"
-            [attr.aria-describedby]="erro('telefone') ? 'pc-telefone-erro' : null"
-          />
-          <p id="pc-telefone-erro" class="campo-erro" aria-live="polite">
-            @if (erro('telefone'); as m) {
-              <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
-            }
-          </p>
-        </div>
-
-        <div class="campo">
-          <label for="pc-email">E-mail (opcional)</label>
-          <input
-            id="pc-email"
-            type="email"
-            formControlName="email"
-            autocomplete="off"
-            inputmode="email"
-            spellcheck="false"
-            [attr.aria-invalid]="erro('email') ? 'true' : null"
-            [attr.aria-describedby]="erro('email') ? 'pc-email-erro' : null"
-          />
-          <p id="pc-email-erro" class="campo-erro" aria-live="polite">
-            @if (erro('email'); as m) {
-              <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
-            }
-          </p>
-        </div>
-
-        <button
-          app-button
-          type="submit"
-          full
-          [variant]="enviando() ? 'progress' : 'primary'"
-          [disabled]="enviando()"
-        >
-          {{ enviando() ? 'Salvando…' : id ? 'Salvar alterações' : 'Cadastrar paciente' }}
-        </button>
-      </form>
-    </section>
-
-    @if (id) {
-      <app-consentimento-card [pacienteId]="id" (estadoMudou)="consentimento.set($event)" />
-      @if (consentimento(); as c) {
-        <app-documentos-secao
-          [pacienteId]="id"
-          [consentimento]="c"
-          (carregada)="documentosCarregados.set(true)"
-        />
-        @if (documentosCarregados()) {
-          <app-pedidos-ia-secao [pacienteId]="id" />
-        }
-      }
-
-      <section class="paciente-exportar" aria-labelledby="pc-exportar-titulo">
-        <h2 id="pc-exportar-titulo">Baixar dados do paciente</h2>
-        <p class="paciente-lead">
-          O arquivo traz os dados do paciente, os consentimentos, os documentos com o texto completo
-          e os convites de consentimento. Não entram as gerações de IA nem o registro de acessos do
-          sistema.
-        </p>
-        <p class="paciente-lead">
-          <strong>O arquivo não é cifrado.</strong> Guarde em local seguro e apague quando não
-          precisar mais.
-        </p>
-        <button
-          app-button
-          type="button"
-          variant="soft"
-          id="pc-exportar-abrir"
-          data-teste="exportar-abrir"
-          [attr.aria-expanded]="confirmandoExportacao()"
-          aria-controls="pc-exportar-confirma"
-          (click)="pedirExportacao()"
-        >
-          Baixar dados (JSON)
-        </button>
-
-        @if (sucessoExportacao()) {
-          <p class="aviso-ok" role="status" data-teste="sucesso-exportar">
-            <lucide-icon [img]="icones.CircleCheck" [size]="18" [strokeWidth]="1.5" />{{
-              sucessoExportacao()
-            }}
-          </p>
-        }
-
-        @if (confirmandoExportacao()) {
-          <div
-            id="pc-exportar-confirma"
-            class="perigo-confirma"
-            role="group"
-            aria-labelledby="pc-exportar-pergunta"
-            data-teste="confirmacao-exportar"
-            (keydown.escape)="cancelarExportacao()"
-          >
-            <p id="pc-exportar-pergunta" class="perigo-titulo">
-              O arquivo contém dado clínico em claro. Continuar?
-            </p>
-            <div class="perigo-acoes">
-              <button
-                app-button
-                type="button"
-                id="pc-exportar-confirmar"
-                [variant]="exportando() ? 'progress' : 'primary'"
-                [disabled]="exportando()"
-                data-teste="exportar-confirmar"
-                (click)="exportarPaciente()"
-              >
-                {{ exportando() ? 'Preparando arquivo…' : 'Baixar arquivo' }}
-              </button>
-              <button
-                app-button
-                type="button"
-                variant="soft"
-                data-teste="exportar-cancelar"
-                [disabled]="exportando()"
-                (click)="cancelarExportacao()"
-              >
-                Cancelar
-              </button>
+          <form class="formulario" [formGroup]="form" (ngSubmit)="salvar()" novalidate>
+            <div class="aviso-regiao" aria-live="polite">
+              @if (erroGeral()) {
+                <p class="aviso-erro" data-teste="erro-geral">
+                  <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
+                    erroGeral()
+                  }}
+                </p>
+              }
+              @if (confirmacao()) {
+                <p class="aviso-ok" data-teste="confirmacao">
+                  <lucide-icon [img]="icones.CircleCheck" [size]="18" [strokeWidth]="1.5" />{{
+                    confirmacao()
+                  }}
+                </p>
+              }
             </div>
-          </div>
-        }
-
-        @if (erroExportacao()) {
-          <p
-            id="pc-exportar-erro"
-            class="aviso-erro"
-            role="alert"
-            tabindex="-1"
-            data-teste="erro-exportar"
-          >
-            <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
-              erroExportacao()
-            }}
-          </p>
-        }
-      </section>
-
-      <section class="paciente-perigo" aria-labelledby="pc-perigo-titulo">
-        <h2 id="pc-perigo-titulo">Excluir paciente</h2>
-        <p class="paciente-lead">
-          Apaga os dados pessoais e o conteúdo dos documentos. Não dá para desfazer.
-        </p>
-        <button
-          app-button
-          type="button"
-          variant="soft"
-          id="pc-excluir-abrir"
-          data-teste="excluir-abrir"
-          [attr.aria-expanded]="confirmandoExclusao()"
-          aria-controls="pc-excluir-confirma"
-          (click)="pedirExclusao()"
-        >
-          Excluir paciente
-        </button>
-
-        @if (confirmandoExclusao()) {
-          <div
-            id="pc-excluir-confirma"
-            class="perigo-confirma"
-            role="group"
-            aria-labelledby="pc-excluir-titulo"
-            data-teste="confirmacao-excluir"
-            (keydown.escape)="cancelarExclusao()"
-          >
-            <p id="pc-excluir-titulo" class="perigo-titulo">Excluir este paciente de vez?</p>
-            <p>Vai ser apagado:</p>
-            <ul class="perigo-lista">
-              <li>nome, data de nascimento, telefone e e-mail;</li>
-              <li>o texto de todos os documentos, inclusive os aprovados;</li>
-              <li>os convites de consentimento ainda pendentes.</li>
-            </ul>
-            <p>Fica guardado, sem identificar o paciente:</p>
-            <ul class="perigo-lista">
-              <li>o registro de que houve atendimento;</li>
-              <li>o registro do consentimento;</li>
-              <li>o histórico de ações no sistema.</li>
-            </ul>
-            <p class="perigo-aviso">Não dá para desfazer.</p>
 
             <div class="campo">
-              <label for="pc-excluir-nome">Nome do paciente</label>
-              <p id="pc-excluir-dica" class="campo-dica">
-                Para confirmar, digite exatamente: <strong>{{ nomeSalvo() }}</strong>
-              </p>
+              <label for="pc-nome">Nome</label>
               <input
-                id="pc-excluir-nome"
+                id="pc-nome"
                 type="text"
+                formControlName="nome"
                 autocomplete="off"
-                spellcheck="false"
-                [value]="nomeDigitado()"
-                [disabled]="excluindo()"
-                aria-describedby="pc-excluir-dica pc-excluir-erro"
-                (input)="digitarNome($event)"
+                [attr.aria-invalid]="erro('nome') ? 'true' : null"
+                [attr.aria-describedby]="erro('nome') ? 'pc-nome-erro' : null"
               />
+              <p id="pc-nome-erro" class="campo-erro" aria-live="polite">
+                @if (erro('nome'); as m) {
+                  <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+                }
+              </p>
             </div>
 
-            @if (erroExclusao()) {
-              <p id="pc-excluir-erro" class="aviso-erro" role="alert" data-teste="erro-excluir">
-                <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
-                  erroExclusao()
+            <div class="campo">
+              <label for="pc-nascimento">Data de nascimento (opcional)</label>
+              <div class="campo-data">
+                <input
+                  id="pc-nascimento"
+                  type="date"
+                  formControlName="nascimento"
+                  min="1900-01-01"
+                  [max]="hoje"
+                  [attr.aria-invalid]="erro('nascimento') ? 'true' : null"
+                  [attr.aria-describedby]="erro('nascimento') ? 'pc-nascimento-erro' : null"
+                />
+                @if (form.controls.nascimento.value) {
+                  <button app-button type="button" variant="soft" (click)="limparNascimento()">
+                    Limpar data
+                  </button>
+                }
+              </div>
+              <p id="pc-nascimento-erro" class="campo-erro" aria-live="polite">
+                @if (erro('nascimento'); as m) {
+                  <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+                }
+              </p>
+            </div>
+
+            <div class="campo">
+              <label for="pc-telefone">Telefone (opcional)</label>
+              <input
+                id="pc-telefone"
+                type="tel"
+                formControlName="telefone"
+                autocomplete="off"
+                inputmode="tel"
+                [attr.aria-invalid]="erro('telefone') ? 'true' : null"
+                [attr.aria-describedby]="erro('telefone') ? 'pc-telefone-erro' : null"
+              />
+              <p id="pc-telefone-erro" class="campo-erro" aria-live="polite">
+                @if (erro('telefone'); as m) {
+                  <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+                }
+              </p>
+            </div>
+
+            <div class="campo">
+              <label for="pc-email">E-mail (opcional)</label>
+              <input
+                id="pc-email"
+                type="email"
+                formControlName="email"
+                autocomplete="off"
+                inputmode="email"
+                spellcheck="false"
+                [attr.aria-invalid]="erro('email') ? 'true' : null"
+                [attr.aria-describedby]="erro('email') ? 'pc-email-erro' : null"
+              />
+              <p id="pc-email-erro" class="campo-erro" aria-live="polite">
+                @if (erro('email'); as m) {
+                  <lucide-icon [img]="icones.CircleAlert" [size]="14" [strokeWidth]="1.5" />{{ m }}
+                }
+              </p>
+            </div>
+
+            <button
+              app-button
+              type="submit"
+              full
+              [variant]="enviando() ? 'progress' : 'primary'"
+              [disabled]="enviando()"
+            >
+              {{ enviando() ? 'Salvando…' : id ? 'Salvar alterações' : 'Cadastrar paciente' }}
+            </button>
+          </form>
+        </section>
+
+        @if (id) {
+          <app-consentimento-card [pacienteId]="id" (estadoMudou)="consentimento.set($event)" />
+        }
+      </div>
+      @if (id) {
+        <div class="paciente-col">
+          @if (consentimento(); as c) {
+            <app-documentos-secao
+              [pacienteId]="id"
+              [consentimento]="c"
+              (carregada)="documentosCarregados.set(true)"
+            />
+            @if (documentosCarregados()) {
+              <app-pedidos-ia-secao [pacienteId]="id" />
+            }
+          }
+        </div>
+        <div class="paciente-rodape">
+          <section class="paciente-exportar" aria-labelledby="pc-exportar-titulo">
+            <h2 id="pc-exportar-titulo">Baixar dados do paciente</h2>
+            <p class="paciente-lead">
+              O arquivo traz os dados do paciente, os consentimentos, os documentos com o texto
+              completo e os convites de consentimento. Não entram as gerações de IA nem o registro
+              de acessos do sistema.
+            </p>
+            <p class="paciente-lead">
+              <strong>O arquivo não é cifrado.</strong> Guarde em local seguro e apague quando não
+              precisar mais.
+            </p>
+            <button
+              app-button
+              type="button"
+              variant="soft"
+              id="pc-exportar-abrir"
+              data-teste="exportar-abrir"
+              [attr.aria-expanded]="confirmandoExportacao()"
+              aria-controls="pc-exportar-confirma"
+              (click)="pedirExportacao()"
+            >
+              Baixar dados (JSON)
+            </button>
+
+            @if (sucessoExportacao()) {
+              <p class="aviso-ok" role="status" data-teste="sucesso-exportar">
+                <lucide-icon [img]="icones.CircleCheck" [size]="18" [strokeWidth]="1.5" />{{
+                  sucessoExportacao()
                 }}
               </p>
             }
 
-            <div class="perigo-acoes">
-              <button
-                app-button
-                type="button"
-                [variant]="excluindo() ? 'progress' : podeExcluir() ? 'primary' : 'disabled'"
-                [disabled]="!podeExcluir() || excluindo()"
-                data-teste="excluir-confirmar"
-                (click)="excluirPaciente()"
+            @if (confirmandoExportacao()) {
+              <div
+                id="pc-exportar-confirma"
+                class="perigo-confirma"
+                role="group"
+                aria-labelledby="pc-exportar-pergunta"
+                data-teste="confirmacao-exportar"
+                (keydown.escape)="cancelarExportacao()"
               >
-                {{ excluindo() ? 'Excluindo…' : 'Excluir definitivamente' }}
-              </button>
-              <button
-                app-button
-                type="button"
-                variant="soft"
-                data-teste="excluir-cancelar"
-                [disabled]="excluindo()"
-                (click)="cancelarExclusao()"
+                <p id="pc-exportar-pergunta" class="perigo-titulo">
+                  O arquivo contém dado clínico em claro. Continuar?
+                </p>
+                <div class="perigo-acoes">
+                  <button
+                    app-button
+                    type="button"
+                    id="pc-exportar-confirmar"
+                    [variant]="exportando() ? 'progress' : 'primary'"
+                    [disabled]="exportando()"
+                    data-teste="exportar-confirmar"
+                    (click)="exportarPaciente()"
+                  >
+                    {{ exportando() ? 'Preparando arquivo…' : 'Baixar arquivo' }}
+                  </button>
+                  <button
+                    app-button
+                    type="button"
+                    variant="soft"
+                    data-teste="exportar-cancelar"
+                    [disabled]="exportando()"
+                    (click)="cancelarExportacao()"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            }
+
+            @if (erroExportacao()) {
+              <p
+                id="pc-exportar-erro"
+                class="aviso-erro"
+                role="alert"
+                tabindex="-1"
+                data-teste="erro-exportar"
               >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        }
-      </section>
-    }
+                <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
+                  erroExportacao()
+                }}
+              </p>
+            }
+          </section>
+
+          <section class="paciente-perigo" aria-labelledby="pc-perigo-titulo">
+            <h2 id="pc-perigo-titulo">Excluir paciente</h2>
+            <p class="paciente-lead">
+              Apaga os dados pessoais e o conteúdo dos documentos. Não dá para desfazer.
+            </p>
+            <button
+              app-button
+              type="button"
+              variant="soft"
+              id="pc-excluir-abrir"
+              data-teste="excluir-abrir"
+              [attr.aria-expanded]="confirmandoExclusao()"
+              aria-controls="pc-excluir-confirma"
+              (click)="pedirExclusao()"
+            >
+              Excluir paciente
+            </button>
+
+            @if (confirmandoExclusao()) {
+              <div
+                id="pc-excluir-confirma"
+                class="perigo-confirma"
+                role="group"
+                aria-labelledby="pc-excluir-titulo"
+                data-teste="confirmacao-excluir"
+                (keydown.escape)="cancelarExclusao()"
+              >
+                <p id="pc-excluir-titulo" class="perigo-titulo">Excluir este paciente de vez?</p>
+                <p>Vai ser apagado:</p>
+                <ul class="perigo-lista">
+                  <li>nome, data de nascimento, telefone e e-mail;</li>
+                  <li>o texto de todos os documentos, inclusive os aprovados;</li>
+                  <li>os convites de consentimento ainda pendentes.</li>
+                </ul>
+                <p>Fica guardado, sem identificar o paciente:</p>
+                <ul class="perigo-lista">
+                  <li>o registro de que houve atendimento;</li>
+                  <li>o registro do consentimento;</li>
+                  <li>o histórico de ações no sistema.</li>
+                </ul>
+                <p class="perigo-aviso">Não dá para desfazer.</p>
+
+                <div class="campo">
+                  <label for="pc-excluir-nome">Nome do paciente</label>
+                  <p id="pc-excluir-dica" class="campo-dica">
+                    Para confirmar, digite exatamente: <strong>{{ nomeSalvo() }}</strong>
+                  </p>
+                  <input
+                    id="pc-excluir-nome"
+                    type="text"
+                    autocomplete="off"
+                    spellcheck="false"
+                    [value]="nomeDigitado()"
+                    [disabled]="excluindo()"
+                    aria-describedby="pc-excluir-dica pc-excluir-erro"
+                    (input)="digitarNome($event)"
+                  />
+                </div>
+
+                @if (erroExclusao()) {
+                  <p id="pc-excluir-erro" class="aviso-erro" role="alert" data-teste="erro-excluir">
+                    <lucide-icon [img]="icones.CircleAlert" [size]="18" [strokeWidth]="1.5" />{{
+                      erroExclusao()
+                    }}
+                  </p>
+                }
+
+                <div class="perigo-acoes">
+                  <button
+                    app-button
+                    type="button"
+                    [variant]="excluindo() ? 'progress' : podeExcluir() ? 'primary' : 'disabled'"
+                    [disabled]="!podeExcluir() || excluindo()"
+                    data-teste="excluir-confirmar"
+                    (click)="excluirPaciente()"
+                  >
+                    {{ excluindo() ? 'Excluindo…' : 'Excluir definitivamente' }}
+                  </button>
+                  <button
+                    app-button
+                    type="button"
+                    variant="soft"
+                    data-teste="excluir-cancelar"
+                    [disabled]="excluindo()"
+                    (click)="cancelarExclusao()"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            }
+          </section>
+        </div>
+      }
+    </div>
   }
 </div>

@@ -125,7 +125,7 @@
 
 .equipe-novo {
   align-self: start;
-  max-width: 32rem;
+  max-width: none;
   padding: var(--space-8);
   background: var(--surface-day);
   border-radius: var(--radius-card);
@@ -136,6 +136,20 @@
 .equipe-novo-lead {
   margin: 0 0 var(--space-7);
   color: var(--text-secondary);
+}
+
+// Conteudo medio: o formulario usa a largura em duas colunas de campos.
+@container (min-width: 44rem) and (max-width: 67.99rem) {
+  .equipe-novo .formulario {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-8);
+    align-items: start;
+  }
+  .equipe-novo .formulario > .aviso-regiao,
+  .equipe-novo .formulario > button {
+    grid-column: 1 / -1;
+  }
 }
 
 // Conteudo largo (tela de 1360px ou mais): lista a esquerda, formulario fixo a direita enquanto a lista rola.

@@ -18,7 +18,7 @@
 }
 .aviso-regiao {
   width: 100%;
-  max-width: 44rem;
+  max-width: 72rem;
   &:empty {
     display: none;
   }
@@ -31,7 +31,7 @@
   display: grid;
   gap: var(--space-5);
   width: 100%;
-  max-width: 44rem;
+  max-width: 72rem;
   padding: var(--space-8);
   background: var(--surface-day);
   border-radius: var(--radius-card);
