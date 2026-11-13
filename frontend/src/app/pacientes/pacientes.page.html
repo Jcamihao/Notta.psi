@@ -186,7 +186,7 @@
                 <button
                   app-button
                   type="button"
-                  variant="soft"
+                  [variant]="pag().pagina <= 1 ? 'disabled' : 'soft'"
                   [disabled]="pag().pagina <= 1"
                   (click)="irPara(-1)"
                 >
@@ -196,7 +196,7 @@
                 <button
                   app-button
                   type="button"
-                  variant="soft"
+                  [variant]="pag().pagina >= pag().totalPaginas ? 'disabled' : 'soft'"
                   [disabled]="pag().pagina >= pag().totalPaginas"
                   (click)="irPara(1)"
                 >

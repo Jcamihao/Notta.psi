@@ -519,6 +519,25 @@ describe('PacientesPage (paginacao)', () => {
     expect(nav()?.querySelector('label')?.textContent?.trim()).toBe('Por página');
   });
 
+  it('botoes desabilitados usam a variante disabled do design system (cinza com tinta, AA)', async () => {
+    await carregar(muitos(45));
+    expect(botao('Anterior')?.dataset['variant']).toBe('disabled');
+    expect(getComputedStyle(botao('Anterior')!).backgroundColor).toBe('rgb(169, 169, 174)');
+    expect(botao('Próxima')?.dataset['variant']).toBe('soft');
+    await clicar('Próxima');
+    await clicar('Próxima');
+    expect(botao('Anterior')?.dataset['variant']).toBe('soft');
+    expect(botao('Próxima')?.dataset['variant']).toBe('disabled');
+  });
+
+  it('valor invalido em "Por página" cai no padrao 20', async () => {
+    await carregar(muitos(45));
+    await trocarPorPagina(10);
+    await trocarPorPagina(15);
+    expect(nomes().length).toBe(20);
+    expect(textoPagina()).toBe('Página 1 de 3');
+  });
+
   it('Próxima vai para 21 a 40 e depois 41 a 45 (5 linhas), com Próxima desabilitada', async () => {
     await carregar(muitos(45));
     await clicar('Próxima');
