@@ -1,7 +1,8 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, provideRouter, Router } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
+import { BehaviorSubject } from 'rxjs';
 import { DocumentoResumo } from '../documentos/documentos.service';
 import { Consentimento } from './consentimento.service';
 import { Convite } from './convite-consentimento.service';
@@ -91,15 +92,17 @@ describe('LinhaDoTempoPage', () => {
   let fixture: ComponentFixture<LinhaDoTempoPage>;
   let ctrl: HttpTestingController;
   let navegar: jasmine.Spy;
+  let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
 
   const montar = () => {
+    params = new BehaviorSubject(convertToParamMap({ id: PID }));
     TestBed.configureTestingModule({
       imports: [LinhaDoTempoPage],
       providers: [
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => PID } } } },
+        { provide: ActivatedRoute, useValue: { paramMap: params } },
       ],
     });
     ctrl = TestBed.inject(HttpTestingController);
@@ -359,6 +362,38 @@ describe('LinhaDoTempoPage', () => {
       await fixture.whenStable();
       fixture.detectChanges();
       expect(el().textContent).not.toContain('corpo sigiloso');
+    });
+  });
+
+  describe('troca de paciente na mesma rota', () => {
+    beforeEach(() => montar());
+
+    it('reage ao novo id: some o paciente antigo e carrega o novo, sem usar resposta antiga', async () => {
+      const OUTRO = '22222222-2222-4222-8222-222222222222';
+      fixture.detectChanges();
+      await atender();
+      expect(el().textContent).toContain(NOME);
+
+      params.next(convertToParamMap({ id: OUTRO }));
+      fixture.detectChanges();
+      expect(el().textContent).not.toContain(NOME);
+      expect(el().querySelector('li')).toBeNull();
+      ctrl.expectOne(`/api/pacientes/${OUTRO}`).flush({ ...PACIENTE, id: OUTRO, nome: 'Outro' });
+      await pausa();
+      ctrl
+        .expectOne(`/api/pacientes/${OUTRO}/consentimento`)
+        .flush({ ...CONSENTIMENTO, historico: [] });
+      await pausa();
+      ctrl.expectOne(`/api/pacientes/${OUTRO}/convites-consentimento`).flush([]);
+      await pausa();
+      ctrl.expectOne(`/api/pacientes/${OUTRO}/documentos?status=APROVADO`).flush([]);
+      await pausa();
+      ctrl.expectOne(`/api/pacientes/${OUTRO}/documentos?status=RASCUNHO`).flush([]);
+      await pausa();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      expect(el().textContent).toContain('Outro');
+      expect(el().querySelector('.linha-voltar')!.getAttribute('href')).toBe(`/pacientes/${OUTRO}`);
     });
   });
 

@@ -262,6 +262,9 @@ describe('agruparPorMes (funcao pura)', () => {
     expect(grupos[0].eventos.map((e) => e.id)).toEqual(['a']);
   });
 
+  // Decisao: o mes e o do fuso do navegador, o mesmo da data exibida no item. Um evento
+  // 2026-11-01T01:00Z em America/Sao_Paulo (22h de 31/10) cai em outubro, coerente com o que o
+  // psicologo ve no item; agrupar por UTC mostraria "novembro" sobre uma data de 31/10.
   it('virada de mes: 31/10 a noite e 01/11 de manha ficam em meses diferentes', () => {
     const grupos = agruparPorMes([
       ev('nov', local(2026, 11, 1, 9)),

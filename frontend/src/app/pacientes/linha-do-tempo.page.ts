@@ -1,4 +1,5 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ArrowLeft, LucideAngularModule } from 'lucide-angular';
 import { dataHoraBr } from '../core/datas';
@@ -42,7 +43,8 @@ export class LinhaDoTempoPage {
   private readonly servico = inject(LinhaDoTempoService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
-  readonly pacienteId = inject(ActivatedRoute).snapshot.paramMap.get('id')!;
+  private readonly rota = inject(ActivatedRoute);
+  readonly pacienteId = signal('');
 
   readonly nome = signal('');
   readonly eventos = signal<Evento[]>([]);
@@ -74,14 +76,21 @@ export class LinhaDoTempoPage {
 
   constructor() {
     this.destroyRef.onDestroy(() => this.geracao++);
-    this.carregar();
+    // /pacientes/a/linha-do-tempo -> /pacientes/b/linha-do-tempo reaproveita o componente.
+    this.rota.paramMap.pipe(takeUntilDestroyed()).subscribe((p) => {
+      this.pacienteId.set(p.get('id')!);
+      this.nome.set('');
+      this.eventos.set([]);
+      this.filtro.set('TUDO');
+      this.carregar();
+    });
   }
 
   carregar(): void {
     const minha = ++this.geracao;
     this.carregando.set(true);
     this.erro.set(false);
-    this.servico.carregar(this.pacienteId).then(
+    this.servico.carregar(this.pacienteId()).then(
       (r) => {
         if (minha !== this.geracao) return;
         this.nome.set(r.nome);
