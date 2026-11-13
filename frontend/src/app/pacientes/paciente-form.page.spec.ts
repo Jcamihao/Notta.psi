@@ -282,6 +282,61 @@ describe('PacienteFormPage', () => {
     });
   });
 
+  describe('cartao Linha do tempo na ficha', () => {
+    const LINK = `/pacientes/${ID}/linha-do-tempo`;
+    const cartao = () => el().querySelector('section.paciente-linha') as HTMLElement | null;
+    const primeiraDaSegunda = () =>
+      el().querySelector('.paciente-grade > .paciente-col:nth-child(2)')?.firstElementChild;
+    // Paciente, consentimento e as listas, na ordem da ficha (o cartao nao depende de nada disso).
+    const carregarTudo = async () => {
+      ctrl.expectOne(`/api/pacientes/${ID}`).flush(P);
+      await fixture.whenStable();
+      ctrl.expectOne(`/api/pacientes/${ID}/consentimento`).flush({
+        estado: 'NENHUM',
+        desde: null,
+        historico: [],
+      });
+      await fixture.whenStable();
+      await listas(ctrl, () => fixture.whenStable(), ID);
+    };
+
+    it('em /pacientes/novo nao existe, nem o link', () => {
+      montar(null);
+      expect(cartao()).toBeNull();
+      expect(el().querySelector(`a[href="${LINK}"]`)).toBeNull();
+    });
+
+    it('no detalhe: cartao com titulo, frase e link "Abrir linha do tempo" para o id do paciente', async () => {
+      montar(ID);
+      ctrl.expectOne(`/api/pacientes/${ID}`).flush(P);
+      await fixture.whenStable();
+      // Existe antes do consentimento carregar: nao depende dele.
+      expect(cartao()).not.toBeNull();
+      ctrl.expectOne(`/api/pacientes/${ID}/consentimento`).flush({
+        estado: 'NENHUM',
+        desde: null,
+        historico: [],
+      });
+      await fixture.whenStable();
+      await listas(ctrl, () => fixture.whenStable(), ID);
+
+      expect(cartao()!.getAttribute('aria-labelledby')).toBe('pc-linha-titulo');
+      expect(cartao()!.querySelector('h2')!.textContent).toBe('Linha do tempo');
+      expect(cartao()!.textContent).toContain(
+        'Veja em ordem cronológica o cadastro, o consentimento, os termos enviados e os documentos.',
+      );
+      const link = cartao()!.querySelector('a') as HTMLAnchorElement;
+      expect(link.textContent!.trim()).toBe('Abrir linha do tempo');
+      expect(link.getAttribute('href')).toBe(LINK);
+    });
+
+    it('e o primeiro item da segunda coluna (a do prontuario)', async () => {
+      montar(ID);
+      await carregarTudo();
+      expect(primeiraDaSegunda()).toBe(cartao());
+    });
+  });
+
   describe('exclusao so no detalhe', () => {
     beforeEach(() => montar(null));
 

@@ -153,6 +153,16 @@
       </div>
       @if (id) {
         <div class="paciente-col">
+          <section class="paciente-cartao paciente-linha" aria-labelledby="pc-linha-titulo">
+            <h2 id="pc-linha-titulo">Linha do tempo</h2>
+            <p class="paciente-lead">
+              Veja em ordem cronológica o cadastro, o consentimento, os termos enviados e os
+              documentos.
+            </p>
+            <a app-button [routerLink]="['/pacientes', id, 'linha-do-tempo']"
+              >Abrir linha do tempo</a
+            >
+          </section>
           @if (consentimento(); as c) {
             <app-documentos-secao
               [pacienteId]="id"

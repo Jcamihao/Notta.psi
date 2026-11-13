@@ -134,3 +134,10 @@
     align-items: start;
   }
 }
+
+// Cartao "Linha do tempo" (primeiro da coluna do prontuario): o botao segue o tamanho do texto.
+.paciente-linha {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-4);
+}
