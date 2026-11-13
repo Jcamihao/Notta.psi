@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { KeyRound, LucideAngularModule, ShieldCheck, UserCheck } from 'lucide-angular';
+import { WordmarkComponent } from '../ui/wordmark.component';
 
 // Moldura das telas publicas (login e cadastro): formulario de um lado, promessa de sigilo do outro.
 // Cada frase do painel precisa continuar verdadeira segundo seguranca.conteudo.ts (ids):
@@ -10,11 +11,11 @@ import { KeyRound, LucideAngularModule, ShieldCheck, UserCheck } from 'lucide-an
 // O link leva a /seguranca, onde estao os limites e o que ainda nao esta pronto.
 @Component({
   selector: 'app-acesso',
-  imports: [LucideAngularModule, RouterLink],
+  imports: [LucideAngularModule, RouterLink, WordmarkComponent],
   template: `
     <main class="acesso-principal">
       <div class="acesso-coluna">
-        <p class="marca">praxis.psi</p>
+        <p class="marca"><app-wordmark /></p>
         <ng-content />
       </div>
     </main>

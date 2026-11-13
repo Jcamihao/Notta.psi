@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { PillComponent } from '../ui/pill.component';
+import { WordmarkComponent } from '../ui/wordmark.component';
 import { CONTEUDO_SEGURANCA } from './seguranca.conteudo';
 
 const TITULO = 'Segurança e privacidade';
@@ -9,7 +10,7 @@ const TITULO = 'Segurança e privacidade';
 // estatico: sem requisicao, sem innerHTML, sem link externo. O conteudo fica em seguranca.conteudo.ts.
 @Component({
   selector: 'app-seguranca-page',
-  imports: [PillComponent],
+  imports: [PillComponent, WordmarkComponent],
   templateUrl: './seguranca.page.html',
   styleUrl: './seguranca.page.scss',
 })

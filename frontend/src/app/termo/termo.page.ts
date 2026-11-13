@@ -13,6 +13,7 @@ import { Meta, Title } from '@angular/platform-browser';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CircleAlert, LucideAngularModule } from 'lucide-angular';
 import { ButtonComponent } from '../ui/button.component';
+import { WordmarkComponent } from '../ui/wordmark.component';
 import { TermoPublico, TermoService } from './termo.service';
 
 type Tela = 'carregando' | 'pronto' | 'aceito' | 'recusado' | 'invalido' | 'falha';
@@ -24,7 +25,7 @@ const TITULO = 'Termo de consentimento';
 // storage ou analytics. Link invalido, expirado, cancelado ou usado = a MESMA tela generica.
 @Component({
   selector: 'app-termo-page',
-  imports: [LucideAngularModule, ButtonComponent, RouterLink],
+  imports: [LucideAngularModule, ButtonComponent, RouterLink, WordmarkComponent],
   templateUrl: './termo.page.html',
   styleUrl: './termo.page.scss',
 })

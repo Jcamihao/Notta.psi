@@ -27,6 +27,7 @@ import { SessaoStore } from '../core/sessao.store';
 import { AvatarComponent } from '../ui/avatar.component';
 import { IconButtonComponent } from '../ui/icon-button.component';
 import { NavItemComponent } from '../ui/nav-item.component';
+import { WordmarkComponent } from '../ui/wordmark.component';
 
 // Sidebar escura flutuante do design system (196px, raio 18). Abaixo de 832px vira barra
 // superior com menu recolhivel (botao com aria-expanded). Com senha provisoria nao ha
@@ -42,14 +43,15 @@ import { NavItemComponent } from '../ui/nav-item.component';
     AvatarComponent,
     IconButtonComponent,
     NavItemComponent,
+    WordmarkComponent,
   ],
   template: `
     <header class="lateral" [class.aberto]="menuAberto()" [class.sem-menu]="obrigatoria()">
       <div class="lateral-topo">
         @if (obrigatoria()) {
-          <span class="marca">praxis.psi</span>
+          <span class="marca"><app-wordmark /></span>
         } @else {
-          <a class="marca" routerLink="/">praxis.psi</a>
+          <a class="marca" routerLink="/"><app-wordmark /></a>
           <button
             #alternar
             app-icon-button
