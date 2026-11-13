@@ -64,6 +64,11 @@ export const routes: Routes = [
           import('./documentos/documento-leitura.page').then((m) => m.DocumentoLeituraPage),
       },
       {
+        path: 'pacientes/:id/linha-do-tempo',
+        loadComponent: () =>
+          import('./pacientes/linha-do-tempo.page').then((m) => m.LinhaDoTempoPage),
+      },
+      {
         path: 'pacientes/:id',
         loadComponent: () =>
           import('./pacientes/paciente-form.page').then((m) => m.PacienteFormPage),

@@ -7,6 +7,7 @@ import { authGuard } from './core/auth.guard';
 import { senhaProvisoriaGuard } from './core/senha-provisoria.guard';
 import { DocumentoLeituraPage } from './documentos/documento-leitura.page';
 import { DocumentoNovoPage } from './documentos/documento-novo.page';
+import { LinhaDoTempoPage } from './pacientes/linha-do-tempo.page';
 import { PacienteFormPage } from './pacientes/paciente-form.page';
 import { PacientesPage } from './pacientes/pacientes.page';
 import { SegurancaPage } from './seguranca/seguranca.page';
@@ -43,6 +44,12 @@ describe('rotas de pacientes', () => {
   it('/pacientes/novo vem antes de /pacientes/:id', () => {
     const paths = shell.children!.map((r) => r.path);
     expect(paths.indexOf('pacientes/novo')).toBeLessThan(paths.indexOf('pacientes/:id'));
+  });
+
+  it('linha do tempo do paciente: dentro do shell, sem adminGuard e carregada sob demanda', async () => {
+    const rota = filha('pacientes/:id/linha-do-tempo');
+    expect(rota.canActivate).toBeUndefined();
+    expect(await (rota.loadComponent as () => Promise<unknown>)()).toBe(LinhaDoTempoPage);
   });
 
   it('rotas de documento: dentro do shell, sem adminGuard, "novo" antes de ":docId"', async () => {

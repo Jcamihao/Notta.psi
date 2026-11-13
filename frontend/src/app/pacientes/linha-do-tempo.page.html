@@ -1,0 +1,85 @@
+<div class="linha">
+  <a class="linha-voltar" [routerLink]="['/pacientes', pacienteId]">
+    <lucide-icon [img]="icones.ArrowLeft" [size]="16" [strokeWidth]="1.5" />Voltar ao paciente
+  </a>
+  <h1>Linha do tempo</h1>
+  @if (nome(); as n) {
+    <p class="linha-paciente" data-teste="paciente">Paciente: {{ n }}</p>
+  }
+
+  @if (carregando()) {
+    <p class="linha-carregando" role="status">Carregando a linha do tempo…</p>
+  } @else if (erro()) {
+    <div class="aviso-erro linha-falha" role="alert">
+      <p>Não foi possível carregar a linha do tempo. Confira sua conexão.</p>
+      <button app-button type="button" variant="soft" (click)="carregar()">Tentar de novo</button>
+    </div>
+  } @else {
+    <section class="linha-cartao" aria-label="Registros do paciente">
+      <div class="linha-filtro" role="group" aria-label="Filtrar eventos">
+        @for (f of filtros; track f.valor) {
+          <button
+            app-button
+            type="button"
+            [variant]="filtro() === f.valor ? 'primary' : 'soft'"
+            [attr.aria-pressed]="filtro() === f.valor"
+            (click)="filtro.set(f.valor)"
+          >
+            {{ f.rotulo }}
+          </button>
+        }
+      </div>
+
+      @if (vazioTotal()) {
+        <p class="linha-vazio" data-teste="vazio-total">
+          Ainda não há registros para este paciente.
+        </p>
+      } @else if (vazioFiltro()) {
+        <p class="linha-vazio" data-teste="vazio-filtro">Nenhum registro neste filtro.</p>
+      } @else {
+        @for (g of grupos(); track g.chave; let i = $index) {
+          <section class="linha-mes" [attr.aria-labelledby]="'lt-mes-' + i">
+            <h2 [id]="'lt-mes-' + i">{{ g.rotulo }}</h2>
+            <ol class="linha-lista">
+              @for (item of g.itens; track item.ev.id) {
+                <li [class.atual]="item.atual">
+                  @if (item.atual) {
+                    <span class="so-leitor">Mais recente: </span>
+                  }
+                  <span class="linha-marcador" aria-hidden="true"></span>
+                  <p class="linha-titulo">
+                    @if (item.ev.link; as link) {
+                      <a [routerLink]="link">{{ item.ev.titulo }}</a>
+                    } @else {
+                      {{ item.ev.titulo }}
+                    }
+                  </p>
+                  @if (item.ev.detalhe; as d) {
+                    <p class="linha-detalhe">{{ d }}</p>
+                  }
+                  <p class="linha-meta">
+                    @if (valida(item.ev.quando)) {
+                      <time [attr.datetime]="item.ev.quando">{{ dataHora(item.ev.quando) }}</time>
+                    } @else {
+                      <span>Data não informada</span>
+                    }
+                    @if (item.ev.estado; as e) {
+                      <app-pill [tone]="e.tom">{{ e.texto }}</app-pill>
+                    }
+                    @if (item.ev.ia) {
+                      <app-pill tone="pink"
+                        >IA<span class="so-leitor"
+                          >, gerado por inteligência artificial</span
+                        ></app-pill
+                      >
+                    }
+                  </p>
+                </li>
+              }
+            </ol>
+          </section>
+        }
+      }
+    </section>
+  }
+</div>
