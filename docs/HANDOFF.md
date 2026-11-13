@@ -1,13 +1,54 @@
-# praxis.psi — handoff (passagem de bastão, estado em 2026-11-06)
+# praxis.psi — handoff (passagem de bastão, estado em 2026-11-13)
 
 Este documento é para um agente de código (Codex ou outro Claude) que vai continuar o projeto. Leia inteiro antes de mexer em qualquer coisa. O dono do produto é João (`johnmarcus3210@gmail.com`); ele fala português, prefere respostas curtas, objetivas e honestas, acompanha muitas vezes pelo celular e usa um fechamento fixo (seção 10).
 
 ## 0. Primeiros passos (faça nesta ordem)
 
-1. `git status` e `git log --oneline | head -15` (a árvore deve estar limpa; o último trabalho foi o item 25, backup e rotação da chave mestra).
+1. `git status` e `git log --oneline | head -15` (a árvore deve estar limpa; o último trabalho foi a marca praxis: logo com ponto azul, paleta híbrida e fonte Red Hat).
 2. Leia `docs/FEATURES.md` (ordem e estado), `docs/ACESSO.md` (regras de acesso e padrões de banco) e, se existir, `.superpowers/sdd/fase-1/contrato.md` (contratos e decisões do dono, item por item).
 3. Suba o banco (seção 3), rode `npx prisma migrate deploy` e os gates do back e do front (seção 3) para confirmar que tudo está verde ANTES de mexer.
-4. Leia a seção 5 (onde parou) e siga a seção 6, um item por vez, parando para perguntar nas decisões da seção 7.
+4. Leia a seção 0.1 logo abaixo (o que precisa ser feito), depois a seção 5 (onde parou) e siga a seção 6, um item por vez, parando para perguntar nas decisões da seção 7.
+
+## 0.1 O que precisa ser feito (checklist, atualizado em 2026-11-13)
+
+**A. Ações do dono (o agente não consegue fazer):**
+- [ ] Renomear o repositório no GitHub para `praxis.psi` (Settings do repositório). Depois: `git remote set-url origin <nova url>`. O endereço antigo redireciona.
+- [ ] Renomear a pasta local para `praxis.psi`. O Docker Compose cria outro volume de banco ao mudar o nome da pasta; o antigo fica órfão.
+- [ ] Recriar o banco de desenvolvimento: as migrations já aplicadas foram editadas para os papéis `praxis_*`, então o banco antigo não aceita as novas. `docker compose down -v` SÓ quando o dono decidir; depois `docker compose up -d`, `npx prisma migrate deploy` e `backend/prisma/bootstrap/endurecer-banco.sql`. Atualizar as variáveis de shell e `.env` locais (`PRAXIS_*`, URLs com `praxis_app`, `praxis_owner` e `praxis_psi`) e renomear `~/.cache/notta-pgtool` para `~/.cache/praxis-pgtool` se existir (os docs já usam o nome novo).
+- [ ] Decidir o logo e o ícone (favicon e ícone de app). O que existe é um wordmark provisório: "praxis" + ponto azul + "psi" em Red Hat Display Black (`frontend/src/app/ui/wordmark.component.ts`). O manual de marca da Praxis (PDF que o dono enviou) não define lockup de produto.
+- [ ] Comprar o domínio (o manual cita `praxis.com.br` só como exemplo: confirmar) e verificar no Resend. Destrava os itens 24, 47, 48, 65 e o deploy.
+- [ ] Definir o controlador dos dados (razão social e CNPJ da Praxis), o encarregado e o papel (controlador ou operador). Entra no termo de consentimento, na página `/seguranca` e no plano de incidente (item 54).
+- [ ] Revisão jurídica do texto do termo (`v1-rascunho`) e do plano de incidente (`docs/PLANO-DE-INCIDENTE.md`); depois ligar `PRAXIS_TERMO_REVISADO=1` em produção. Fazer um simulado de incidente.
+- [ ] Contratar o plano pago do Gemini antes de qualquer dado real passar pela IA.
+- [ ] Se quiser trocar `NottaPsiBack` (identificador do app para o SelahIA): mudar nos DOIS lados juntos, em `SELAH_APP_KEYS` do SelahIA e em `backend/src/ia/selahia.client.ts` (e os testes que o citam). Hoje foi mantido de propósito.
+
+**B. Decisões de produto abertas:** ver a seção 7 (item 67, salvar rascunho no celular, registro manual de consentimento, planos, canal do paciente, reativação de psicólogo, entre outras).
+
+**C. Próximos itens de código, em ordem (nenhum depende de decisão externa, exceto onde indicado):**
+1. 27 linha do tempo do paciente.
+2. 28 busca e filtros (o texto é cifrado: exige decifrar no app só os documentos do próprio psicólogo e paginação da lista, que hoje carrega no máximo 500).
+3. 29 ajuste de linguagem técnica e 30 exportar em PDF ou Word.
+4. 67 transferir pacientes de psicólogo desativado (PRECISA de decisão do dono: quem autoriza e como fica o registro).
+5. Fase 6: 31 landing page (seguir o modelo de site do manual da Praxis: preto de base, azul só no que pede ação; usar a skill de design de landing, não o design system do app), 32 early access, 33 planos e cobrança, 53 monitoramento e alertas.
+6. Fase 8: 34 a 36 e 68 a 78 (ver seção 6).
+7. Bloqueados pelo domínio: 24, 47, 48, 65.
+8. Antes do deploy: 56 (inclui AGENDAR `npm run descartar` e `npm run podar-backups`, hoje manuais; credencial `praxis_owner` fora do app; TLS no banco; testar a receita de CSP no nginx real), 43 CI e 55 teste de invasão.
+9. Revisar o item 50 (cifrar identificadores): nome, nascimento, telefone e e-mail do paciente já são cifrados; conferir se sobra algo (CPF e endereço não existem como campos hoje) e fechar ou ajustar o item.
+
+**D. Pendências técnicas pequenas (achadas pelos revisores, sem item próprio):**
+- As telas de IA (`ia-gerar.page.ts`, `ia.service.ts`) mostram "IA desligada neste ambiente" para qualquer 503, inclusive o do banco ocupado.
+- Card de rascunhos pendentes na Início: exige rota nova no back (hoje rascunho só se lista por paciente).
+- Retenção das tabelas `Sessao` e do que ficou `RESTRICT`: não tratada.
+- `docs/` não passa no `prettier --check` (não é parte do gate); `shellcheck` não está instalado, então os scripts bash (`backup.sh`, `podar-backups.sh`...) nunca passaram por ele.
+- O e2e do 413 da exportação (2000 linhas por lista) só tem teste unitário com mock.
+
+**E. Cuidados que já custaram caro (não repita):**
+- Nunca `prisma migrate diff --shadow-database-url`, `migrate reset` nem `db push --force-reset` apontando para o banco de desenvolvimento: já recriou o schema uma vez.
+- Nunca `docker compose down -v` sem o dono pedir. Nunca `pkill -f` (já matou o próprio shell): mate por PID.
+- O rótulo HKDF `notta-psi|clinica|<id>` em `backend/src/criptografia/criptografia.service.ts` é CONGELADO: renomeá-lo torna ilegível todo dado e backup já cifrado (o teste do vetor conhecido protege isso).
+- Texto sobre o azul da marca é SEMPRE preto (branco dá 2,3:1 e reprova); os testes de `frontend/src/app/ui/*.spec.ts` fixam as cores em valor literal.
+- `git push` pode dar 503 do lado do GitHub: tente de novo com espera (2, 4, 8, 16 s) e confira com `git fetch` que subiu de verdade.
+- Ferramentas desta sessão de nuvem que não existem aqui: `graphify` e a pasta `.superpowers`.
 
 ## 1. O que é o produto
 
@@ -41,9 +82,9 @@ npx prisma migrate deploy
 ```
 Para subir o app à mão: gere `PRAXIS_MASTER_KEY` (`npm run -s chave:gerar`) e `PRAXIS_JWT_SECRET` (`openssl rand -base64 48`), use `NODE_ENV=development` e leia `backend/README.md` e `backend/.env.example`. Outras variáveis que o boot conhece: `PRAXIS_MASTER_KEYS` + `PRAXIS_MASTER_KEY_ATUAL` (várias chaves mestras, item 25), `PRAXIS_APP_URL` e `PRAXIS_TERMO_REVISADO` (link do termo, produção exige `=1`), `PRAXIS_CORS_ORIGIN`, `PRAXIS_API_PREFIXO`, `PRAXIS_TRUST_PROXY`, `PRAXIS_IA_HABILITADA`, `SELAHIA_URL`, `SELAHIA_API_KEY`, `PRAXIS_IA_LIMITE_DIARIO`, `PRAXIS_BACKUP_SENHA`.
 
-**Verificação** (últimos números verdes em 2026-11-06, no Postgres 18 embutido):
-- `backend/`: `npm run build`, `npm run lint`, `npm run format:check`, `npm test` (693 unit), `npm run test:e2e` (485 em paralelo + 91 em série, dois grupos em sequência), `npm run scan:segredos`.
-- `frontend/`: `npm run lint`, `npm run format:check`, `npm run build`, `npm test` (598; precisa de `CHROME_BIN`, em `~/.cache/puppeteer/chrome/*/chrome-linux64/chrome`), `npm run verificar:csp` e `npm run test:csp`.
+**Verificação** (últimos números verdes em 2026-11-13, no Postgres 16 do sistema, porta 5432, ambiente de nuvem):
+- `backend/`: `npm run build`, `npm run lint`, `npm run format:check`, `npm test` (796 unit), `npm run test:e2e` (551 em paralelo + 91 em série, dois grupos em sequência), `npm run scan:segredos`.
+- `frontend/`: `npm run lint`, `npm run format:check`, `npm run build`, `npm test` (724; precisa de `CHROME_BIN`, em `~/.cache/puppeteer/chrome/*/chrome-linux64/chrome`), `npm run verificar:csp` e `npm run test:csp`.
 - Integração real no navegador: back e front de verdade com `puppeteer-core` (em `/home/caminhao/codeStage/PraiseApp/node_modules/puppeteer-core`). Use portas próprias (back 3150, front 4350 com `ng serve --proxy-config <arquivo apontando para 3150>`); outras portas (3000, 3010, 3100) podem ser de outros projetos. Para apagar clínica de teste: copie um script temporário para `backend/` que importe `apagarClinicas` de `./test/acesso-owner` e rode com `npx ts-node --transpile-only`; apague o arquivo depois.
 - O grafo de código está em `graphify-out/` (`graphify query "<pergunta>"` antes de caçar arquivo; `graphify update .` depois de mudar código; nunca dois em paralelo).
 
@@ -61,12 +102,20 @@ Itens de `docs/FEATURES.md` feitos e verificados (`[x]`): 1 a 23, 25, 26, 41, 42
 - **Consentimento:** registro manual do psicólogo e termo por link de uso único (7 dias, token de 256 bits, só o hash no banco, página pública `/termo/:token` sem login, aceitar ou recusar). **O texto do termo é RASCUNHO NÃO REVISADO** (`backend/src/consentimento/termo-consentimento.ts`, versão `v1-rascunho`); em produção o boot só passa com `PRAXIS_TERMO_REVISADO=1`, que o dono só liga depois de revisão jurídica.
 - **IA (itens 17 a 21, 42, 51):** anonimizador determinístico com códigos entre colchetes (junta partes do nome do paciente num código só) e reidentificação, cliente do SelahIA (timeout, erros tipados, https obrigatório em produção, sem log de texto), saneamento da saída, prévia obrigatória (o servidor guarda o texto anonimizado e o mapa cifrados; a confirmação nunca reenvia texto), geração em processo fora de transação, retentativa sem limite que não duplica documento, limite diário de gerações bem-sucedidas (padrão 20, dia em `America/Sao_Paulo`), mapa e texto zerados no banco quando a geração fica PRONTA (CHECK no banco). Testado de ponta a ponta contra o SelahIA e o Gemini REAIS com dado fictício (2 gerações). Contrato do SelahIA (v2.7.9): `POST /v1/adapters/psicologia/rascunho/gerar` com `x-selah-api-key`, corpo `{tipoDocumento: 'evolucao'|'anamnese', abordagem, textoAnonimizado ≤ 8000}`.
 - **Equipe:** adicionar colega com senha provisória, listar, desativar (o desativado perde acesso na hora; dados ficam guardados; não há reativação nem transferência de pacientes).
-- **Front:** design system "intelly" (`docs/DESIGN-SYSTEM.md`: Red Hat Text e Red Hat Display auto-hospedadas (a DM Sans saiu em 2026-11-13), ícones Lucide por npm, nada de CDN); login, cadastro, equipe, pacientes, consentimento e termo por link, documentos, geração por IA (prévia, acompanhar, tentar de novo, pedidos), troca de senha, sair de todos os aparelhos. Funciona em desktop e mobile web (não existe app nativo). O build de produção passa em `npm run verificar:csp` (CSP estrita com nonce; receita em `docs/SEGURANCA-HEADERS.md` e `deploy/nginx-praxis.conf.example`, testada com um servidor Node equivalente, NÃO com o nginx real).
+- **Front:** design system "intelly" (`docs/DESIGN-SYSTEM.md`: Red Hat Text e Red Hat Display auto-hospedadas (a DM Sans saiu em 2026-11-13), ícones Lucide por npm, nada de CDN); login, cadastro, equipe, pacientes, consentimento e termo por link, documentos, geração por IA (prévia, acompanhar, tentar de novo, pedidos), troca de senha, sair de todos os aparelhos. Funciona em desktop e mobile web (não existe app nativo). Desde 2026-11-13 o visual segue a marca praxis: fonte Red Hat Text e Red Hat Display, paleta híbrida (neutros claros, menu preto #0B0B0C, azul #38B6FF só em ação) e wordmark com ponto azul (`app-wordmark`). Também existem: tela de Início, exclusão e exportação de paciente, aviso de descarte do rascunho. O build de produção passa em `npm run verificar:csp` (CSP estrita com nonce; receita em `docs/SEGURANCA-HEADERS.md` e `deploy/nginx-praxis.conf.example`, testada com um servidor Node equivalente, NÃO com o nginx real).
 
 Os contratos de cada item e os relatórios dos agentes estão em `.superpowers/sdd/fase-1/` (pasta ignorada pelo git, só existe nesta máquina: `contrato.md`, `task-*-brief.md`, `task-*-report.md` explicam decisões e COMO USAR de cada etapa).
 
 ## 5. Onde parou
 
+### Estado em 2026-11-13
+Nada está pela metade e a árvore fica limpa. Entregas desde 2026-11-06, todas verificadas e publicadas na branch `claude/awesome-brown-ee1acu`:
+- **Itens fechados:** 26 (exportar e excluir dados, LGPD), 52 (retenção e descarte, como comandos que AINDA NÃO rodam sozinhos), 66 (painel de sigilo fiel ao código e mensagem 503) e 79 (tela de Início, item criado nesta fase).
+- **Marca praxis:** o produto passou a se chamar **praxis.psi** (empresa Praxis) em todo o repositório, inclusive nomes técnicos (ver exceções na seção 0.1 E); fonte Red Hat; paleta híbrida escolhida pelo dono; logo provisório com o ponto azul.
+- **Fluxo usado:** dev em Haiku, revisão e correção em Sonnet (mutantes obrigatórios em segurança), conferência por amostra pelo orquestrador, um agente por vez.
+- **Números verdes:** back 796 unit e e2e 551 em paralelo + 91 em série; front 724 testes, build, lint, CSP.
+
+### Histórico por entrega (mais recente primeiro, texto original preservado)
 **Atualização de 2026-11-13: o produto agora se chama praxis.psi (empresa Praxis).** Troca feita em todo o repositório (telas, docs, README, CLAUDE.md, título da aba) e também nos nomes técnicos: papéis do banco `praxis_app`/`praxis_owner`, banco `praxis_psi`, variáveis `PRAXIS_*`, cookies `praxis_acesso`/`praxis_refresh`/`praxis_csrf`, cabeçalho `x-praxis-cliente`, `deploy/nginx-praxis.conf.example`. **Duas exceções de propósito, não renomear sem planejamento:** (1) o rótulo do HKDF `notta-psi|clinica|<id>` em `backend/src/criptografia/criptografia.service.ts` é um rótulo criptográfico congelado (mudar torna ilegível todo dado e backup já cifrado; o teste do vetor conhecido protege); (2) `x-source-app: NottaPsiBack` no cliente do SelahIA, que é um combinado com o SelahIA (`SELAH_APP_KEYS="NottaPsiBack:<chave>"`): trocar os dois lados juntos quando o dono quiser. As migrations já aplicadas foram editadas (papéis `praxis_*`): bancos antigos precisam ser recriados (`docker compose down -v` só com o dono pedindo). Neste ambiente o Postgres 16 do sistema usa a porta 5432 e os novos papéis foram criados ao lado dos antigos (que ainda existem). O repositório do GitHub e a pasta local são renomeados pelo dono (o remote antigo redireciona). **Marca:** o manual da Praxis está no PDF que o dono enviou; fonte da empresa Red Hat Display e Red Hat Text; cores do app ainda em decisão (a comparação visual A/B/C ficou só como simulação). Logo e ícone em decisão.
 
 **Atualização de 2026-11-11 (4):** a **tela de Início** foi feita (item 79 em `docs/FEATURES.md`, `frontend/src/app/pages/inicio.page.*`): só consome `GET /pacientes`. Ideia futura, não feita: card de rascunhos pendentes (exige rota nova no back, porque hoje rascunho só se lista por paciente).
@@ -90,28 +139,33 @@ Item 23 (página pública `/seguranca`): feito por Haiku e revisado por Sonnet, 
 
 ## 6. O que falta (ordem recomendada)
 
-1. **Fase 4 sem dependência externa:** retenção das tabelas `Sessao` e do que ficou `RESTRICT` (sobra do item 52, ainda não tratada). O 54 (plano de incidente) tem rascunho pronto em `docs/PLANO-DE-INCIDENTE.md`: o dono precisa decidir encarregado, qualificação jurídica (controlador ou operador) e fazer um simulado.
-2. **Depende do dono comprar o domínio** (o provedor de e-mail escolhido é o **Resend**, que exige domínio verificado): 24 recuperar senha e confirmar e-mail, 65 convite por e-mail de uso único (fecha o risco I-1), 47 MFA por código de e-mail, 48 bloqueio de conta e aviso de novo login. O domínio também serve para `PRAXIS_APP_URL` e o deploy.
-3. **Antes de abrir para clínicas:** 66 ajustar o texto do painel de sigilo e a mensagem de 503 do login ao que o código realmente garante, 67 transferir pacientes de psicólogo desativado.
-4. **Fase 5 (uso diário):** 27 linha do tempo, 28 busca (o texto é cifrado; a lista de pacientes hoje carrega no máximo 500 e ordena no app, precisa de paginação aqui), 29 ajuste de linguagem técnica, 30 exportar PDF ou Word.
-5. **Fase 6 (comercial):** 31 landing page (use a skill de design de landing, não o design system do app), 32 lista de early access, 33 planos e cobrança, 53 monitoramento e alertas.
-6. **Fase 8 (pedidos de uma psicóloga, itens 34 a 36 e 68 a 78):** acompanhamento entre sessões por link (o que ela chamou de diferencial), resumo semanal, alerta de risco com revisão humana, estilo de escrita do psicólogo, comparar registros, resumo pré-sessão, agenda, vídeo, financeiro, recibos, indicadores, repasse e os 3 planos. **Decisão do dono já tomada:** agenda e vídeo por **Google Agenda e Google Meet** (espelho de mão única do praxis.psi para o Google, evento com título genérico e o paciente FORA do evento, link do Meet enviado ao paciente pelo próprio praxis.psi); vídeo próprio é opção futura. A proposta dos planos (Individual, Plus, Premium) está no fim de `docs/FEATURES.md` como rascunho.
-7. **Antes do deploy:** 56 hardening de infraestrutura (TLS no banco, banco em rede privada, firewall, backups cifrados com restauração testada, a credencial `praxis_owner` fora do app, testar a receita de CSP no nginx real), 43 CI (o dono pediu deixar por último: testes, lint, `npm audit` e testes de RLS obrigatórios antes de merge), 55 teste de invasão externo e checklist OWASP ASVS.
-8. **Fase 7 (áudio, documentos formais, bucket externo, mais de um provedor de IA):** fora do escopo atual.
+1. **Fase 5 (uso diário), sem dependência externa:** 27 linha do tempo; 28 busca (o texto é cifrado; a lista de pacientes hoje carrega no máximo 500 e ordena no app, precisa de paginação aqui); 29 ajuste de linguagem técnica; 30 exportar PDF ou Word.
+2. **Antes de abrir para clínicas:** 67 transferir pacientes de psicólogo desativado (precisa de decisão do dono). O 54 (plano de incidente) tem rascunho em `docs/PLANO-DE-INCIDENTE.md`: faltam encarregado, qualificação jurídica (controlador ou operador, agora com a razão social da Praxis), revisão de advogado e um simulado.
+3. **Depende do dono comprar o domínio** (o provedor de e-mail escolhido é o **Resend**, que exige domínio verificado): 24 recuperar senha e confirmar e-mail, 65 convite por e-mail de uso único (fecha o risco I-1), 47 MFA por código de e-mail, 48 bloqueio de conta e aviso de novo login. O domínio também serve para `PRAXIS_APP_URL` e o deploy.
+4. **Fase 6 (comercial):** 31 landing page (seguir o modelo de site do manual da Praxis; usar a skill de design de landing, não o design system do app), 32 lista de early access, 33 planos e cobrança, 53 monitoramento e alertas.
+5. **Fase 8 (pedidos de uma psicóloga, itens 34 a 36 e 68 a 78):** acompanhamento entre sessões por link (o que ela chamou de diferencial), resumo semanal, alerta de risco com revisão humana, estilo de escrita do psicólogo, comparar registros, resumo pré-sessão, agenda, vídeo, financeiro, recibos, indicadores, repasse e os 3 planos. **Decisão do dono já tomada:** agenda e vídeo por **Google Agenda e Google Meet** (espelho de mão única do praxis.psi para o Google, evento com título genérico e o paciente FORA do evento, link do Meet enviado ao paciente pelo próprio praxis.psi); vídeo próprio é opção futura. A proposta dos planos (Individual, Plus, Premium) está no fim de `docs/FEATURES.md` como rascunho.
+6. **Antes do deploy:** 56 hardening de infraestrutura (TLS no banco, banco em rede privada, firewall, backups cifrados com restauração testada, a credencial `praxis_owner` fora do app, testar a receita de CSP no nginx real, e AGENDAR `npm run descartar` e `npm run podar-backups`), 43 CI (o dono pediu deixar por último: testes, lint, `npm audit` e testes de RLS obrigatórios antes de merge), 55 teste de invasão externo e checklist OWASP ASVS.
+7. **Fase 7 (áudio, documentos formais, bucket externo, mais de um provedor de IA):** fora do escopo atual.
+8. **Revisar o item 50** (cifrar identificadores do paciente em repouso): provavelmente já resolvido para nome, nascimento, telefone e e-mail; conferir e fechar.
 
 ## 7. Decisões abertas do dono (pergunte, não decida)
 
+Decisões tomadas em 2026-11-11 e 2026-11-13 (não reabra): rascunho é apagado após 7 dias sem edição e backup é guardado 30 dias; exclusão de paciente é por anonimização; exportação é JSON não cifrado; nome do produto praxis.psi com renomeação completa; fonte Red Hat; paleta híbrida.
+
+- **Logo e ícone** do produto (e favicon). Hoje há só o wordmark provisório.
+- **Controlador dos dados:** razão social e CNPJ da Praxis, encarregado e papel (controlador ou operador).
+- **Domínio:** confirmar se `praxis.com.br` é o real. Destrava 24, 47, 48, 65 e o deploy.
 - **Revisão jurídica do texto do termo** (e da versão, que deve mudar quando revisado) antes de ligar `PRAXIS_TERMO_REVISADO=1`.
-- **Compra do domínio** (destrava 24, 47, 48, 65 e o deploy).
 - **MFA (item 47):** a preferência registrada é código por e-mail.
 - **Plano pago do Gemini:** obrigatório antes de qualquer dado real passar pela IA.
 - **Texto digitado e ainda não salvo no celular (item 21):** salvar automaticamente no servidor a cada poucos segundos, sem nada no navegador (recomendado, preserva o sigilo), ou guardar cópia local (não perde texto, mas deixa dado clínico em claro no aparelho). Ainda não decidido.
-- **Exclusão LGPD (item 26):** psicólogo com trilha, paciente com consentimento ou documento e documento com correção têm FK `RESTRICT`, e trilha e consentimento são somente-acrescentar. Excluir de verdade exige decidir o que acontece com a trilha e como anonimizar ou apagar.
 - **Item 67:** quem autoriza a transferência de pacientes e como fica o registro.
+- **Canal do paciente para pedidos LGPD:** hoje só o psicólogo exporta e exclui; o paciente não tem canal próprio.
 - **Registro manual de consentimento pelo psicólogo:** manter ou remover, agora que existe o termo por link.
 - **Limite de 5 cadastros por hora por IP** conta também as tentativas recusadas por senha fraca: manter ou não contar.
 - **Planos (item 77):** preços, limite diário de IA por plano, se "multidisciplinar" significa outras profissões (muda o produto, hoje é só psicologia), recibo no plano Individual, acompanhamento entre sessões no Plus ou em todos. O Google Agenda e Meet exigem verificação do app no Google (escopo OAuth sensível), que leva semanas; vale começar cedo.
 - **Reativação de psicólogo desativado** e liberação do e-mail dele (hoje o e-mail continua ocupado).
+- **Nome do identificador `NottaPsiBack`** no SelahIA (ver seção 0.1 A).
 
 ## 8. Como implementar sem quebrar o que existe
 
@@ -135,6 +189,11 @@ Item 23 (página pública `/seguranca`): feito por Haiku e revisado por Sonnet, 
 - O backup cifra por senha com `openssl` e só tem soma de verificação; não detecta adulteração. Em produção, prefira `age` ou o KMS do provedor (item 56). Não há backup agendado ainda.
 - O teste de carga `carga-clinicas` é sensível à máquina e roda no grupo serial. Nunca foi validado com leitor de tela, nem com IPv6 e proxy reverso de produção.
 - Ações já bloqueadas pelo ambiente antes: apagar volume do Docker, mexer nos papéis do cluster, `pkill -f`. Não tente contornar.
+- (2026-11-13) Retenção e descarte existem como comandos que NÃO rodam sozinhos: até o item 56 agendar, nada é apagado automaticamente (a página `/seguranca` diz isso). Dado excluído no aplicativo pode ficar até 30 dias nos backups; não há arquivamento de WAL (se ligarem, o WAL precisa do mesmo prazo).
+- (2026-11-13) As policies antigas `documento_dono_delete` e `geracaoia_dono_delete` deixam o dono do banco apagar rascunho e geração sem trigger, e a policy `clinica_descartar_select` abre todas as colunas de `Clinica` ao dono com a flag ligada. A proteção real é a credencial `praxis_owner` fora do app (item 56).
+- (2026-11-13) A exportação do paciente é um JSON NÃO cifrado, com dado clínico em claro; a guarda é do psicólogo. O limite de 10 exportações por hora também conta 400, 404 e 413, de propósito.
+- (2026-11-13) A exclusão por anonimização não apaga linhas: preserva consentimento e trilha sem identificar o paciente. O texto já enviado ao serviço de IA de terceiros não é apagado por nós. Uma chamada de IA já em voo quando a exclusão commita termina, mas o banco barra o documento novo e o pedido vira FALHOU.
+- (2026-11-13) Renomeação: o HKDF `notta-psi|clinica|<id>` e o `x-source-app: NottaPsiBack` são identificadores congelados de propósito (seção 0.1 E e A).
 
 ## 10. Como se comunicar com o dono
 
