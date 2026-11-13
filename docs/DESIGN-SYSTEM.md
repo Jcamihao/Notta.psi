@@ -91,6 +91,7 @@ Vale hoje (tokens em `frontend/src/styles/tokens.scss`, regras em `frontend/src/
 - **Logo (wordmark):** Display Black 900, espacamento justo, com o ponto azul.
 - O "Display" de 96px do manual (capa e hero de site) nao tem uso no app; fica para a landing page.
 - Pesos carregados: Text 400, 500, 700; Display 700, 900. Nao usar Display 500 nem Text 600 (nao carregados).
+- **Menu lateral (decisao do dono, 2026-11-13):** de ponta a ponta no desktop: colado no topo, na base e na esquerda, altura da tela inteira (`100dvh`), sempre visivel (`position: sticky`), cantos arredondados so no lado direito e rolagem propria se a tela for muito baixa. No celular (menos de 832 px) continua o cartao flutuante com cantos arredondados.
 - **Adaptacao ao app (onde a escala do manual ficaria grande demais):** texto de apoio (datas, 'Criado em', 'Aprovado em', versao do termo, historico, data do pedido de IA, faixas de aviso e prazo de descarte) em legenda 14px; dados das tabelas em 14px e so o nome (primeira coluna) em corpo 18px, com `max-width: 22rem` e quebra de palavra para nome muito longo nao empurrar as colunas; nome da usuaria no menu em 14px Medium. O texto explicativo de cada cartao fica em corpo 18px.
 
 ### Tipografia

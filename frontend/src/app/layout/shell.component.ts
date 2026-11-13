@@ -204,19 +204,22 @@ import { WordmarkComponent } from '../ui/wordmark.component';
       gap: 36px;
       min-height: 100vh;
       min-height: 100dvh;
-      padding: 22px 24px;
+      /* Menu de ponta a ponta: sem margem na esquerda, no topo e na base (decisao do dono, 2026-11-13). */
+      padding: 0 24px 0 0;
     }
     .lateral {
       position: sticky;
-      top: 22px;
+      top: 0;
       align-self: start;
       display: flex;
       flex-direction: column;
-      height: calc(100dvh - 44px);
+      height: 100vh;
+      height: 100dvh;
       padding: 22px;
+      overflow-y: auto;
       color: var(--text-inverse);
       background: var(--bg-sidebar);
-      border-radius: var(--radius-panel);
+      border-radius: 0 var(--radius-panel) var(--radius-panel) 0;
     }
     .lateral :focus-visible {
       outline-color: var(--accent);
@@ -310,7 +313,7 @@ import { WordmarkComponent } from '../ui/wordmark.component';
     }
     .shell-conteudo {
       min-width: 0;
-      padding-top: var(--space-3);
+      padding: 30px 0 22px;
     }
     @media (max-width: 831.98px) {
       :host {
@@ -323,6 +326,7 @@ import { WordmarkComponent } from '../ui/wordmark.component';
         z-index: 1;
         height: auto;
         max-height: calc(100dvh - 24px);
+        border-radius: var(--radius-panel);
         padding: var(--space-5) var(--space-5) var(--space-5) var(--space-7);
         overflow-y: auto;
       }
@@ -352,7 +356,7 @@ import { WordmarkComponent } from '../ui/wordmark.component';
         margin-top: var(--space-6);
       }
       .shell-conteudo {
-        padding-top: 0;
+        padding: 0;
       }
     }
   `,
