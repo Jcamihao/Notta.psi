@@ -3,7 +3,7 @@
 Veio de um design system chamado "intelly" (dashboard de agenda para clinicos), colado pelo dono em 2026-10-31 como o design system do praxis.psi. Valores medidos de UMA captura de tela da tela Schedule; nao havia codigo, Figma nem fontes. Este arquivo e a FONTE para o visual do front (substitui a identidade verde-petroleo/papel criada na Fase 1).
 
 Notas de adaptacao do praxis.psi (decididas pelo controlador, nao fazem parte do original):
-- Fonte DM Sans AUTO-HOSPEDADA (pacote npm `@fontsource/dm-sans`), nunca via Google Fonts: pagina de saude nao deve vazar IP de usuario a terceiro e a CSP do item 49 fica simples.
+- ATUALIZACAO 2026-11-13: a fonte do app passou a ser a da marca praxis: Red Hat Text (leitura) e Red Hat Display (titulos e wordmark, pesos 700/900), AUTO-HOSPEDADAS (`@fontsource/red-hat-text` e `@fontsource/red-hat-display`). O texto abaixo sobre DM Sans e o original do documento do dono e vale so como historico. Fonte AUTO-HOSPEDADA (antes: pacote npm `@fontsource/dm-sans`), nunca via Google Fonts: pagina de saude nao deve vazar IP de usuario a terceiro e a CSP do item 49 fica simples.
 - Icones Lucide (como no original), sem CDN: pacote npm, so os icones usados.
 - O original e uma agenda; o praxis.psi ainda nao tem agenda. Reaproveitar tokens, tipografia, formas e componentes (Button, IconButton, Pill, NavItem, avatar); telas de agenda/artigos ficam para depois.
 - Texto sobre cores pastel e rosa precisa passar contraste AA (4.5:1); se um par do original nao passar, use o par escuro do sistema.
@@ -37,7 +37,7 @@ No logo file supplied: "intelly" is rendered in plain DM Sans 500. (praxis.psi: 
 ```css
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap");
 ```
-(praxis.psi: NAO usar este import; auto-hospedar com `@fontsource/dm-sans`.)
+(praxis.psi: NAO usar este import; auto-hospedar com `@fontsource/red-hat-text` e `@fontsource/red-hat-display`.)
 
 ### Cores
 ```css
@@ -78,7 +78,7 @@ No logo file supplied: "intelly" is rendered in plain DM Sans 500. (praxis.psi: 
 ### Tipografia
 ```css
 :root{
-  --font-sans:"DM Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-sans:"Red Hat Text", "Helvetica Neue", Arial, sans-serif; --font-display:"Red Hat Display", "Red Hat Text", "Helvetica Neue", Arial, sans-serif;
   --fs-display:38px; --fs-logo:34px; --fs-card-title:14px; --fs-nav:14px; --fs-day:13px;
   --fs-body:12px; --fs-meta:11px; --fs-micro:10px;
   --fw-regular:400; --fw-medium:500; --fw-semibold:600;

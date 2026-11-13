@@ -1,6 +1,7 @@
 // Tokens do design system "intelly" (docs/DESIGN-SYSTEM.md, fonte do visual do praxis.psi).
-// Valores exatamente como no documento. A fonte DM Sans e auto-hospedada (@fontsource/dm-sans,
-// pesos 400/500/600, subset latin) e entra pelo array "styles" do angular.json.
+// Valores exatamente como no documento. A fonte e a da marca praxis (manual de marca v1): Red Hat Text para leitura (400/500/600/700) e
+// Red Hat Display para titulos e marca (700/900), auto-hospedadas (@fontsource, OFL, subset latin) e
+// entram pelo array "styles" do angular.json.
 //
 // Contraste (WCAG 2.x) dos pares usados com texto:
 //   ink-900 sobre cream-100 16.5 | cream-50 17.4 | cream-200 14.9 | white 18.4
@@ -59,7 +60,8 @@
   --avatar-more: var(--white);
 
   /* tipografia */
-  --font-sans: 'DM Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: 'Red Hat Text', 'Helvetica Neue', Arial, sans-serif;
+  --font-display: 'Red Hat Display', 'Red Hat Text', 'Helvetica Neue', Arial, sans-serif;
   --fs-display: 38px;
   --fs-logo: 34px;
   --fs-card-title: 14px;

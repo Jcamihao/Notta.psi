@@ -209,8 +209,8 @@ Contas criadas em `/equipe` nascem com senha provisoria (como no back real).
 ## Visual
 
 Fonte do visual: `docs/DESIGN-SYSTEM.md` (design system "intelly"). Tokens em
-`src/styles/tokens.scss`, componentes em `src/app/ui/`. A fonte DM Sans vem do pacote
-`@fontsource/dm-sans` (pesos 400/500/600, subset latin, entra pelo `styles` do `angular.json`) e os
+`src/styles/tokens.scss`, componentes em `src/app/ui/`. A fonte da marca (Red Hat Text e Red Hat Display) vem dos pacotes
+`@fontsource/red-hat-text` (400/500/600/700) e `@fontsource/red-hat-display` (700/900), subset latin, entram pelo `styles` do `angular.json` e os
 icones do `lucide-angular` (importados um a um): nenhuma requisicao sai de localhost.
 
 ## Sessao
