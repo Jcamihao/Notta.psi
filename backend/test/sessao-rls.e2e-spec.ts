@@ -8,7 +8,7 @@ import { apagarClinicas, comoOwner } from './acesso-owner';
 // policy da renovacao (sessao_por_hash). O fluxo HTTP esta em sessao.e2e-spec.ts.
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel praxis_owner (ver backend/README.md)',
   );
 }
 
@@ -165,15 +165,15 @@ describe('Sessao: estrutura no banco', () => {
     expect(u[0].indexdef).toContain('UNIQUE');
   });
 
-  it('notta_app: SELECT e INSERT; UPDATE so em 4 colunas; sem DELETE nem TRUNCATE', async () => {
+  it('praxis_app: SELECT e INSERT; UPDATE so em 4 colunas; sem DELETE nem TRUNCATE', async () => {
     const [g] = await owner.$queryRaw<Record<string, boolean>[]>`
       SELECT
-        has_table_privilege('notta_app', '"Sessao"', 'SELECT') AS sel,
-        has_table_privilege('notta_app', '"Sessao"', 'INSERT') AS ins,
-        has_table_privilege('notta_app', '"Sessao"', 'UPDATE') AS upd,
-        has_table_privilege('notta_app', '"Sessao"', 'DELETE') AS del,
-        has_table_privilege('notta_app', '"Sessao"', 'TRUNCATE') AS trunc,
-        has_table_privilege('notta_app', '"Sessao"', 'TRIGGER') AS trg`;
+        has_table_privilege('praxis_app', '"Sessao"', 'SELECT') AS sel,
+        has_table_privilege('praxis_app', '"Sessao"', 'INSERT') AS ins,
+        has_table_privilege('praxis_app', '"Sessao"', 'UPDATE') AS upd,
+        has_table_privilege('praxis_app', '"Sessao"', 'DELETE') AS del,
+        has_table_privilege('praxis_app', '"Sessao"', 'TRUNCATE') AS trunc,
+        has_table_privilege('praxis_app', '"Sessao"', 'TRIGGER') AS trg`;
     expect(g).toEqual({
       sel: true,
       ins: true,
@@ -184,7 +184,7 @@ describe('Sessao: estrutura no banco', () => {
     });
     const cols = await owner.$queryRaw<{ column_name: string }[]>`
       SELECT column_name FROM information_schema.column_privileges
-      WHERE table_name = 'Sessao' AND grantee = 'notta_app' AND privilege_type = 'UPDATE'
+      WHERE table_name = 'Sessao' AND grantee = 'praxis_app' AND privilege_type = 'UPDATE'
       ORDER BY column_name`;
     expect(cols.map((c) => c.column_name)).toEqual([
       'motivoRevogacao',
@@ -302,7 +302,7 @@ describe('Sessao: leitura e escrita isoladas por psicologo', () => {
   });
 });
 
-describe('Sessao: sem DELETE e UPDATE so nas colunas permitidas (notta_app)', () => {
+describe('Sessao: sem DELETE e UPDATE so nas colunas permitidas (praxis_app)', () => {
   it('DELETE e TRUNCATE do app = permission denied (nem com o desvio de limpeza)', async () => {
     const id = await criarSessao(psiA);
     await expect(

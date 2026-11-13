@@ -40,11 +40,11 @@ CREATE INDEX "Sessao_familia_idx" ON "Sessao"("familia");
 -- AddForeignKey (composta: a linha e do dono E da clinica dele)
 ALTER TABLE "Sessao" ADD CONSTRAINT "Sessao_psicologoId_clinicaId_fkey" FOREIGN KEY ("psicologoId", "clinicaId") REFERENCES "Psicologo"("id", "clinicaId") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- Privilegios: o notta_app cria, le e so muda quando usou, revogou e o ultimo uso. Sem DELETE
+-- Privilegios: o praxis_app cria, le e so muda quando usou, revogou e o ultimo uso. Sem DELETE
 -- (retencao dessas linhas e o item 52).
-REVOKE ALL ON "Sessao" FROM notta_app;
-GRANT SELECT, INSERT ON "Sessao" TO notta_app;
-GRANT UPDATE ("ultimoUsoEm", "usadoEm", "revogadaEm", "motivoRevogacao") ON "Sessao" TO notta_app;
+REVOKE ALL ON "Sessao" FROM praxis_app;
+GRANT SELECT, INSERT ON "Sessao" TO praxis_app;
+GRANT UPDATE ("ultimoUsoEm", "usadoEm", "revogadaEm", "motivoRevogacao") ON "Sessao" TO praxis_app;
 
 ALTER TABLE "Sessao" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Sessao" FORCE ROW LEVEL SECURITY;
@@ -65,11 +65,11 @@ CREATE POLICY sessao_update_proprio ON "Sessao" FOR UPDATE
 CREATE POLICY sessao_por_hash ON "Sessao" FOR SELECT
   USING ("refreshHash" = NULLIF(current_setting('app.refresh_hash', true), ''));
 
--- Policies so do notta_owner, so da clinica do contexto: sem elas o FORCE RLS faria o UPDATE/DELETE
+-- Policies so do praxis_owner, so da clinica do contexto: sem elas o FORCE RLS faria o UPDATE/DELETE
 -- do dono afetar 0 linhas e o trigger nunca dispararia (nem daria para limpar dados de teste).
-CREATE POLICY sessao_dono_update ON "Sessao" FOR UPDATE TO notta_owner
+CREATE POLICY sessao_dono_update ON "Sessao" FOR UPDATE TO praxis_owner
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), ''));
-CREATE POLICY sessao_dono_delete ON "Sessao" FOR DELETE TO notta_owner
+CREATE POLICY sessao_dono_delete ON "Sessao" FOR DELETE TO praxis_owner
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), ''));
 
 -- Trigger BEFORE UPDATE, vale para TODOS os papeis (o dono da tabela inclusive): identidade imutavel;

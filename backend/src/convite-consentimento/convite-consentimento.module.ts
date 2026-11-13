@@ -7,7 +7,7 @@ import { ConviteConsentimentoController } from './convite-consentimento.controll
 import { ConviteConsentimentoService } from './convite-consentimento.service';
 import { CONVITE_CONFIG, lerConfigConvite } from './convite.config';
 
-// PrismaModule e global. A config (NOTTA_APP_URL, NOTTA_TERMO_REVISADO) e validada no boot
+// PrismaModule e global. A config (PRAXIS_APP_URL, PRAXIS_TERMO_REVISADO) e validada no boot
 // (falha fechada): o provider e criado quando o app sobe.
 @Module({
   imports: [AuditoriaModule, ConsentimentoModule],

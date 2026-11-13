@@ -18,7 +18,7 @@ ALTER TABLE "Documento" ADD CONSTRAINT "Documento_substitui_check" CHECK ("subst
 
 -- 1) Privilegios: UPDATE so nestas colunas. Sem DELETE. (id, clinicaId, psicologoId, pacienteId,
 --    tipo, substituiId e criadoEm ficam imutaveis para o app.)
-GRANT UPDATE ("conteudoCifrado", "dataSessao", "status", "aprovadoEm", "atualizadoEm") ON "Documento" TO notta_app;
+GRANT UPDATE ("conteudoCifrado", "dataSessao", "status", "aprovadoEm", "atualizadoEm") ON "Documento" TO praxis_app;
 
 -- 2) Policies separadas no lugar da unica psicologo_proprio (o WITH CHECK dela, com
 --    status = 'RASCUNHO', tambem valia para UPDATE e impedia aprovar).
@@ -31,12 +31,12 @@ CREATE POLICY documento_update_proprio ON "Documento" FOR UPDATE
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), '') AND "psicologoId" = NULLIF(current_setting('app.current_psicologo_id', true), ''))
   WITH CHECK ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), '') AND "psicologoId" = NULLIF(current_setting('app.current_psicologo_id', true), ''));
 
--- 3) Policies so do notta_owner, so da clinica do contexto (mesmo molde das tabelas
+-- 3) Policies so do praxis_owner, so da clinica do contexto (mesmo molde das tabelas
 --    somente-acrescentar): sem elas o FORCE RLS faria o UPDATE/DELETE do dono afetar 0 linhas e o
 --    trigger nunca dispararia. A barreira real e o trigger.
-CREATE POLICY documento_dono_update ON "Documento" FOR UPDATE TO notta_owner
+CREATE POLICY documento_dono_update ON "Documento" FOR UPDATE TO praxis_owner
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), ''));
-CREATE POLICY documento_dono_delete ON "Documento" FOR DELETE TO notta_owner
+CREATE POLICY documento_dono_delete ON "Documento" FOR DELETE TO praxis_owner
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), ''));
 
 -- 4) Trigger (item 44), vale para TODOS os papeis, o dono da tabela inclusive.

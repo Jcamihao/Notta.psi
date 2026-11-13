@@ -38,7 +38,7 @@ const um = (v: string | string[] | undefined) =>
 // - `Authorization` presente = credencial explicita (Bearer): fora (so o script do cliente a manda);
 // - sem cookie de acesso = nao ha credencial ambiente: fora (o JwtAuthGuard responde 401);
 // - rotas @Publico() do termo: fora (o token na URL e a credencial).
-// Senao: Origin (ou Referer) = origem permitida E header X-CSRF-Token = cookie notta_csrf.
+// Senao: Origin (ou Referer) = origem permitida E header X-CSRF-Token = cookie praxis_csrf.
 @Injectable()
 export class CsrfGuard implements CanActivate {
   constructor(

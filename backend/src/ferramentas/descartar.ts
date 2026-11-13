@@ -1,13 +1,13 @@
 // Descarte automatico de rascunho vencido (item 52A). Uso:
 //   npm run descartar -- [--dry-run] [--clinica <id>] [--lote N]   (N: 1 a 5000, padrao 500)
-// Apaga Documento RASCUNHO sem edicao ha mais de NOTTA_RETENCAO_RASCUNHO_DIAS dias (padrao 7), com
+// Apaga Documento RASCUNHO sem edicao ha mais de PRAXIS_RETENCAO_RASCUNHO_DIAS dias (padrao 7), com
 // as GeracaoIa ligadas. APROVADO nunca. Quem faz as regras e a funcao `descartar_rascunhos_vencidos`
 // (migration 20261111120000_descartar_rascunhos): este arquivo so escolhe clinicas, lotes e mostra
 // os numeros.
 //
 // EXCECAO a regra "set_config so no TenantPrismaService", igual a recifrar.ts: e ferramenta de linha
-// de comando do DONO (notta_owner), que precisa percorrer todas as clinicas. set_config fica dentro
-// de cada transacao, LOCAL. A CLI recusa rodar como notta_app.
+// de comando do DONO (praxis_owner), que precisa percorrer todas as clinicas. set_config fica dentro
+// de cada transacao, LOCAL. A CLI recusa rodar como praxis_app.
 //
 // Saida: so numeros, ids de clinica e o prazo. Jamais texto, nome, conteudo ou chave.
 import { PrismaClient } from '@prisma/client';
@@ -70,9 +70,9 @@ export function lerOpcoes(argv: string[]): Opcoes {
 }
 
 export function verificarPapel(usuario: string): void {
-  if (usuario !== 'notta_owner') {
+  if (usuario !== 'praxis_owner') {
     throw new Error(
-      'recusado: o descarte precisa do papel notta_owner (ver docs/ACESSO.md)',
+      'recusado: o descarte precisa do papel praxis_owner (ver docs/ACESSO.md)',
     );
   }
 }
@@ -135,7 +135,7 @@ export function formatar(res: Resultado): string[] {
   return linhas;
 }
 
-// Implementacao real com Prisma (papel notta_owner). Cada lote = 1 transacao.
+// Implementacao real com Prisma (papel praxis_owner). Cada lote = 1 transacao.
 export function armazemPrisma(owner: PrismaClient): Armazem {
   return {
     clinicas: () =>
@@ -178,7 +178,7 @@ async function main(): Promise<number> {
   const url = process.env.DATABASE_URL_OWNER;
   if (!url) {
     console.error(
-      'DATABASE_URL_OWNER ausente: o descarte roda como notta_owner (ver docs/ACESSO.md)',
+      'DATABASE_URL_OWNER ausente: o descarte roda como praxis_owner (ver docs/ACESSO.md)',
     );
     return 2;
   }

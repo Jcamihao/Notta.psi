@@ -3,7 +3,7 @@ import { conferirPapelRuntime } from './prisma.service';
 const ok = { superuser: false, bypassrls: false, dono: false };
 
 describe('conferirPapelRuntime (boot)', () => {
-  it('notta_app (sem superuser, sem BYPASSRLS, nao dono) passa', () => {
+  it('praxis_app (sem superuser, sem BYPASSRLS, nao dono) passa', () => {
     expect(() => conferirPapelRuntime(ok)).not.toThrow();
   });
 

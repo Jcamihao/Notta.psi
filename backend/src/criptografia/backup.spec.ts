@@ -68,16 +68,16 @@ function rodar(script: string, args: string[], env: Record<string, string>) {
       PGRESTORE_CMD: join(dir, 'pg_restore'),
       PSQL_CMD: join(dir, 'psql'),
       FAKE_DUMP: DUMP_FALSO,
-      NOTTA_MASTER_KEY: CHAVE,
+      PRAXIS_MASTER_KEY: CHAVE,
       ...env,
     },
   });
   return { status: r.status, saida: `${r.stdout}${r.stderr}` };
 }
 const backup = (alvo: string, senha: string | null = SENHA) =>
-  rodar(BACKUP, [alvo], senha === null ? {} : { NOTTA_BACKUP_SENHA: senha });
+  rodar(BACKUP, [alvo], senha === null ? {} : { PRAXIS_BACKUP_SENHA: senha });
 const verificar = (arq: string, env: Record<string, string> = {}) =>
-  rodar(VERIFICAR, [arq], { NOTTA_BACKUP_SENHA: SENHA, ...env });
+  rodar(VERIFICAR, [arq], { PRAXIS_BACKUP_SENHA: SENHA, ...env });
 const log = () =>
   existsSync(join(dir, 'log')) ? readFileSync(join(dir, 'log'), 'utf8') : '';
 
@@ -146,7 +146,7 @@ describe('backup.sh (item 25, parte C)', () => {
 
     falso('pg_dump_ruim', 'echo parcial; exit 3');
     const ruim = rodar(BACKUP, [join(dir, 'b6')], {
-      NOTTA_BACKUP_SENHA: SENHA,
+      PRAXIS_BACKUP_SENHA: SENHA,
       PGDUMP_CMD: join(dir, 'pg_dump_ruim'),
     });
     expect(ruim.status).not.toBe(0);
@@ -161,12 +161,14 @@ describe('verificar-backup.sh (item 25, parte C)', () => {
   };
   const tmpVazio = () => readdirSync(tmpScripts);
   const nomesCriados = () =>
-    [...log().matchAll(/CREATE DATABASE "(notta_restore_[0-9a-f]+)"/g)].map(
+    [...log().matchAll(/CREATE DATABASE "(praxis_restore_[0-9a-f]+)"/g)].map(
       (m) => m[1],
     );
   const nomesApagados = () =>
     [
-      ...log().matchAll(/DROP DATABASE IF EXISTS "(notta_restore_[0-9a-f]+)"/g),
+      ...log().matchAll(
+        /DROP DATABASE IF EXISTS "(praxis_restore_[0-9a-f]+)"/g,
+      ),
     ].map((m) => m[1]);
 
   it('confere sha, decifra, restaura em banco temporario e APAGA o banco e o arquivo decifrado', () => {
@@ -181,7 +183,7 @@ describe('verificar-backup.sh (item 25, parte C)', () => {
     expect(r.saida).toContain('FALHOU');
     expect(nomesCriados()).toHaveLength(1);
     expect(nomesApagados()).toEqual(nomesCriados());
-    expect(nomesCriados()[0]).not.toBe('notta_psi');
+    expect(nomesCriados()[0]).not.toBe('praxis_psi');
     expect(tmpVazio()).toEqual([]);
   });
 
@@ -225,10 +227,10 @@ describe('verificar-backup.sh (item 25, parte C)', () => {
 
   it('senha de backup errada ou curta: FALHOU', () => {
     const arq = novoBackup('v5');
-    const errada = verificar(arq, { NOTTA_BACKUP_SENHA: SENHA + 'x' });
+    const errada = verificar(arq, { PRAXIS_BACKUP_SENHA: SENHA + 'x' });
     expect(errada.status).toBe(1);
     expect(errada.saida).toContain('FALHOU: nao consegui decifrar');
-    const curta = verificar(arq, { NOTTA_BACKUP_SENHA: 'curta' });
+    const curta = verificar(arq, { PRAXIS_BACKUP_SENHA: 'curta' });
     expect(curta.status).toBe(1);
     expect(curta.saida).toContain('FALHOU');
     expect(log()).not.toContain('CREATE DATABASE');

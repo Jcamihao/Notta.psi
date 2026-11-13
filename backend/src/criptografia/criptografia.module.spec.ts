@@ -7,14 +7,14 @@ describe('AppModule + CriptografiaModule no boot', () => {
   const original = { ...process.env };
   beforeEach(() => {
     process.env.DATABASE_URL = 'postgresql://x:y@localhost:1/nenhum';
-    process.env.NOTTA_JWT_SECRET = 'segredo-jwt-de-teste-unitario-'.repeat(2);
+    process.env.PRAXIS_JWT_SECRET = 'segredo-jwt-de-teste-unitario-'.repeat(2);
   });
   afterEach(() => {
     process.env = { ...original };
   });
 
-  it('sobe com NOTTA_MASTER_KEY valida e injeta o service', async () => {
-    process.env.NOTTA_MASTER_KEY = '0123456789abcdef'.repeat(4);
+  it('sobe com PRAXIS_MASTER_KEY valida e injeta o service', async () => {
+    process.env.PRAXIS_MASTER_KEY = '0123456789abcdef'.repeat(4);
     const mod = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -26,16 +26,16 @@ describe('AppModule + CriptografiaModule no boot', () => {
   });
 
   it('falha no boot com a chave de exemplo antiga (64 zeros)', async () => {
-    process.env.NOTTA_MASTER_KEY = '0'.repeat(64);
+    process.env.PRAXIS_MASTER_KEY = '0'.repeat(64);
     await expect(
       Test.createTestingModule({ imports: [AppModule] }).compile(),
-    ).rejects.toThrow(/NOTTA_MASTER_KEY/);
+    ).rejects.toThrow(/PRAXIS_MASTER_KEY/);
   });
 
-  it('falha no boot sem NOTTA_MASTER_KEY', async () => {
-    delete process.env.NOTTA_MASTER_KEY;
+  it('falha no boot sem PRAXIS_MASTER_KEY', async () => {
+    delete process.env.PRAXIS_MASTER_KEY;
     await expect(
       Test.createTestingModule({ imports: [AppModule] }).compile(),
-    ).rejects.toThrow(/NOTTA_MASTER_KEY/);
+    ).rejects.toThrow(/PRAXIS_MASTER_KEY/);
   });
 });

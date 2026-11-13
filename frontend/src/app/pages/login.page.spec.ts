@@ -61,7 +61,7 @@ describe('LoginPage', () => {
     const r = ctrl.expectOne('/api/auth/login');
     expect(r.request.method).toBe('POST');
     expect(r.request.body).toEqual({ email: 'Ana@Clinica.com', senha: 'senha-forte-1' });
-    expect(r.request.headers.has('x-notta-cliente')).toBeFalse();
+    expect(r.request.headers.has('x-praxis-cliente')).toBeFalse();
     r.flush({ usuario: EU });
     await fixture.whenStable();
     expect(TestBed.inject(SessaoStore).usuario()).toEqual(EU);

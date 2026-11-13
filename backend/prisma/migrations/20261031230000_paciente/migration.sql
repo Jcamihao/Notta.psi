@@ -32,7 +32,7 @@ CREATE POLICY psicologo_proprio ON "Paciente"
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), '') AND "psicologoId" = NULLIF(current_setting('app.current_psicologo_id', true), ''))
   WITH CHECK ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), '') AND "psicologoId" = NULLIF(current_setting('app.current_psicologo_id', true), ''));
 
--- Privilegios do notta_app: SELECT e INSERT; UPDATE so das colunas cifradas e de atualizadoEm.
+-- Privilegios do praxis_app: SELECT e INSERT; UPDATE so das colunas cifradas e de atualizadoEm.
 -- Sem DELETE (exclusao e o item 26) e sem UPDATE de id, clinicaId, psicologoId.
-REVOKE UPDATE, DELETE ON "Paciente" FROM notta_app;
-GRANT UPDATE ("nomeCifrado", "nascimentoCifrado", "telefoneCifrado", "emailCifrado", "atualizadoEm") ON "Paciente" TO notta_app;
+REVOKE UPDATE, DELETE ON "Paciente" FROM praxis_app;
+GRANT UPDATE ("nomeCifrado", "nascimentoCifrado", "telefoneCifrado", "emailCifrado", "atualizadoEm") ON "Paciente" TO praxis_app;

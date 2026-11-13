@@ -1,11 +1,11 @@
 import type { JwtService } from '@nestjs/jwt';
 
-// Cabecalhos de um cliente que NAO e navegador (testes, scripts): `x-notta-cliente: api` faz o login
+// Cabecalhos de um cliente que NAO e navegador (testes, scripts): `x-praxis-cliente: api` faz o login
 // devolver o JWT de acesso no corpo (`token`) para `Authorization: Bearer`; `Origin` e a origem
-// aceita pelo CSRF do login (padrao de dev/test = NOTTA_APP_URL ausente = http://localhost:4200).
+// aceita pelo CSRF do login (padrao de dev/test = PRAXIS_APP_URL ausente = http://localhost:4200).
 export const ORIGEM_APP = 'http://localhost:4200';
 export const CLIENTE_API = {
-  'x-notta-cliente': 'api',
+  'x-praxis-cliente': 'api',
   Origin: ORIGEM_APP,
 };
 

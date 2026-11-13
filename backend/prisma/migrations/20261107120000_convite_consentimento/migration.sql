@@ -42,10 +42,10 @@ CREATE UNIQUE INDEX "ConviteConsentimento_um_pendente_por_paciente" ON "ConviteC
 -- AddForeignKey (inclui o dono: paciente alheio e inexistente dao o MESMO erro)
 ALTER TABLE "ConviteConsentimento" ADD CONSTRAINT "ConviteConsentimento_pacienteId_psicologoId_clinicaId_fkey" FOREIGN KEY ("pacienteId", "psicologoId", "clinicaId") REFERENCES "Paciente"("id", "psicologoId", "clinicaId") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- Privilegios: o notta_app le, cria e so muda `estado` e `usadoEm`. Sem DELETE.
-REVOKE ALL ON "ConviteConsentimento" FROM notta_app;
-GRANT SELECT, INSERT ON "ConviteConsentimento" TO notta_app;
-GRANT UPDATE ("estado", "usadoEm") ON "ConviteConsentimento" TO notta_app;
+-- Privilegios: o praxis_app le, cria e so muda `estado` e `usadoEm`. Sem DELETE.
+REVOKE ALL ON "ConviteConsentimento" FROM praxis_app;
+GRANT SELECT, INSERT ON "ConviteConsentimento" TO praxis_app;
+GRANT UPDATE ("estado", "usadoEm") ON "ConviteConsentimento" TO praxis_app;
 
 ALTER TABLE "ConviteConsentimento" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "ConviteConsentimento" FORCE ROW LEVEL SECURITY;
@@ -69,12 +69,12 @@ CREATE POLICY convite_por_token_update ON "ConviteConsentimento" FOR UPDATE
   USING ("tokenHash" = NULLIF(current_setting('app.convite_hash', true), '') AND "estado" = 'PENDENTE')
   WITH CHECK ("tokenHash" = NULLIF(current_setting('app.convite_hash', true), '') AND "estado" IN ('ACEITO', 'RECUSADO'));
 
--- Policies so do notta_owner, so da clinica do contexto: sem elas o FORCE RLS faria o UPDATE/DELETE
+-- Policies so do praxis_owner, so da clinica do contexto: sem elas o FORCE RLS faria o UPDATE/DELETE
 -- do dono afetar 0 linhas e o trigger nunca dispararia (nem daria para limpar os dados de teste).
 -- A barreira real e o trigger.
-CREATE POLICY convite_dono_update ON "ConviteConsentimento" FOR UPDATE TO notta_owner
+CREATE POLICY convite_dono_update ON "ConviteConsentimento" FOR UPDATE TO praxis_owner
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), ''));
-CREATE POLICY convite_dono_delete ON "ConviteConsentimento" FOR DELETE TO notta_owner
+CREATE POLICY convite_dono_delete ON "ConviteConsentimento" FOR DELETE TO praxis_owner
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), ''));
 
 -- Trigger BEFORE UPDATE, vale para TODOS os papeis (o dono da tabela inclusive): identidade

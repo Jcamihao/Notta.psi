@@ -113,7 +113,7 @@ export function configurarApp(app: NestExpressApplication): void {
   // atras de proxy sem ela, todo mundo divide o IP do proxy (20 logins errados travam o login
   // de todos). `0` = sem proxy, dito explicitamente. NODE_ENV ausente (imagem Docker) ou
   // "Production" exigem a variavel.
-  const proxy = process.env.NOTTA_TRUST_PROXY;
+  const proxy = process.env.PRAXIS_TRUST_PROXY;
   const ambiente = (process.env.NODE_ENV ?? '').trim().toLowerCase();
   if (
     proxy === undefined &&
@@ -121,13 +121,13 @@ export function configurarApp(app: NestExpressApplication): void {
     ambiente !== 'test'
   ) {
     throw new Error(
-      'NOTTA_TRUST_PROXY obrigatoria (salvo NODE_ENV=development ou test): informe o numero de saltos de proxy confiaveis (0 = sem proxy)',
+      'PRAXIS_TRUST_PROXY obrigatoria (salvo NODE_ENV=development ou test): informe o numero de saltos de proxy confiaveis (0 = sem proxy)',
     );
   }
   if (proxy !== undefined) {
     if (!/^\d+$/.test(proxy) || !Number.isSafeInteger(Number(proxy))) {
       throw new Error(
-        'NOTTA_TRUST_PROXY invalida: use inteiro >= 0 (numero de saltos)',
+        'PRAXIS_TRUST_PROXY invalida: use inteiro >= 0 (numero de saltos)',
       );
     }
     app.set('trust proxy', Number(proxy));
@@ -139,11 +139,11 @@ export function configurarApp(app: NestExpressApplication): void {
   // CORS so com UMA origem exata. Ausente = desligado (o front usa proxy, mesma origem).
   // Lista com 1 item: o cors compara a origem recebida e so responde se for igual
   // (nunca `*`, nunca reflete outra origem). Nunca ecoar o valor.
-  const origem = process.env.NOTTA_CORS_ORIGIN;
+  const origem = process.env.PRAXIS_CORS_ORIGIN;
   if (origem !== undefined) {
     if (!origemValida(origem)) {
       throw new Error(
-        'NOTTA_CORS_ORIGIN invalida: use UMA origem exata (esquema://host[:porta], sem barra no fim)',
+        'PRAXIS_CORS_ORIGIN invalida: use UMA origem exata (esquema://host[:porta], sem barra no fim)',
       );
     }
     app.enableCors({ origin: [origem] });

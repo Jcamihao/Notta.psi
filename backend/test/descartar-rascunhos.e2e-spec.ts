@@ -11,12 +11,12 @@ import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { apagarClinicas, comoOwner } from './acesso-owner';
 
 // Retencao de rascunho (item 52A) no Postgres real: a funcao descartar_rascunhos_vencidos, o comando
-// (armazemPrisma + descartarVencidos) e as permissoes. Padrao dos vizinhos: notta_app para o runtime,
-// notta_owner (comoOwner) para o dono. Envelhecer linhas = o dono muda atualizadoEm (producao intacta:
+// (armazemPrisma + descartarVencidos) e as permissoes. Padrao dos vizinhos: praxis_app para o runtime,
+// praxis_owner (comoOwner) para o dono. Envelhecer linhas = o dono muda atualizadoEm (producao intacta:
 // a funcao recebe o corte como parametro e nao depende do relogio do banco).
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: teste de descarte exige o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: teste de descarte exige o papel praxis_owner (ver backend/README.md)',
   );
 }
 
@@ -83,7 +83,7 @@ async function criarPaciente(u: U): Promise<string> {
   });
 }
 
-// Rascunho criado pelo runtime (notta_app). `atualizadoEm` fica como o banco/Prisma definir.
+// Rascunho criado pelo runtime (praxis_app). `atualizadoEm` fica como o banco/Prisma definir.
 async function rascunho(
   u: U,
   pacienteId: string,
@@ -541,7 +541,7 @@ describe('descarte: dry-run, isolamento, permissoes e concorrencia', () => {
     }
   });
 
-  it('notta_app nao executa a funcao, nao lista clinicas e nao apaga (permissao negada)', async () => {
+  it('praxis_app nao executa a funcao, nao lista clinicas e nao apaga (permissao negada)', async () => {
     await expect(
       app.$queryRaw`SELECT * FROM descartar_rascunhos_vencidos(now(), 10, false)`,
     ).rejects.toThrow(/permission denied/);

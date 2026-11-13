@@ -1,11 +1,11 @@
 # Design system do app (fonte: dono, 2026-10-31)
 
-Veio de um design system chamado "intelly" (dashboard de agenda para clinicos), colado pelo dono em 2026-10-31 como o design system do Notta.psi. Valores medidos de UMA captura de tela da tela Schedule; nao havia codigo, Figma nem fontes. Este arquivo e a FONTE para o visual do front (substitui a identidade verde-petroleo/papel criada na Fase 1).
+Veio de um design system chamado "intelly" (dashboard de agenda para clinicos), colado pelo dono em 2026-10-31 como o design system do praxis.psi. Valores medidos de UMA captura de tela da tela Schedule; nao havia codigo, Figma nem fontes. Este arquivo e a FONTE para o visual do front (substitui a identidade verde-petroleo/papel criada na Fase 1).
 
-Notas de adaptacao do Notta.psi (decididas pelo controlador, nao fazem parte do original):
+Notas de adaptacao do praxis.psi (decididas pelo controlador, nao fazem parte do original):
 - Fonte DM Sans AUTO-HOSPEDADA (pacote npm `@fontsource/dm-sans`), nunca via Google Fonts: pagina de saude nao deve vazar IP de usuario a terceiro e a CSP do item 49 fica simples.
 - Icones Lucide (como no original), sem CDN: pacote npm, so os icones usados.
-- O original e uma agenda; o Notta.psi ainda nao tem agenda. Reaproveitar tokens, tipografia, formas e componentes (Button, IconButton, Pill, NavItem, avatar); telas de agenda/artigos ficam para depois.
+- O original e uma agenda; o praxis.psi ainda nao tem agenda. Reaproveitar tokens, tipografia, formas e componentes (Button, IconButton, Pill, NavItem, avatar); telas de agenda/artigos ficam para depois.
 - Texto sobre cores pastel e rosa precisa passar contraste AA (4.5:1); se um par do original nao passar, use o par escuro do sistema.
 - Largura menor que ~832 px: a sidebar vira barra superior (o original nao especifica mobile).
 
@@ -13,7 +13,7 @@ Notas de adaptacao do Notta.psi (decididas pelo controlador, nao fazem parte do 
 - Friendly, direct, second person: "Stay up to date, Dr.Olivia". Sentence case everywhere ("Add event", "Statistics & reports"); day names in caps (MONDAY) or 2-letter abbreviations (FR, SA, SU).
 - Short labels; event titles are nouns ("Emergency visit", "Diagnostic test"). Locations as "West camp, Room 312"; times "07:00 - 07:30"; dates "11/05".
 - Article teasers ask a question or describe a benefit, truncated with "…". No emoji.
-- (Notta.psi: textos em portugues do Brasil, mesmo tom: direto, segunda pessoa, caixa de frase, sem emoji.)
+- (praxis.psi: textos em portugues do Brasil, mesmo tom: direto, segunda pessoa, caixa de frase, sem emoji.)
 
 ## Visual foundations
 - Warm cream page (#F8F2E3) with a solid near-black sidebar (#141414, 18px radius, floating with margin). No gradients, no shadows, no borders on cards.
@@ -29,7 +29,7 @@ Notas de adaptacao do Notta.psi (decididas pelo controlador, nao fazem parte do 
 Thin (≈1.5px) outline line icons, rounded caps. Substituted with Lucide (originals unknown). Icons in white on the sidebar, ink on cream, ink inside pastel chips. No emoji, no unicode icons.
 
 ## Logo
-No logo file supplied: "intelly" is rendered in plain DM Sans 500. (Notta.psi: "Notta.psi" em DM Sans 500, mesmo tratamento, ate haver logo.)
+No logo file supplied: "intelly" is rendered in plain DM Sans 500. (praxis.psi: "praxis.psi" em DM Sans 500, mesmo tratamento, ate haver logo.)
 
 ## Tokens
 
@@ -37,7 +37,7 @@ No logo file supplied: "intelly" is rendered in plain DM Sans 500. (Notta.psi: "
 ```css
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap");
 ```
-(Notta.psi: NAO usar este import; auto-hospedar com `@fontsource/dm-sans`.)
+(praxis.psi: NAO usar este import; auto-hospedar com `@fontsource/dm-sans`.)
 
 ### Cores
 ```css
@@ -112,7 +112,7 @@ No logo file supplied: "intelly" is rendered in plain DM Sans 500. (Notta.psi: "
 - Cards de evento: raio 12px, padding 10px 12px 12px; chip de icone 24px (icone 13px); titulo 14px/500; local 11px; tempo 11px #5C574D; "Participants" 10px; avatares 20px, 8px/500, gap 3px; botao 28px pill 13px
 - Tags de artigo: 9px, padding 4px 8px, raio 6px (rosa ou azul); imagem raio 10px
 
-## Componentes (assinaturas originais, React; o front do Notta.psi e Angular: recriar como componentes standalone com a mesma API)
+## Componentes (assinaturas originais, React; o front do praxis.psi e Angular: recriar como componentes standalone com a mesma API)
 
 - **Button**: pill de acao primaria. `variant?: 'primary'|'disabled'|'progress'|'soft'; full?: boolean`. Ex.: `<Button variant="progress" full>In progress...</Button>`
 - **IconButton**: botao circular de icone. `icon: string; tone?: 'dark'|'soft'|'accent'; size?: number`.

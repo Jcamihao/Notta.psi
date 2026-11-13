@@ -1,10 +1,10 @@
 // Recifragem da chave mestra (item 25, parte B). Uso: npm run recifrar -- [--clinica <id>] [--lote 200] [--dry-run]
 //
 // EXCECAO a regra "set_config so no TenantPrismaService": este arquivo liga app.recifrar com
-// set_config(..., true) dentro de cada transacao do DONO do banco (notta_owner), fora do
+// set_config(..., true) dentro de cada transacao do DONO do banco (praxis_owner), fora do
 // TenantPrismaService. Motivo: e uma ferramenta de linha de comando do dono, que precisa ver
-// todas as clinicas. A flag so abre as policies TO notta_owner e a excecao dos triggers
-// (migration 20261109120000_recifrar_dono). notta_app nao ganha nada e a CLI recusa rodar como ele.
+// todas as clinicas. A flag so abre as policies TO praxis_owner e a excecao dos triggers
+// (migration 20261109120000_recifrar_dono). praxis_app nao ganha nada e a CLI recusa rodar como ele.
 //
 // Saida: so contagens por tabela e coluna. Nunca valor, nome, texto, mapa ou chave.
 import { Prisma, PrismaClient } from '@prisma/client';
@@ -160,7 +160,7 @@ export function lerOpcoes(argv: string[]): Opcoes {
   return op;
 }
 
-// Implementacao real com Prisma (papel notta_owner). Lote = 1 transacao com a flag ligada.
+// Implementacao real com Prisma (papel praxis_owner). Lote = 1 transacao com a flag ligada.
 export function armazemPrisma(owner: PrismaClient): Armazem {
   return {
     transacao: (fn) =>
@@ -223,7 +223,7 @@ async function main(): Promise<number> {
   const url = process.env.DATABASE_URL_OWNER;
   if (!url) {
     console.error(
-      'DATABASE_URL_OWNER ausente: a recifragem roda como notta_owner (ver docs/ACESSO.md)',
+      'DATABASE_URL_OWNER ausente: a recifragem roda como praxis_owner (ver docs/ACESSO.md)',
     );
     return 2;
   }
@@ -239,9 +239,9 @@ async function main(): Promise<number> {
   try {
     const [{ usuario }] = await owner.$queryRaw<{ usuario: string }[]>`
       SELECT current_user AS "usuario"`;
-    if (usuario !== 'notta_owner') {
+    if (usuario !== 'praxis_owner') {
       console.error(
-        `recusado: conectado como ${usuario}; a recifragem precisa do papel notta_owner`,
+        `recusado: conectado como ${usuario}; a recifragem precisa do papel praxis_owner`,
       );
       return 2;
     }

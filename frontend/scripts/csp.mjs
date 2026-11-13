@@ -37,9 +37,9 @@ function verificarJs(texto, nome, achados) {
 function verificarHtml(texto, nome, achados) {
   // O Angular so poe nonce nos <style> que injeta se o <app-root> trouxer ngCspNonce; sem ele a
   // CSP bloqueia o estilo de todos os componentes (verificado no navegador).
-  if (nome === 'index.html' && !/ngcspnonce="NOTTA_CSP_NONCE"/i.test(texto)) {
+  if (nome === 'index.html' && !/ngcspnonce="PRAXIS_CSP_NONCE"/i.test(texto)) {
     achados.push(
-      'index.html: <app-root> sem ngCspNonce="NOTTA_CSP_NONCE" (o estilo dos componentes seria bloqueado)',
+      'index.html: <app-root> sem ngCspNonce="PRAXIS_CSP_NONCE" (o estilo dos componentes seria bloqueado)',
     );
   }
   // Handler inline (onclick=, onload=, ...): a CSP sem 'unsafe-inline' bloqueia.

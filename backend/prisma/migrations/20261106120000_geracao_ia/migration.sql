@@ -69,9 +69,9 @@ ALTER TABLE "GeracaoIa" ADD CONSTRAINT "GeracaoIa_forma_check" CHECK (
 CREATE UNIQUE INDEX "GeracaoIa_um_pendente_por_psicologo" ON "GeracaoIa"("psicologoId") WHERE "estado" = 'PENDENTE';
 
 -- Privilegios: SELECT, INSERT e UPDATE so nas colunas de andamento. Sem DELETE (retencao: item 52).
-REVOKE ALL ON "GeracaoIa" FROM notta_app;
-GRANT SELECT, INSERT ON "GeracaoIa" TO notta_app;
-GRANT UPDATE ("estado", "motivo", "retentavel", "avisos", "textoCifrado", "mapaCifrado", "documentoId", "atualizadoEm", "finalizadoEm") ON "GeracaoIa" TO notta_app;
+REVOKE ALL ON "GeracaoIa" FROM praxis_app;
+GRANT SELECT, INSERT ON "GeracaoIa" TO praxis_app;
+GRANT UPDATE ("estado", "motivo", "retentavel", "avisos", "textoCifrado", "mapaCifrado", "documentoId", "atualizadoEm", "finalizadoEm") ON "GeracaoIa" TO praxis_app;
 
 -- RLS ENABLE + FORCE, mesmo molde do Documento: policies separadas porque o INSERT exige
 -- estado = 'PREVIA' e esse WITH CHECK nao pode valer para UPDATE.
@@ -84,12 +84,12 @@ CREATE POLICY geracaoia_insert_proprio ON "GeracaoIa" FOR INSERT
 CREATE POLICY geracaoia_update_proprio ON "GeracaoIa" FOR UPDATE
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), '') AND "psicologoId" = NULLIF(current_setting('app.current_psicologo_id', true), ''))
   WITH CHECK ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), '') AND "psicologoId" = NULLIF(current_setting('app.current_psicologo_id', true), ''));
--- So do notta_owner, so da clinica do contexto: sem elas o FORCE RLS faria o UPDATE do dono
+-- So do praxis_owner, so da clinica do contexto: sem elas o FORCE RLS faria o UPDATE do dono
 -- afetar 0 linhas e o trigger nunca dispararia (UPDATE), e a limpeza das suites nao apagaria
 -- (DELETE). A barreira real e o trigger.
-CREATE POLICY geracaoia_dono_update ON "GeracaoIa" FOR UPDATE TO notta_owner
+CREATE POLICY geracaoia_dono_update ON "GeracaoIa" FOR UPDATE TO praxis_owner
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), ''));
-CREATE POLICY geracaoia_dono_delete ON "GeracaoIa" FOR DELETE TO notta_owner
+CREATE POLICY geracaoia_dono_delete ON "GeracaoIa" FOR DELETE TO praxis_owner
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), ''));
 
 -- Trigger BEFORE UPDATE, vale para TODOS os papeis (o dono da tabela inclusive).

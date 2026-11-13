@@ -20,10 +20,10 @@ CREATE POLICY psicologo_update_proprio ON "Psicologo" FOR UPDATE
   WITH CHECK ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), '') AND "id" = NULLIF(current_setting('app.current_psicologo_id', true), ''));
 
 -- Colunas: o app so altera nome, abordagem e senha. papel, email, clinicaId e id
--- ficam imutaveis para o notta_app (permission denied), mesmo na propria linha.
+-- ficam imutaveis para o praxis_app (permission denied), mesmo na propria linha.
 -- Coluna nova que o app precise alterar: GRANT UPDATE (coluna) explicito.
-REVOKE UPDATE ON "Psicologo" FROM notta_app;
-GRANT UPDATE ("nome", "abordagemPadrao", "senhaHash") ON "Psicologo" TO notta_app;
+REVOKE UPDATE ON "Psicologo" FROM praxis_app;
+GRANT UPDATE ("nome", "abordagemPadrao", "senhaHash") ON "Psicologo" TO praxis_app;
 
 -- TEMP vem de PUBLIC por padrao: o app nao precisa criar tabela temporaria (M8).
 -- DO + format: o nome do banco muda entre dev, teste e producao.
@@ -34,4 +34,4 @@ END
 $$;
 
 -- Tabela futura com autoincrement precisa de USAGE na sequence (nextval) para o app.
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO notta_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO praxis_app;

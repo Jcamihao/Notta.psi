@@ -25,7 +25,7 @@ export const SEGREDOS_CONHECIDOS = {
     'test',
     'xxx',
   ],
-  // Usados pelas suites de teste. So passam com NOTTA_PERMITE_SEGREDO_DE_TESTE=1.
+  // Usados pelas suites de teste. So passam com PRAXIS_PERMITE_SEGREDO_DE_TESTE=1.
   jwtDeTeste: [
     'segredo-jwt-so-de-teste-e2e-',
     'segredo-jwt-de-teste-unitario-',
@@ -43,7 +43,7 @@ export const normalizarSegredo = (v: string) => v.trim().toLowerCase();
 // Variavel definida SO pelos helpers de teste (test/permite-segredo-de-teste.ts); nunca no
 // .env.example, nunca em producao.
 export const permiteSegredoDeTeste = (env: NodeJS.ProcessEnv = process.env) =>
-  env.NOTTA_PERMITE_SEGREDO_DE_TESTE === '1';
+  env.PRAXIS_PERMITE_SEGREDO_DE_TESTE === '1';
 
 export const contemConhecido = (valor: string, lista: readonly string[]) => {
   const n = normalizarSegredo(valor);

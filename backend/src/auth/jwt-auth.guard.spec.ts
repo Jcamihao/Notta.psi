@@ -162,8 +162,8 @@ const tenant = {
 
 const jwt = new JwtService(
   opcoesJwt({
-    NOTTA_JWT_SECRET: 'segredo-unitario-'.repeat(3),
-    NOTTA_PERMITE_SEGREDO_DE_TESTE: '1',
+    PRAXIS_JWT_SECRET: 'segredo-unitario-'.repeat(3),
+    PRAXIS_PERMITE_SEGREDO_DE_TESTE: '1',
   }),
 );
 // Assina com o `sid` da sessao ativa do `sub` (salvo se o teste passar outro, ou `sid: undefined`).
@@ -549,34 +549,34 @@ describe('opcoesJwt', () => {
       'de teste e2e (sem a variavel de teste)',
       'segredo-jwt-so-de-teste-e2e-'.repeat(2),
     ],
-  ])('NOTTA_JWT_SECRET %s lanca sem ecoar', (_n, valor) => {
+  ])('PRAXIS_JWT_SECRET %s lanca sem ecoar', (_n, valor) => {
     let msg = '';
     try {
-      opcoesJwt({ NOTTA_JWT_SECRET: valor });
+      opcoesJwt({ PRAXIS_JWT_SECRET: valor });
     } catch (e) {
       msg = (e as Error).message;
     }
-    expect(msg).toMatch(/NOTTA_JWT_SECRET/);
+    expect(msg).toMatch(/PRAXIS_JWT_SECRET/);
     if (valor) expect(msg).not.toContain(valor.trim());
   });
 
   it('aceita segredo com 16 caracteres distintos e >= 32', () => {
     expect(() =>
-      opcoesJwt({ NOTTA_JWT_SECRET: 'abcdefghijklmnop'.repeat(2) }),
+      opcoesJwt({ PRAXIS_JWT_SECRET: 'abcdefghijklmnop'.repeat(2) }),
     ).not.toThrow();
   });
 
-  it('segredo de teste conhecido so passa com NOTTA_PERMITE_SEGREDO_DE_TESTE=1', () => {
-    const NOTTA_JWT_SECRET = 'segredo-unitario-'.repeat(3);
-    expect(() => opcoesJwt({ NOTTA_JWT_SECRET })).toThrow();
+  it('segredo de teste conhecido so passa com PRAXIS_PERMITE_SEGREDO_DE_TESTE=1', () => {
+    const PRAXIS_JWT_SECRET = 'segredo-unitario-'.repeat(3);
+    expect(() => opcoesJwt({ PRAXIS_JWT_SECRET })).toThrow();
     expect(() =>
-      opcoesJwt({ NOTTA_JWT_SECRET, NOTTA_PERMITE_SEGREDO_DE_TESTE: '1' }),
+      opcoesJwt({ PRAXIS_JWT_SECRET, PRAXIS_PERMITE_SEGREDO_DE_TESTE: '1' }),
     ).not.toThrow();
     // A variavel nao libera segredo fraco comum.
     expect(() =>
       opcoesJwt({
-        NOTTA_JWT_SECRET: 'a'.repeat(64),
-        NOTTA_PERMITE_SEGREDO_DE_TESTE: '1',
+        PRAXIS_JWT_SECRET: 'a'.repeat(64),
+        PRAXIS_PERMITE_SEGREDO_DE_TESTE: '1',
       }),
     ).toThrow();
   });
@@ -633,7 +633,7 @@ describe('JwtAuthGuard: sessao e cookie (item 46)', () => {
 
   it('cookie de acesso e aceito quando nao ha Authorization', async () => {
     const { ctx, req } = comHeaders({
-      cookie: `outro=1; notta_acesso=${await jwtDe()}; x=2`,
+      cookie: `outro=1; praxis_acesso=${await jwtDe()}; x=2`,
     });
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
     expect(req.user).toMatchObject({ psicologoId: psicologoA });
@@ -642,7 +642,7 @@ describe('JwtAuthGuard: sessao e cookie (item 46)', () => {
   it('Authorization presente mas torto = 401 e NUNCA cai para o cookie', async () => {
     const { ctx } = comHeaders({
       authorization: 'Basic abc',
-      cookie: `notta_acesso=${await jwtDe()}`,
+      cookie: `praxis_acesso=${await jwtDe()}`,
     });
     await expect(guard.canActivate(ctx)).rejects.toBeInstanceOf(
       UnauthorizedException,
@@ -652,7 +652,7 @@ describe('JwtAuthGuard: sessao e cookie (item 46)', () => {
   it('Bearer vence o cookie (cookie invalido nao atrapalha)', async () => {
     const { ctx } = comHeaders({
       authorization: `Bearer ${await jwtDe()}`,
-      cookie: 'notta_acesso=lixo',
+      cookie: 'praxis_acesso=lixo',
     });
     await expect(guard.canActivate(ctx)).resolves.toBe(true);
   });

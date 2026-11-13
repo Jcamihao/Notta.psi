@@ -29,22 +29,24 @@ const reqFalsa = (secure: boolean) => ({ secure }) as Request;
 
 describe('lerCookie', () => {
   it('acha pelo nome exato, ignora espacos, decodifica e pega o primeiro repetido', () => {
-    expect(lerCookie('a=1; notta_acesso=x%20y; b=2', 'notta_acesso')).toBe(
+    expect(lerCookie('a=1; praxis_acesso=x%20y; b=2', 'praxis_acesso')).toBe(
       'x y',
     );
     expect(
-      lerCookie('notta_acesso=um; notta_acesso=dois', 'notta_acesso'),
+      lerCookie('praxis_acesso=um; praxis_acesso=dois', 'praxis_acesso'),
     ).toBe('um');
-    expect(lerCookie('xnotta_acesso=1', 'notta_acesso')).toBeUndefined();
-    expect(lerCookie('notta_acesso=', 'notta_acesso')).toBeUndefined();
-    expect(lerCookie('notta_acesso=%E0%A4%A', 'notta_acesso')).toBeUndefined();
-    expect(lerCookie(undefined, 'notta_acesso')).toBeUndefined();
+    expect(lerCookie('xpraxis_acesso=1', 'praxis_acesso')).toBeUndefined();
+    expect(lerCookie('praxis_acesso=', 'praxis_acesso')).toBeUndefined();
+    expect(
+      lerCookie('praxis_acesso=%E0%A4%A', 'praxis_acesso'),
+    ).toBeUndefined();
+    expect(lerCookie(undefined, 'praxis_acesso')).toBeUndefined();
   });
 });
 
 describe('prefixoApi', () => {
   const env = (v?: string) =>
-    (v === undefined ? {} : { NOTTA_API_PREFIXO: v }) as NodeJS.ProcessEnv;
+    (v === undefined ? {} : { PRAXIS_API_PREFIXO: v }) as NodeJS.ProcessEnv;
   it('padrao /api; vazio = raiz; caminho valido passa', () => {
     expect(prefixoApi(env())).toBe('/api');
     expect(prefixoApi(env(''))).toBe('');
@@ -53,7 +55,7 @@ describe('prefixoApi', () => {
   it.each(['api', '/api/', '/a b', '//', '/a;b', 'http://x'])(
     'invalido %j derruba',
     (v) => {
-      expect(() => prefixoApi(env(v))).toThrow(/NOTTA_API_PREFIXO/);
+      expect(() => prefixoApi(env(v))).toThrow(/PRAXIS_API_PREFIXO/);
     },
   );
 });
@@ -80,21 +82,21 @@ describe('definirCookies', () => {
       absolutaAte,
     });
     const por = Object.fromEntries(chamadas.map((c) => [c.nome, c]));
-    expect(por.notta_acesso.opcoes).toEqual({
+    expect(por.praxis_acesso.opcoes).toEqual({
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
       path: '/api',
       maxAge: 900_000,
     });
-    expect(por.notta_refresh.opcoes).toEqual({
+    expect(por.praxis_refresh.opcoes).toEqual({
       httpOnly: true,
       secure: false,
       sameSite: 'strict',
       path: '/api/auth',
       maxAge: 7 * 24 * 3600 * 1000,
     });
-    expect(por.notta_csrf.opcoes).toEqual({
+    expect(por.praxis_csrf.opcoes).toEqual({
       httpOnly: false,
       secure: false,
       sameSite: 'lax',
@@ -138,8 +140,8 @@ describe('definirCookies', () => {
     expect(chamadas[1].opcoes.maxAge).toBe(1000);
   });
 
-  it('API na raiz (NOTTA_API_PREFIXO vazio): acesso em /, refresh em /auth', () => {
-    process.env.NOTTA_API_PREFIXO = '';
+  it('API na raiz (PRAXIS_API_PREFIXO vazio): acesso em /, refresh em /auth', () => {
+    process.env.PRAXIS_API_PREFIXO = '';
     try {
       const { res, chamadas } = resFalsa();
       definirCookies(reqFalsa(false), res, {
@@ -151,7 +153,7 @@ describe('definirCookies', () => {
       expect(chamadas[0].opcoes.path).toBe('/');
       expect(chamadas[1].opcoes.path).toBe('/auth');
     } finally {
-      delete process.env.NOTTA_API_PREFIXO;
+      delete process.env.PRAXIS_API_PREFIXO;
     }
   });
 });
@@ -160,16 +162,16 @@ describe('definirAcesso e limparCookies', () => {
   it('definirAcesso muda so o cookie de acesso', () => {
     const { res, chamadas } = resFalsa();
     definirAcesso(reqFalsa(true), res, 'jwt');
-    expect(chamadas.map((c) => c.nome)).toEqual(['notta_acesso']);
+    expect(chamadas.map((c) => c.nome)).toEqual(['praxis_acesso']);
   });
 
   it('limparCookies apaga os 3 com os MESMOS atributos de caminho (senao o navegador nao apaga)', () => {
     const { res, chamadas } = resFalsa();
     limparCookies(reqFalsa(true), res);
     expect(chamadas.map((c) => [c.nome, c.opcoes.path])).toEqual([
-      ['notta_acesso', '/api'],
-      ['notta_refresh', '/api/auth'],
-      ['notta_csrf', '/'],
+      ['praxis_acesso', '/api'],
+      ['praxis_refresh', '/api/auth'],
+      ['praxis_csrf', '/'],
     ]);
   });
 });

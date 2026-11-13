@@ -10,8 +10,8 @@ import { apagarClinicas as apagarClinicasComoOwner } from './acesso-owner';
 
 // Env de teste EXPLICITA (nao depende de .env). Valores fixos so de teste, nao sao segredo.
 // Se ja exportadas, valem as exportadas.
-process.env.NOTTA_MASTER_KEY ||= 'e2e0'.repeat(16);
-process.env.NOTTA_JWT_SECRET ||= 'segredo-jwt-so-de-teste-e2e-'.repeat(2);
+process.env.PRAXIS_MASTER_KEY ||= 'e2e0'.repeat(16);
+process.env.PRAXIS_JWT_SECRET ||= 'segredo-jwt-so-de-teste-e2e-'.repeat(2);
 
 // App completo (AppModule + configurarApp), igual ao main.ts.
 // `controllers`: controllers SO de teste, somados ao AppModule.
@@ -63,7 +63,7 @@ export function criarAppSemLimite(
   return criarApp({ ...opcoes, semLimite: true });
 }
 
-// Limpeza como notta_owner: o notta_app nao tem DELETE em Psicologo/Clinica (M-2).
+// Limpeza como praxis_owner: o praxis_app nao tem DELETE em Psicologo/Clinica (M-2).
 // `_app` fica so pela assinatura que as suites ja usam; nao e usado.
 export function apagarClinicas(_app: unknown, ids: string[]) {
   return apagarClinicasComoOwner(ids);

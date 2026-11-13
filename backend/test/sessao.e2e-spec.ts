@@ -61,8 +61,8 @@ const cab = (jar: Jar, ...nomes: string[]) =>
     .map((k) => `${k}=${jar[k]}`)
     .join('; ');
 // Cookies que o navegador manda a uma rota comum da API (acesso + CSRF) e a /auth/renovar (refresh + CSRF).
-const paraApi = (jar: Jar) => cab(jar, 'notta_acesso', 'notta_csrf');
-const paraRenovar = (jar: Jar) => cab(jar, 'notta_refresh', 'notta_csrf');
+const paraApi = (jar: Jar) => cab(jar, 'praxis_acesso', 'praxis_csrf');
+const paraRenovar = (jar: Jar) => cab(jar, 'praxis_refresh', 'praxis_csrf');
 const setCookies = (res: request.Response) =>
   (res.headers['set-cookie'] as unknown as string[]) ?? [];
 const atributos = (res: request.Response, nome: string) =>
@@ -110,7 +110,7 @@ const postarComoNavegador = (
     .set({
       Cookie: paraApi(jar),
       ...origem,
-      'X-CSRF-Token': jar.notta_csrf,
+      'X-CSRF-Token': jar.praxis_csrf,
       ...extra,
     })
     .send(corpo);
@@ -169,13 +169,13 @@ describe('POST /auth/login: cookies e corpo', () => {
     expect(res.headers['cache-control']).toBe('no-store');
     expect(setCookies(res)).toHaveLength(3);
 
-    const ac = atributos(res, 'notta_acesso');
+    const ac = atributos(res, 'praxis_acesso');
     expect(ac).toMatch(/; HttpOnly/);
     expect(ac).toMatch(/; SameSite=Lax/);
     expect(ac).toMatch(/; Path=\/api(;|$)/);
     expect(ac).toMatch(/; Max-Age=900(;|$)/);
 
-    const rf = atributos(res, 'notta_refresh');
+    const rf = atributos(res, 'praxis_refresh');
     expect(rf).toMatch(/; HttpOnly/);
     expect(rf).toMatch(/; SameSite=Strict/);
     expect(rf).toMatch(/; Path=\/api\/auth(;|$)/);
@@ -183,7 +183,7 @@ describe('POST /auth/login: cookies e corpo', () => {
     expect(maxAge).toBeGreaterThan(7 * 86400 - 5);
     expect(maxAge).toBeLessThanOrEqual(7 * 86400);
 
-    const cs = atributos(res, 'notta_csrf');
+    const cs = atributos(res, 'praxis_csrf');
     expect(cs).not.toMatch(/HttpOnly/);
     expect(cs).toMatch(/; SameSite=Lax/);
     expect(cs).toMatch(/; Path=\/(;|$)/);
@@ -194,8 +194,8 @@ describe('POST /auth/login: cookies e corpo', () => {
       expect(linha).not.toMatch(/Secure/i);
     }
     // refresh: 32 bytes base64url
-    expect(atributos(res, 'notta_refresh')).toMatch(
-      /^notta_refresh=[A-Za-z0-9_-]{43};/,
+    expect(atributos(res, 'praxis_refresh')).toMatch(
+      /^praxis_refresh=[A-Za-z0-9_-]{43};/,
     );
   });
 
@@ -215,7 +215,7 @@ describe('POST /auth/login: cookies e corpo', () => {
     // o valor so conta se for exatamente `api`
     const outro = await http()
       .post('/auth/login')
-      .set({ ...origem, 'x-notta-cliente': 'web' })
+      .set({ ...origem, 'x-praxis-cliente': 'web' })
       .send({ email: c.email, senha: SENHA });
     expect((outro.body as { token?: string }).token).toBeUndefined();
   });
@@ -241,15 +241,15 @@ describe('POST /auth/login: cookies e corpo', () => {
     const c = await novaConta();
     const a = await entrar(c);
     const b = await entrar(c);
-    expect(a.jar.notta_csrf).not.toBe(b.jar.notta_csrf);
+    expect(a.jar.praxis_csrf).not.toBe(b.jar.praxis_csrf);
     const linhas = await sessoes(c);
     expect(linhas).toHaveLength(2);
     expect(linhas[0].familia).not.toBe(linhas[1].familia);
   });
 
-  it('com proxy https (NOTTA_TRUST_PROXY=1 + X-Forwarded-Proto) todos os cookies saem Secure', async () => {
-    const antes = process.env.NOTTA_TRUST_PROXY;
-    process.env.NOTTA_TRUST_PROXY = '1';
+  it('com proxy https (PRAXIS_TRUST_PROXY=1 + X-Forwarded-Proto) todos os cookies saem Secure', async () => {
+    const antes = process.env.PRAXIS_TRUST_PROXY;
+    process.env.PRAXIS_TRUST_PROXY = '1';
     const proxied = await criarAppSemLimite();
     try {
       const c = await novaConta();
@@ -262,15 +262,15 @@ describe('POST /auth/login: cookies e corpo', () => {
       for (const linha of setCookies(res)) expect(linha).toMatch(/; Secure/);
     } finally {
       await proxied.close();
-      if (antes === undefined) delete process.env.NOTTA_TRUST_PROXY;
-      else process.env.NOTTA_TRUST_PROXY = antes;
+      if (antes === undefined) delete process.env.PRAXIS_TRUST_PROXY;
+      else process.env.PRAXIS_TRUST_PROXY = antes;
     }
   });
 
   it('o refresh cru nunca vai ao banco (so o SHA-256) nem ao log', async () => {
     const c = await novaConta();
     const { jar } = await entrar(c);
-    const cru = jar.notta_refresh;
+    const cru = jar.praxis_refresh;
     await renovar(jar);
     const linhas = await sessoes(c);
     expect(linhas.map((l) => l.refreshHash)).toContain(sha(cru));
@@ -281,11 +281,11 @@ describe('POST /auth/login: cookies e corpo', () => {
     // reuso (gera mais caminhos de log) e depois varredura do log
     await http()
       .post('/auth/renovar')
-      .set({ Cookie: `notta_refresh=${cru}`, ...origem })
+      .set({ Cookie: `praxis_refresh=${cru}`, ...origem })
       .expect(401);
     expect(logs.join('\n')).not.toContain(cru);
     expect(logs.join('\n')).not.toContain(sha(cru));
-    expect(logs.join('\n')).not.toContain(jar.notta_refresh);
+    expect(logs.join('\n')).not.toContain(jar.praxis_refresh);
   });
 });
 
@@ -293,17 +293,17 @@ describe('POST /auth/renovar: rotacao', () => {
   it('rotaciona: refresh novo, acesso novo, mesma familia; o refresh antigo deixa de valer', async () => {
     const c = await novaConta();
     const { jar } = await entrar(c);
-    const antigo = jar.notta_refresh;
-    const csrf = jar.notta_csrf;
-    const antes = jar.notta_acesso;
+    const antigo = jar.praxis_refresh;
+    const csrf = jar.praxis_csrf;
+    const antes = jar.praxis_acesso;
     const res = await renovar(jar);
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ ok: true });
     expect(res.headers['cache-control']).toBe('no-store');
-    expect(jar.notta_refresh).not.toBe(antigo);
-    expect(jar.notta_acesso).not.toBe(antes);
+    expect(jar.praxis_refresh).not.toBe(antigo);
+    expect(jar.praxis_acesso).not.toBe(antes);
     // CSRF acompanha a sessao: nao muda a cada renovacao (abas concorrentes)
-    expect(jar.notta_csrf).toBe(csrf);
+    expect(jar.praxis_csrf).toBe(csrf);
     await acesso(jar).expect(200);
 
     const linhas = await sessoes(c);
@@ -322,13 +322,13 @@ describe('POST /auth/renovar: rotacao', () => {
   it('REUSO do refresh antigo: 401, familia inteira revogada, acesso corrente cai NA HORA, auditoria REFRESH_REUSADO', async () => {
     const c = await novaConta();
     const { jar } = await entrar(c);
-    const antigo = jar.notta_refresh;
+    const antigo = jar.praxis_refresh;
     await renovar(jar).then((r) => expect(r.status).toBe(200));
     await acesso(jar).expect(200); // acesso corrente (JWT valido)
 
     const ladrao = await http()
       .post('/auth/renovar')
-      .set({ Cookie: `notta_refresh=${antigo}`, ...origem });
+      .set({ Cookie: `praxis_refresh=${antigo}`, ...origem });
     expect(ladrao.status).toBe(401);
     expect(ladrao.body).toEqual({ statusCode: 401, message: 'Unauthorized' });
     // o JWT corrente ainda esta dentro dos 15 min e assinado: so o banco o derruba
@@ -353,11 +353,11 @@ describe('POST /auth/renovar: rotacao', () => {
     const c = await novaConta();
     const a = await entrar(c);
     const b = await entrar(c);
-    const antigo = a.jar.notta_refresh;
+    const antigo = a.jar.praxis_refresh;
     await renovar(a.jar);
     await http()
       .post('/auth/renovar')
-      .set({ Cookie: `notta_refresh=${antigo}`, ...origem })
+      .set({ Cookie: `praxis_refresh=${antigo}`, ...origem })
       .expect(401);
     await acesso(a.jar).expect(401);
     await acesso(b.jar).expect(200);
@@ -383,11 +383,11 @@ describe('POST /auth/renovar: rotacao', () => {
     const corpoRef = { statusCode: 401, message: 'Unauthorized' };
     const casos: Record<string, string>[] = [
       {},
-      { Cookie: 'notta_refresh=lixo' },
-      { Cookie: `notta_refresh=${'a'.repeat(300)}` },
-      { Cookie: `notta_refresh=${'A'.repeat(43)}` },
-      { Cookie: 'notta_refresh=' },
-      { Cookie: 'notta_acesso=x' },
+      { Cookie: 'praxis_refresh=lixo' },
+      { Cookie: `praxis_refresh=${'a'.repeat(300)}` },
+      { Cookie: `praxis_refresh=${'A'.repeat(43)}` },
+      { Cookie: 'praxis_refresh=' },
+      { Cookie: 'praxis_acesso=x' },
     ];
     for (const extra of casos) {
       const res = await http()
@@ -406,14 +406,14 @@ describe('POST /auth/renovar: rotacao', () => {
     const { jar } = await entrar(c);
     const res = await http()
       .post('/auth/renovar')
-      .set({ Cookie: `notta_refresh=${jar.notta_acesso}`, ...origem });
+      .set({ Cookie: `praxis_refresh=${jar.praxis_acesso}`, ...origem });
     expect(res.status).toBe(401);
   });
 
   it('com o cabecalho de cliente api devolve o token novo no corpo', async () => {
     const c = await novaConta();
     const { jar } = await entrar(c);
-    const res = await renovar(jar, { 'x-notta-cliente': 'api' });
+    const res = await renovar(jar, { 'x-praxis-cliente': 'api' });
     expect((res.body as { token: string }).token).toMatch(/^eyJ/);
   });
 
@@ -502,7 +502,7 @@ describe('sair, sair de todos e troca de senha', () => {
       .set(CLIENTE_API)
       .send({ email: c.email, senha: SENHA });
     const bearer = (api.body as { token: string }).token;
-    const antigoAcesso = jar.notta_acesso;
+    const antigoAcesso = jar.praxis_acesso;
     await renovar(jar);
     const res = await postarComoNavegador(jar, '/auth/sair').expect(200);
     expect(res.body).toEqual({ ok: true });
@@ -512,7 +512,7 @@ describe('sair, sair de todos e troca de senha', () => {
     // o JWT que o navegador tinha continua valido por assinatura, mas a sessao caiu
     await http()
       .get('/eu')
-      .set('Cookie', `notta_acesso=${antigoAcesso}`)
+      .set('Cookie', `praxis_acesso=${antigoAcesso}`)
       .expect(401);
     await http().get('/eu').set('Cookie', paraApi(jar)).expect(401);
     guardar(jar, res);
@@ -586,14 +586,14 @@ describe('sair, sair de todos e troca de senha', () => {
   it('atomicidade: falha da auditoria no reuso = 500 e a familia NAO e revogada (mesma transacao)', async () => {
     const c = await novaConta();
     const { jar } = await entrar(c);
-    const antigo = jar.notta_refresh;
+    const antigo = jar.praxis_refresh;
     await renovar(jar);
     jest
       .spyOn(app.get(AuditoriaService), 'registrar')
       .mockRejectedValueOnce(new Error('auditoria fora'));
     const r = await http()
       .post('/auth/renovar')
-      .set({ Cookie: `notta_refresh=${antigo}`, ...origem });
+      .set({ Cookie: `praxis_refresh=${antigo}`, ...origem });
     expect(r.status).toBe(500);
     expect((await sessoes(c)).every((s) => s.revogadaEm === null)).toBe(true);
   });
@@ -602,7 +602,7 @@ describe('sair, sair de todos e troca de senha', () => {
     const c = await novaConta();
     const atual = await entrar(c);
     const outra = await entrar(c);
-    const antigoAcesso = atual.jar.notta_acesso;
+    const antigoAcesso = atual.jar.praxis_acesso;
     const res = await postarComoNavegador(atual.jar, '/auth/trocar-senha', {
       senhaAtual: SENHA,
       novaSenha: 'outra-senha-forte-1',
@@ -610,14 +610,14 @@ describe('sair, sair de todos e troca de senha', () => {
     expect(res.body).toEqual({ ok: true });
     expect(res.headers['cache-control']).toBe('no-store');
     // cookie de acesso novo (mesmo sid, tv novo); csrf e refresh intactos
-    expect(atributos(res, 'notta_acesso')).toMatch(/HttpOnly/);
+    expect(atributos(res, 'praxis_acesso')).toMatch(/HttpOnly/);
     expect(setCookies(res)).toHaveLength(1);
     guardar(atual.jar, res);
     await acesso(atual.jar).expect(200);
     // o acesso antigo (tv velho) cai
     await http()
       .get('/eu')
-      .set('Cookie', `notta_acesso=${antigoAcesso}`)
+      .set('Cookie', `praxis_acesso=${antigoAcesso}`)
       .expect(401);
     // outra sessao: JWT cai e refresh nao renova
     await acesso(outra.jar).expect(401);
@@ -658,7 +658,7 @@ describe('CSRF e checagem de Origin', () => {
   it('POST por cookie: sem header = 403; header errado = 403; Origin errada = 403; sem Origin = 403', async () => {
     const c = await novaConta();
     const { jar } = await entrar(c);
-    const csrf = jar.notta_csrf;
+    const csrf = jar.praxis_csrf;
     const corpoFixo = {
       statusCode: 403,
       message: 'Requisicao recusada',
@@ -691,16 +691,16 @@ describe('CSRF e checagem de Origin', () => {
   it('Origin certa + header certo = ok; Referer da origem certa vale no lugar do Origin', async () => {
     const c = await novaConta();
     const { jar } = await entrar(c);
-    await postar(jar, { ...origem, 'X-CSRF-Token': jar.notta_csrf }).expect(
+    await postar(jar, { ...origem, 'X-CSRF-Token': jar.praxis_csrf }).expect(
       201,
     );
     await postar(jar, {
       Referer: `${ORIGEM_APP}/pacientes/novo`,
-      'X-CSRF-Token': jar.notta_csrf,
+      'X-CSRF-Token': jar.praxis_csrf,
     }).expect(201);
     await postar(jar, {
       Referer: 'https://atacante.exemplo.com/x',
-      'X-CSRF-Token': jar.notta_csrf,
+      'X-CSRF-Token': jar.praxis_csrf,
     }).expect(403);
   });
 
@@ -710,7 +710,7 @@ describe('CSRF e checagem de Origin', () => {
     const b = await entrar(c);
     const criado = await postar(a.jar, {
       ...origem,
-      'X-CSRF-Token': a.jar.notta_csrf,
+      'X-CSRF-Token': a.jar.praxis_csrf,
     }).expect(201);
     const id = (criado.body as { id: string }).id;
     const patch = (jar: Jar, extra: Record<string, string>) =>
@@ -721,11 +721,11 @@ describe('CSRF e checagem de Origin', () => {
     await patch(a.jar, origem).expect(403);
     await patch(a.jar, {
       ...origem,
-      'X-CSRF-Token': b.jar.notta_csrf,
+      'X-CSRF-Token': b.jar.praxis_csrf,
     }).expect(403);
     await patch(a.jar, {
       ...origem,
-      'X-CSRF-Token': a.jar.notta_csrf,
+      'X-CSRF-Token': a.jar.praxis_csrf,
     }).expect(200);
   });
 
@@ -815,7 +815,7 @@ describe('throttler de renovar (30/min por IP)', () => {
       const r = await pedir();
       expect(r.status).toBe(429);
       expect(r.headers['retry-after']).toBeDefined();
-      expect(JSON.stringify(r.body)).not.toMatch(/notta_|refresh/i);
+      expect(JSON.stringify(r.body)).not.toMatch(/praxis_|refresh/i);
     } finally {
       await comLimite.close();
     }

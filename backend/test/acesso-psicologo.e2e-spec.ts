@@ -4,13 +4,13 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { apagarClinicas, ddl } from './acesso-owner';
 
-// Barreiras de banco em "Psicologo"/"Clinica" e privilegios do notta_app (Postgres real).
+// Barreiras de banco em "Psicologo"/"Clinica" e privilegios do praxis_app (Postgres real).
 // UPDATE so na PROPRIA linha e so em nome/abordagemPadrao/senhaHash/senhaProvisoria/
 // tokenVersao; sem TEMP. INSERT so de colega provisorio ou do 1o ADMIN; sem DELETE;
 // trigger da senha provisoria e da versao do token (M-2 da 2a revisao).
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel praxis_owner (ver backend/README.md)',
   );
 }
 
@@ -240,7 +240,7 @@ describe('UPDATE em Psicologo: so a propria linha', () => {
   });
 });
 
-describe('privilegios do notta_app', () => {
+describe('privilegios do praxis_app', () => {
   it('nao consegue CREATE TEMP TABLE', async () => {
     await expect(
       app.$executeRawUnsafe('CREATE TEMP TABLE _teste_temp (x int)'),
@@ -435,6 +435,6 @@ describe('trigger em Psicologo: senha provisoria e versao do token', () => {
       SELECT pg_get_userbyid(p.proowner) AS dono, t.tgenabled AS ativo
       FROM pg_trigger t JOIN pg_proc p ON p.oid = t.tgfoid
       WHERE t.tgrelid = '"Psicologo"'::regclass AND NOT t.tgisinternal`;
-    expect(t).toEqual({ dono: 'notta_owner', ativo: 'O' });
+    expect(t).toEqual({ dono: 'praxis_owner', ativo: 'O' });
   });
 });

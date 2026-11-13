@@ -1,6 +1,6 @@
 -- Documento clinico (item 12): nota bruta, evolucao ou anamnese, texto cifrado (AES-256-GCM por
 -- clinica, AAD = Documento|conteudoCifrado|id|psicologoId; o id nasce no app). Filha de Paciente:
--- FK composta com o dono (docs/ACESSO.md). Nasce RASCUNHO. O notta_app so le e insere: UPDATE
+-- FK composta com o dono (docs/ACESSO.md). Nasce RASCUNHO. O praxis_app so le e insere: UPDATE
 -- (edicao, item 14) e aprovacao (item 15) entram em migration propria; DELETE nao existe.
 
 -- CreateTable
@@ -33,8 +33,8 @@ ALTER TABLE "Documento" ADD CONSTRAINT "Documento_tipo_check" CHECK ("tipo" IN (
 ALTER TABLE "Documento" ADD CONSTRAINT "Documento_status_check" CHECK ("status" IN ('RASCUNHO', 'APROVADO'));
 
 -- Privilegios: so SELECT e INSERT (tira o que o DEFAULT PRIVILEGES deu).
-REVOKE ALL ON "Documento" FROM notta_app;
-GRANT SELECT, INSERT ON "Documento" TO notta_app;
+REVOKE ALL ON "Documento" FROM praxis_app;
+GRANT SELECT, INSERT ON "Documento" TO praxis_app;
 
 -- RLS ENABLE + FORCE, policy psicologo_proprio (bloco sql-psicologo-proprio do docs/ACESSO.md).
 -- Unica diferenca: o WITH CHECK tambem exige status = 'RASCUNHO' (ninguem insere ja aprovado).

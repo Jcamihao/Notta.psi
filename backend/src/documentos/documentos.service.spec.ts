@@ -29,7 +29,7 @@ type Linha = Prisma.DocumentoUncheckedCreateInput & {
 };
 
 function montar(opcoes: { pacienteExiste?: boolean } = {}) {
-  process.env.NOTTA_MASTER_KEY = '0123456789abcdef'.repeat(4);
+  process.env.PRAXIS_MASTER_KEY = '0123456789abcdef'.repeat(4);
   const cripto = new CriptografiaService();
   const linhas: Linha[] = [];
   const tx = {
@@ -446,7 +446,7 @@ describe('DocumentosService.listar com filtro', () => {
 
 describe('DocumentosService.descarteEm na resposta', () => {
   afterEach(() => {
-    delete process.env.NOTTA_RETENCAO_RASCUNHO_DIAS;
+    delete process.env.PRAXIS_RETENCAO_RASCUNHO_DIAS;
   });
 
   it('aprovado devolve descarteEm null (nunca e apagado)', async () => {
@@ -457,8 +457,8 @@ describe('DocumentosService.descarteEm na resposta', () => {
     expect(aprovado.descarteEm).toBeNull();
   });
 
-  it('o prazo vem de NOTTA_RETENCAO_RASCUNHO_DIAS (14 dias = 11-17)', async () => {
-    process.env.NOTTA_RETENCAO_RASCUNHO_DIAS = '14';
+  it('o prazo vem de PRAXIS_RETENCAO_RASCUNHO_DIAS (14 dias = 11-17)', async () => {
+    process.env.PRAXIS_RETENCAO_RASCUNHO_DIAS = '14';
     const { service } = montar();
     const r = await service.criar(user, pacienteId, corpo);
     expect(r.descarteEm).toEqual(new Date('2026-11-17T12:00:00Z'));

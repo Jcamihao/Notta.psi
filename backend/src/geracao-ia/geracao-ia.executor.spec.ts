@@ -25,7 +25,7 @@ function montar(
     cliente?: () => Promise<{ rascunho: string }>;
   } = {},
 ) {
-  process.env.NOTTA_MASTER_KEY = '0123456789abcdef'.repeat(4);
+  process.env.PRAXIS_MASTER_KEY = '0123456789abcdef'.repeat(4);
   const cripto = new CriptografiaService();
   const id = randomUUID();
   const linha = {

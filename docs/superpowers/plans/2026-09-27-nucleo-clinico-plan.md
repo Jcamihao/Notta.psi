@@ -1,10 +1,10 @@
-# Notta.psi — Núcleo Clínico + Prontuário Assistido Implementation Plan
+# praxis.psi — Núcleo Clínico + Prontuário Assistido Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Entregar o núcleo multi-clínica do Notta.psi: cadastro de clínica/psicólogo/paciente com consentimento, e o fluxo de rascunho de evolução/anamnese gerado por IA (via SelahIA), com isolamento entre clínicas, criptografia do conteúdo clínico e anonimização antes de qualquer chamada de IA.
+**Goal:** Entregar o núcleo multi-clínica do praxis.psi: cadastro de clínica/psicólogo/paciente com consentimento, e o fluxo de rascunho de evolução/anamnese gerado por IA (via SelahIA), com isolamento entre clínicas, criptografia do conteúdo clínico e anonimização antes de qualquer chamada de IA.
 
-**Architecture:** Backend único em NestJS + Prisma + PostgreSQL (monolito modular, sem microsserviços), em `Notta.psi/backend`. Isolamento entre clínicas via Row-Level Security no Postgres, ativado por uma variável de sessão (`app.current_clinica_id`) setada a cada transação através de um serviço `TenantPrismaService` — nenhuma consulta a dado de clínica roda fora desse mecanismo, nem mesmo a criação da própria clínica. A IA é acessada por um novo adapter `psicologia` no SelahIA existente, seguindo o padrão já usado pelos adapters `lumen`/`agilis`/`praiseapp` (controller com `InternalApiKeyGuard`, rota `v1/adapters/<app>/<feature>`). Autenticação: e-mail/senha com JWT por psicólogo (o spec não pede MFA; decisão de escopo mínimo, sem invenção além do spec).
+**Architecture:** Backend único em NestJS + Prisma + PostgreSQL (monolito modular, sem microsserviços), em `praxis.psi/backend`. Isolamento entre clínicas via Row-Level Security no Postgres, ativado por uma variável de sessão (`app.current_clinica_id`) setada a cada transação através de um serviço `TenantPrismaService` — nenhuma consulta a dado de clínica roda fora desse mecanismo, nem mesmo a criação da própria clínica. A IA é acessada por um novo adapter `psicologia` no SelahIA existente, seguindo o padrão já usado pelos adapters `lumen`/`agilis`/`praiseapp` (controller com `InternalApiKeyGuard`, rota `v1/adapters/<app>/<feature>`). Autenticação: e-mail/senha com JWT por psicólogo (o spec não pede MFA; decisão de escopo mínimo, sem invenção além do spec).
 
 **Tech Stack:** NestJS (versão atual do CLI, 11), Prisma 6 (fixo: o Prisma 7/8 muda a configuração do datasource e exige adapter; o plano usa o formato clássico), PostgreSQL 15+, `@nestjs/jwt`, `bcryptjs`, `class-validator`/`class-transformer`, Jest (testes), Node `crypto` nativo (HKDF + AES-256-GCM). SelahIA: mesma stack já usada pelos outros adapters.
 
@@ -14,11 +14,11 @@
 
 - Toda tabela de dado de clínica (`Psicologo`, `Paciente`, `Consentimento`, `DocumentoClinico`) tem `clinicaId` e Row-Level Security **com `FORCE ROW LEVEL SECURITY`** (spec §5) — sem o `FORCE`, o dono da tabela (o próprio usuário do banco da aplicação) ignora a política, e a proteção não existe de fato.
 - Nenhuma consulta ou escrita a essas tabelas roda fora de `TenantPrismaService.run(clinicaId, fn)` — isso vale inclusive para a criação da primeira clínica/psicólogo (spec §5). **Exceções autorizadas (Tarefa 7), as únicas que usam o `PrismaService` global e chamam `set_config` fora de `TenantPrismaService`:** `ClinicasService.criarClinicaComPrimeiroPsicologo` (define `app.current_clinica_id` na mesma transação antes de escrever) e `AuthService.login` (define `app.login_email`, que só libera a leitura da linha com aquele e-mail pela política `login_lookup`). Qualquer outro uso deve ser tratado como defeito na revisão.
-- Conteúdo clínico (`DocumentoClinico.conteudoCifrado`) é sempre cifrado com AES-256-GCM, com uma chave derivada por clínica a partir de `NOTTA_MASTER_KEY` via HKDF-SHA256 — a chave mestra nunca é gravada no banco (spec §6).
+- Conteúdo clínico (`DocumentoClinico.conteudoCifrado`) é sempre cifrado com AES-256-GCM, com uma chave derivada por clínica a partir de `PRAXIS_MASTER_KEY` via HKDF-SHA256 — a chave mestra nunca é gravada no banco (spec §6).
 - Nenhum texto enviado ao SelahIA contém nome completo, CPF, telefone, e-mail ou endereço cadastrados do paciente, nem nomes de terceiros detectados (spec §7).
 - Nenhum `DocumentoClinico` é criado com `status = APROVADO` sem uma chamada explícita do endpoint de aprovação (spec §8).
 - O adapter novo no SelahIA segue exatamente o padrão dos adapters existentes: `@UseGuards(InternalApiKeyGuard)`, rota `v1/adapters/psicologia/rascunho`, chave de app própria em `SELAH_APP_KEYS` (spec §9).
-- O usuário Postgres da aplicação (`notta_app`) nunca é superusuário nem `BYPASSRLS`: esses papéis ignoram RLS mesmo com `FORCE` (comportamento documentado do Postgres, não executado aqui). A Tarefa 5 tem um teste que trava isso.
+- O usuário Postgres da aplicação (`praxis_app`) nunca é superusuário nem `BYPASSRLS`: esses papéis ignoram RLS mesmo com `FORCE` (comportamento documentado do Postgres, não executado aqui). A Tarefa 5 tem um teste que trava isso.
 - No Postgres, `id` e `clinicaId` são `text` (padrão do Prisma para `String`). As políticas de RLS comparam `text` com `text`, sem cast para `uuid`: `current_setting` pode devolver string vazia depois do `set_config` local, e `''::uuid` lança erro.
 - Nome do app consumidor no SelahIA: `NottaPsiBack` (padrão `<App>Back` de `SELAH_APP_KEYS`), usado como nome da chave e em `X-Source-App`.
 - Versionamento do SelahIA: todo commit bumpa a versão com `npm version <v> --no-git-tag-version`. Tarefa 1 → 2.6.1, Tarefa 2 → 2.6.2, Tarefa 3 → 2.7.0. A Tarefa 3 também cria `docs/releases/v2.7.0.md` no formato de `v2.6.0.md`.
@@ -222,17 +222,17 @@ git commit -m "feat(psicologia): expor rota do adapter e registrar no modulo rai
 
 ---
 
-## Parte B — Notta.psi: scaffold e núcleo do backend
+## Parte B — praxis.psi: scaffold e núcleo do backend
 
 ### Task 4: Scaffold do backend, schema Prisma e primeira migração
 
 **Files:**
-- Create: `Notta.psi/backend/` (projeto NestJS via `nest new backend --package-manager npm --skip-git`)
-- Create: `Notta.psi/backend/prisma/schema.prisma`
-- Create: `Notta.psi/docker-compose.yml` (serviço `postgres:15` local, porta `5433:5432`, para não colidir com outros projetos da VPS; `POSTGRES_USER=postgres` é só o administrador do container; monta `./docker/initdb` em `/docker-entrypoint-initdb.d`)
-- Create: `Notta.psi/docker/initdb/01-roles.sql` (cria o papel da aplicação, abaixo)
-- Create: `Notta.psi/backend/.env.example`
-- Test: `Notta.psi/backend/prisma/schema.prisma` validado por `npx prisma validate` (não é um teste de código; é a verificação deste passo)
+- Create: `praxis.psi/backend/` (projeto NestJS via `nest new backend --package-manager npm --skip-git`)
+- Create: `praxis.psi/backend/prisma/schema.prisma`
+- Create: `praxis.psi/docker-compose.yml` (serviço `postgres:15` local, porta `5433:5432`, para não colidir com outros projetos da VPS; `POSTGRES_USER=postgres` é só o administrador do container; monta `./docker/initdb` em `/docker-entrypoint-initdb.d`)
+- Create: `praxis.psi/docker/initdb/01-roles.sql` (cria o papel da aplicação, abaixo)
+- Create: `praxis.psi/backend/.env.example`
+- Test: `praxis.psi/backend/prisma/schema.prisma` validado por `npx prisma validate` (não é um teste de código; é a verificação deste passo)
 
 **Interfaces:**
 - Produces: modelos Prisma `Clinica`, `Psicologo`, `Paciente`, `Consentimento`, `DocumentoClinico` e enums `Abordagem`, `TipoDocumento`, `StatusDocumento`, exatamente como abaixo — todas as tarefas seguintes dependem destes nomes de campo.
@@ -240,7 +240,7 @@ git commit -m "feat(psicologia): expor rota do adapter e registrar no modulo rai
 - [ ] **Step 1: Scaffold e configuração**
 
 ```bash
-cd Notta.psi
+cd praxis.psi
 npx @nestjs/cli new backend --package-manager npm --skip-git
 cd backend
 npm install prisma@6 @prisma/client@6 @nestjs/jwt @nestjs/passport passport passport-jwt bcryptjs class-validator class-transformer
@@ -248,16 +248,16 @@ npm install -D @types/passport-jwt @types/bcryptjs
 npx prisma init --datasource-provider postgresql
 ```
 
-`.env.example` traz `DATABASE_URL="postgresql://notta_app:notta_app@localhost:5433/notta_psi"`, `NOTTA_MASTER_KEY=` (comentário: gerar com `openssl rand -hex 32`), `NOTTA_JWT_SECRET=`, `SELAH_BASE_URL=http://localhost:3010` (porta padrão do SelahIA, `main.ts`), `SELAH_API_KEY=`, `SELAH_SOURCE_APP=NottaPsiBack`.
+`.env.example` traz `DATABASE_URL="postgresql://praxis_app:praxis_app@localhost:5433/praxis_psi"`, `PRAXIS_MASTER_KEY=` (comentário: gerar com `openssl rand -hex 32`), `PRAXIS_JWT_SECRET=`, `SELAH_BASE_URL=http://localhost:3010` (porta padrão do SelahIA, `main.ts`), `SELAH_API_KEY=`, `SELAH_SOURCE_APP=NottaPsiBack`.
 
 `docker/initdb/01-roles.sql` (a imagem do Postgres cria `POSTGRES_USER` como superusuário, e superusuário ignora RLS; por isso a aplicação conecta com um papel próprio):
 
 ```sql
-CREATE ROLE notta_app LOGIN PASSWORD 'notta_app' NOSUPERUSER NOBYPASSRLS CREATEDB;
-CREATE DATABASE notta_psi OWNER notta_app;
+CREATE ROLE praxis_app LOGIN PASSWORD 'praxis_app' NOSUPERUSER NOBYPASSRLS CREATEDB;
+CREATE DATABASE praxis_psi OWNER praxis_app;
 ```
 
-`CREATEDB` existe só porque `prisma migrate dev` cria um shadow database. Como `notta_app` é dono das tabelas, o `FORCE ROW LEVEL SECURITY` da Tarefa 5 vale também para ele.
+`CREATEDB` existe só porque `prisma migrate dev` cria um shadow database. Como `praxis_app` é dono das tabelas, o `FORCE ROW LEVEL SECURITY` da Tarefa 5 vale também para ele.
 
 - [ ] **Step 2: Escrever `schema.prisma`**
 
@@ -354,7 +354,7 @@ model DocumentoClinico {
 
 - [ ] **Step 3: Rodar Postgres local e a primeira migração**
 
-Run: `docker compose up -d postgres` (a partir de `Notta.psi/`)
+Run: `docker compose up -d postgres` (a partir de `praxis.psi/`)
 Se `docker` não existir (WSL sem integração com o Docker Desktop), suba um Postgres 15+ com o pacote `embedded-postgres` numa pasta fora do repositório (porta própria, sem usar 5433 se estiver ocupada), rode `docker/initdb/01-roles.sql` como administrador desse Postgres e aponte `DATABASE_URL` para ele. Nesse caso `docker-compose.yml` fica sem teste local — diga isso no relatório.
 Run: `cd backend && npx prisma migrate dev --name init`
 Expected: migração aplicada sem erro, tabelas criadas
@@ -473,7 +473,7 @@ git commit -m "feat: row-level security por clinica e TenantPrismaService"
 - Test: `backend/src/criptografia/criptografia.service.spec.ts`
 
 **Interfaces:**
-- Consumes: `process.env.NOTTA_MASTER_KEY` (hex de 32 bytes).
+- Consumes: `process.env.PRAXIS_MASTER_KEY` (hex de 32 bytes).
 - Produces: `class CriptografiaService { cifrar(clinicaId: string, textoPlano: string): string; decifrar(clinicaId: string, valorCifrado: string): string }`.
 
 - [ ] **Step 1: Write the failing test**
@@ -504,7 +504,7 @@ Expected: FAIL — `CriptografiaService` not defined
 
 - [ ] **Step 3: Implement `CriptografiaService`**
 
-Deriva a chave por clínica com `crypto.hkdfSync('sha256', Buffer.from(process.env.NOTTA_MASTER_KEY, 'hex'), Buffer.alloc(0), Buffer.from(clinicaId), 32)`. `cifrar` gera `iv = randomBytes(12)`, cifra com `createCipheriv('aes-256-gcm', chave, iv)`, monta `authTag`, e retorna a string `v1.<iv base64>.<authTag base64>.<ciphertext base64>`. `decifrar` faz o inverso com `createDecipheriv`; se a assinatura (`authTag`) não bater — inclusive por vir de outra clínica — `decipher.final()` lança, e o método deixa o erro propagar.
+Deriva a chave por clínica com `crypto.hkdfSync('sha256', Buffer.from(process.env.PRAXIS_MASTER_KEY, 'hex'), Buffer.alloc(0), Buffer.from(clinicaId), 32)`. `cifrar` gera `iv = randomBytes(12)`, cifra com `createCipheriv('aes-256-gcm', chave, iv)`, monta `authTag`, e retorna a string `v1.<iv base64>.<authTag base64>.<ciphertext base64>`. `decifrar` faz o inverso com `createDecipheriv`; se a assinatura (`authTag`) não bater — inclusive por vir de outra clínica — `decipher.final()` lança, e o método deixa o erro propagar.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -571,7 +571,7 @@ Expected: FAIL — serviços não existem
 
 - [ ] **Step 3: Implement `ClinicasService`, `AuthService`, guard e strategy**
 
-`criarClinicaComPrimeiroPsicologo` usa o `PrismaService` global dentro de um único `$transaction`: cria a `Clinica`, chama `tx.$executeRaw\`SELECT set_config('app.current_clinica_id', ${clinicaId}, true)\`` com o id recém-criado, e só então insere o `Psicologo` com `senhaHash = bcrypt.hashSync(senha, 12)` — a política de RLS (a da Tarefa 5 já declara `WITH CHECK` explícito, igual ao `USING`) passa porque a variável de sessão já aponta para a clínica nova. Esta é a única rotina do sistema que usa `PrismaService` diretamente em vez de `TenantPrismaService.run`, e só porque ela mesma estabelece o contexto do tenant antes de escrever. `AuthService.login` ainda não tem `clinicaId` e `Psicologo` tem `FORCE ROW LEVEL SECURITY`, então uma busca sem contexto retorna zero linhas. A migração desta tarefa (SQL abaixo) acrescenta uma segunda política, `login_lookup`, que libera `SELECT` só na linha cujo `email` é igual à variável de sessão `app.login_email`. `login` abre um `$transaction` do `PrismaService`, chama `set_config('app.login_email', ${email}, true)` e então `tx.psicologo.findFirst({ where: { email } })`. Só `AuthService` seta essa variável, e a política não vale para escrita. (Uma função `SECURITY DEFINER` não resolve: com `FORCE`, o dono da tabela continua sujeito ao RLS, e a função roda com os privilégios dele.) Compara com `bcrypt.compareSync`, assina o JWT com `NOTTA_JWT_SECRET`.
+`criarClinicaComPrimeiroPsicologo` usa o `PrismaService` global dentro de um único `$transaction`: cria a `Clinica`, chama `tx.$executeRaw\`SELECT set_config('app.current_clinica_id', ${clinicaId}, true)\`` com o id recém-criado, e só então insere o `Psicologo` com `senhaHash = bcrypt.hashSync(senha, 12)` — a política de RLS (a da Tarefa 5 já declara `WITH CHECK` explícito, igual ao `USING`) passa porque a variável de sessão já aponta para a clínica nova. Esta é a única rotina do sistema que usa `PrismaService` diretamente em vez de `TenantPrismaService.run`, e só porque ela mesma estabelece o contexto do tenant antes de escrever. `AuthService.login` ainda não tem `clinicaId` e `Psicologo` tem `FORCE ROW LEVEL SECURITY`, então uma busca sem contexto retorna zero linhas. A migração desta tarefa (SQL abaixo) acrescenta uma segunda política, `login_lookup`, que libera `SELECT` só na linha cujo `email` é igual à variável de sessão `app.login_email`. `login` abre um `$transaction` do `PrismaService`, chama `set_config('app.login_email', ${email}, true)` e então `tx.psicologo.findFirst({ where: { email } })`. Só `AuthService` seta essa variável, e a política não vale para escrita. (Uma função `SECURITY DEFINER` não resolve: com `FORCE`, o dono da tabela continua sujeito ao RLS, e a função roda com os privilégios dele.) Compara com `bcrypt.compareSync`, assina o JWT com `PRAXIS_JWT_SECRET`.
 
 ```sql
 CREATE POLICY login_lookup ON "Psicologo" FOR SELECT
@@ -612,14 +612,14 @@ Acrescentada pelo controlador a pedido do dono (2026-10-28); executa depois da T
 - `/auth/login`: no máximo **5 tentativas por minuto** para a mesma chave `IP + e-mail normalizado` (trim + minúsculas) **e** no máximo **20 por minuto por IP** (dois throttlers nomeados). Contam sucesso e falha. A 6ª tentativa da mesma chave responde 429; outro e-mail do mesmo IP continua valendo até o teto de 20.
 - `/clinicas`: no máximo **5 por hora por IP**.
 - Armazenamento em memória (instância única). Reinicia zera; várias instâncias exigiriam Redis. Registre isso num comentário e no relatório.
-- IP real: atrás de proxy, `req.ip` seria o IP do proxy e **todos os usuários dividiriam o mesmo limite**. `main.ts` lê `NOTTA_TRUST_PROXY` (número de saltos de proxy, inteiro; ausente = desligado) e chama `app.set('trust proxy', n)`; documente em `.env.example`. Nunca confie em `X-Forwarded-For` direto.
+- IP real: atrás de proxy, `req.ip` seria o IP do proxy e **todos os usuários dividiriam o mesmo limite**. `main.ts` lê `PRAXIS_TRUST_PROXY` (número de saltos de proxy, inteiro; ausente = desligado) e chama `app.set('trust proxy', n)`; documente em `.env.example`. Nunca confie em `X-Forwarded-For` direto.
 - O guard de login normaliza o e-mail da mesma forma que o `AuthService` e, se o corpo não tiver e-mail em texto, usa só o IP.
 - Os limites são constantes no código (YAGNI: nada de configuração por env além do trust proxy).
 
-- [ ] **Step 1: Write the failing tests** — (a) 5 logins errados seguidos para `a@x.com` respondem 401 e o 6º responde 429 com `Retry-After`; (b) outro e-mail do mesmo IP ainda responde 401 (não 429) logo depois; (c) caixa e espaços no e-mail contam para a mesma chave (`A@X.com ` e `a@x.com`); (d) depois de 20 tentativas do mesmo IP com e-mails diferentes, a 21ª responde 429; (e) `/clinicas`: a 6ª requisição da hora responde 429; (f) o corpo do 429 não contém o e-mail enviado; (g) com `NOTTA_TRUST_PROXY=1`, o IP vem de `X-Forwarded-For` (dois IPs diferentes têm limites separados) e sem a variável o header é ignorado.
+- [ ] **Step 1: Write the failing tests** — (a) 5 logins errados seguidos para `a@x.com` respondem 401 e o 6º responde 429 com `Retry-After`; (b) outro e-mail do mesmo IP ainda responde 401 (não 429) logo depois; (c) caixa e espaços no e-mail contam para a mesma chave (`A@X.com ` e `a@x.com`); (d) depois de 20 tentativas do mesmo IP com e-mails diferentes, a 21ª responde 429; (e) `/clinicas`: a 6ª requisição da hora responde 429; (f) o corpo do 429 não contém o e-mail enviado; (g) com `PRAXIS_TRUST_PROXY=1`, o IP vem de `X-Forwarded-For` (dois IPs diferentes têm limites separados) e sem a variável o header é ignorado.
 - [ ] **Step 2: Run test to verify it fails**
 - [ ] **Step 3: Implement** (throttler nomeados no módulo, guard de login, `@Throttle` em `/clinicas`, trust proxy)
-- [ ] **Step 4: Run test to verify it passes** (suíte completa com `DATABASE_URL` e `NOTTA_JWT_SECRET`)
+- [ ] **Step 4: Run test to verify it passes** (suíte completa com `DATABASE_URL` e `PRAXIS_JWT_SECRET`)
 - [ ] **Step 5: Commit** — `feat: limite de tentativas em login e cadastro de clinica`
 
 ---

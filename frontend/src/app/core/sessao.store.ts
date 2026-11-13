@@ -24,7 +24,7 @@ export const WEB_LOCKS = new InjectionToken<LockManager | null>('web-locks', {
 });
 
 export type ResultadoRenovacao = 'ok' | 'expirou' | 'indisponivel';
-const TRAVA = 'notta-renovar-sessao';
+const TRAVA = 'praxis-renovar-sessao';
 
 // Estado da sessao = o que o servidor diz em GET /eu. A sessao em si vive em cookies httpOnly que o
 // JS nao le: aqui nao ha token, nem em memoria nem em storage. `garantir()` consulta o /eu uma vez

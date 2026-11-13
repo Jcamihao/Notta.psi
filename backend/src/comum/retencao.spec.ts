@@ -5,19 +5,21 @@ import {
   retencaoRascunhoDias,
 } from './retencao';
 
-describe('retencaoRascunhoDias (NOTTA_RETENCAO_RASCUNHO_DIAS)', () => {
+describe('retencaoRascunhoDias (PRAXIS_RETENCAO_RASCUNHO_DIAS)', () => {
   it('sem a variavel = padrao de 7 dias', () => {
     expect(retencaoRascunhoDias({})).toBe(RETENCAO_PADRAO_DIAS);
     expect(RETENCAO_PADRAO_DIAS).toBe(7);
   });
 
   it('aceita inteiro >= 1 (inclusive 1 e o teto)', () => {
-    expect(retencaoRascunhoDias({ NOTTA_RETENCAO_RASCUNHO_DIAS: '1' })).toBe(1);
-    expect(retencaoRascunhoDias({ NOTTA_RETENCAO_RASCUNHO_DIAS: '30' })).toBe(
+    expect(retencaoRascunhoDias({ PRAXIS_RETENCAO_RASCUNHO_DIAS: '1' })).toBe(
+      1,
+    );
+    expect(retencaoRascunhoDias({ PRAXIS_RETENCAO_RASCUNHO_DIAS: '30' })).toBe(
       30,
     );
     expect(
-      retencaoRascunhoDias({ NOTTA_RETENCAO_RASCUNHO_DIAS: '36500' }),
+      retencaoRascunhoDias({ PRAXIS_RETENCAO_RASCUNHO_DIAS: '36500' }),
     ).toBe(36500);
   });
 
@@ -35,14 +37,14 @@ describe('retencaoRascunhoDias (NOTTA_RETENCAO_RASCUNHO_DIAS)', () => {
   ])('rejeita %p com mensagem fixa (sem ecoar o valor)', (valor) => {
     let erro: unknown;
     try {
-      retencaoRascunhoDias({ NOTTA_RETENCAO_RASCUNHO_DIAS: valor });
+      retencaoRascunhoDias({ PRAXIS_RETENCAO_RASCUNHO_DIAS: valor });
     } catch (e) {
       erro = e;
     }
     expect(erro).toBeInstanceOf(Error);
     // Mensagem fixa: nunca ecoa o valor digitado.
     expect((erro as Error).message).toBe(
-      'NOTTA_RETENCAO_RASCUNHO_DIAS: informe um inteiro de 1 a 36500',
+      'PRAXIS_RETENCAO_RASCUNHO_DIAS: informe um inteiro de 1 a 36500',
     );
   });
 });
@@ -60,15 +62,15 @@ describe('descarteEm', () => {
 
   it('sem prazo explicito usa o do env', () => {
     const atualizado = new Date('2026-11-01T10:00:00.000Z');
-    const antes = process.env.NOTTA_RETENCAO_RASCUNHO_DIAS;
-    process.env.NOTTA_RETENCAO_RASCUNHO_DIAS = '3';
+    const antes = process.env.PRAXIS_RETENCAO_RASCUNHO_DIAS;
+    process.env.PRAXIS_RETENCAO_RASCUNHO_DIAS = '3';
     try {
       expect(descarteEm(atualizado)).toEqual(
         new Date('2026-11-04T10:00:00.000Z'),
       );
     } finally {
-      if (antes === undefined) delete process.env.NOTTA_RETENCAO_RASCUNHO_DIAS;
-      else process.env.NOTTA_RETENCAO_RASCUNHO_DIAS = antes;
+      if (antes === undefined) delete process.env.PRAXIS_RETENCAO_RASCUNHO_DIAS;
+      else process.env.PRAXIS_RETENCAO_RASCUNHO_DIAS = antes;
     }
   });
 });

@@ -10,7 +10,7 @@ import { apagarClinicas, ddl } from './acesso-owner';
 // A policy vem do docs/ACESSO.md (o mesmo bloco que a Fase 2 copia): doc e teste nao divergem.
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel praxis_owner (ver backend/README.md)',
   );
 }
 
@@ -109,7 +109,7 @@ beforeAll(async () => {
   for (const sql of sqlDoDoc()) await ddl(owner, sql);
   await ddl(
     owner,
-    'GRANT SELECT, INSERT, UPDATE, DELETE ON _teste_acesso TO notta_app',
+    'GRANT SELECT, INSERT, UPDATE, DELETE ON _teste_acesso TO praxis_app',
   );
 
   for (const [id, nome] of [
@@ -180,7 +180,7 @@ describe('policy psicologo_proprio (docs/ACESSO.md)', () => {
     expect(linhas).toEqual([]);
   });
 
-  it('sem contexto nenhum = zero linhas (notta_app e owner, por causa do FORCE)', async () => {
+  it('sem contexto nenhum = zero linhas (praxis_app e owner, por causa do FORCE)', async () => {
     expect(await app.$queryRaw<Linha[]>`SELECT id FROM _teste_acesso`).toEqual(
       [],
     );
@@ -303,7 +303,7 @@ describe('FK de tabela filha inclui o dono (docs/ACESSO.md, bloco sql-fk-filha)'
     }
     await ddl(
       owner,
-      'GRANT SELECT, INSERT, UPDATE, DELETE ON _teste_pai, _teste_filho TO notta_app',
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON _teste_pai, _teste_filho TO praxis_app',
     );
     paiAdmin = await criarPai(adminA);
     paiPsi = await criarPai(psiA);

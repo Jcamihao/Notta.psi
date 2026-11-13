@@ -4,12 +4,12 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { apagarClinicas, comoOwner } from './acesso-owner';
 
-// Recifragem pelo dono (item 25, parte B) no Postgres real: policies `TO notta_owner` que so
+// Recifragem pelo dono (item 25, parte B) no Postgres real: policies `TO praxis_owner` que so
 // abrem com app.recifrar = '1', e a excecao dos triggers (documento_imutavel e
 // geracao_ia_barreira) que vale SO para o dono, com a flag, e SO para a coluna cifrada.
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: teste de recifragem exige o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: teste de recifragem exige o papel praxis_owner (ver backend/README.md)',
   );
 }
 
@@ -69,21 +69,21 @@ async function novoDono(nome: string, clinicaId = A) {
   return { u, pacienteId, notaId };
 }
 
-// Como notta_app, no contexto do psicologo (o que o app faz).
+// Como praxis_app, no contexto do psicologo (o que o app faz).
 const sqlComo = (u: U, texto: string) =>
   tenant.runComoUsuario(u, (tx) => tx.$executeRawUnsafe(texto));
-// Como notta_owner, com a clinica e o psicologo no contexto e SEM a flag (o que o dono faz hoje).
+// Como praxis_owner, com a clinica e o psicologo no contexto e SEM a flag (o que o dono faz hoje).
 const sqlDono = (u: U, texto: string) =>
   comoOwner(u.clinicaId, (tx) => tx.$executeRawUnsafe(texto), {
     psicologoId: u.psicologoId,
   });
-// Como notta_owner COM a flag, sem contexto de clinica (o que o comando de recifragem faz).
+// Como praxis_owner COM a flag, sem contexto de clinica (o que o comando de recifragem faz).
 const comRecifra = <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) =>
   owner.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.recifrar', '1', true)`;
     return fn(tx);
   });
-// Como notta_app COM a flag: nao pode nada (teste obrigatorio).
+// Como praxis_app COM a flag: nao pode nada (teste obrigatorio).
 const appComRecifra = (u: U, texto: string) =>
   tenant.runComoUsuario(u, async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.recifrar', '1', true)`;
@@ -167,8 +167,8 @@ afterAll(async () => {
   await owner.$disconnect();
 });
 
-describe('Recifragem: policies novas so para notta_owner', () => {
-  it('SELECT e UPDATE em Paciente, Documento e GeracaoIa, todas TO notta_owner', async () => {
+describe('Recifragem: policies novas so para praxis_owner', () => {
+  it('SELECT e UPDATE em Paciente, Documento e GeracaoIa, todas TO praxis_owner', async () => {
     const p = await owner.$queryRaw<
       { tablename: string; policyname: string; cmd: string; roles: string }[]
     >`SELECT "tablename", "policyname", "cmd", array_to_string("roles", ',') AS roles
@@ -179,37 +179,37 @@ describe('Recifragem: policies novas so para notta_owner', () => {
         tablename: 'Documento',
         policyname: 'documento_recifrar_select',
         cmd: 'SELECT',
-        roles: 'notta_owner',
+        roles: 'praxis_owner',
       },
       {
         tablename: 'Documento',
         policyname: 'documento_recifrar_update',
         cmd: 'UPDATE',
-        roles: 'notta_owner',
+        roles: 'praxis_owner',
       },
       {
         tablename: 'GeracaoIa',
         policyname: 'geracaoia_recifrar_select',
         cmd: 'SELECT',
-        roles: 'notta_owner',
+        roles: 'praxis_owner',
       },
       {
         tablename: 'GeracaoIa',
         policyname: 'geracaoia_recifrar_update',
         cmd: 'UPDATE',
-        roles: 'notta_owner',
+        roles: 'praxis_owner',
       },
       {
         tablename: 'Paciente',
         policyname: 'paciente_recifrar_select',
         cmd: 'SELECT',
-        roles: 'notta_owner',
+        roles: 'praxis_owner',
       },
       {
         tablename: 'Paciente',
         policyname: 'paciente_recifrar_update',
         cmd: 'UPDATE',
-        roles: 'notta_owner',
+        roles: 'praxis_owner',
       },
     ]);
   });
@@ -240,7 +240,7 @@ describe('Recifragem: Paciente', () => {
     expect(lido.nomeCifrado).toBe('v1.k2.recifrado');
   });
 
-  it('notta_app com a flag, sem contexto de clinica: zero linhas, zero UPDATE', async () => {
+  it('praxis_app com a flag, sem contexto de clinica: zero linhas, zero UPDATE', async () => {
     const { pacienteId } = await novoDono('rec-pac-2');
     const n = await appSemContextoComRecifra(
       `UPDATE "Paciente" SET "nomeCifrado" = 'hack' WHERE "id" = '${pacienteId}'`,
@@ -254,7 +254,7 @@ describe('Recifragem: Paciente', () => {
 });
 
 describe('Recifragem: Documento aprovado', () => {
-  it('notta_app com a flag nao atualiza documento aprovado (com contexto nem sem)', async () => {
+  it('praxis_app com a flag nao atualiza documento aprovado (com contexto nem sem)', async () => {
     const { u, notaId } = await novoDono('rec-doc-app');
     await aprovar(u, notaId);
     await expect(
@@ -386,7 +386,7 @@ describe('Recifragem: GeracaoIa', () => {
     ).rejects.toThrow(/UPDATE barrado/);
   });
 
-  it('notta_app com a flag nao muda o texto (com contexto nem sem)', async () => {
+  it('praxis_app com a flag nao muda o texto (com contexto nem sem)', async () => {
     const { u, pacienteId, notaId } = await novoDono('rec-ger-app');
     const id = await pendente(u, pacienteId, notaId);
     await expect(

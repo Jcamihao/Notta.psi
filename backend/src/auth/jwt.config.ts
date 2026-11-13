@@ -14,7 +14,7 @@ export const ACESSO_SEGUNDOS = 15 * 60;
 export function opcoesJwt(
   env: NodeJS.ProcessEnv = process.env,
 ): JwtModuleOptions {
-  const segredo = env.NOTTA_JWT_SECRET;
+  const segredo = env.PRAXIS_JWT_SECRET;
   const deTeste =
     !!segredo &&
     permiteSegredoDeTeste(env) &&
@@ -30,7 +30,7 @@ export function opcoesJwt(
         contemConhecido(segredo, SEGREDOS_CONHECIDOS.jwtDeTeste)))
   ) {
     throw new Error(
-      'NOTTA_JWT_SECRET obrigatoria: minimo 32 caracteres aleatorios (16+ distintos), nunca um valor de exemplo ou de teste (gere com: openssl rand -base64 48)',
+      'PRAXIS_JWT_SECRET obrigatoria: minimo 32 caracteres aleatorios (16+ distintos), nunca um valor de exemplo ou de teste (gere com: openssl rand -base64 48)',
     );
   }
   return {

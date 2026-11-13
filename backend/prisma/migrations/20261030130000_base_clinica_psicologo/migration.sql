@@ -38,7 +38,7 @@ CREATE UNIQUE INDEX "Psicologo_id_clinicaId_key" ON "Psicologo"("id", "clinicaId
 ALTER TABLE "Psicologo" ADD CONSTRAINT "Psicologo_clinicaId_fkey" FOREIGN KEY ("clinicaId") REFERENCES "Clinica"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 
--- Isolamento por clinica (RLS). Roda como notta_owner (dono das tabelas).
+-- Isolamento por clinica (RLS). Roda como praxis_owner (dono das tabelas).
 -- FORCE: sem ele o dono das tabelas ignora as policies. Com FORCE o owner tambem fica
 -- sujeito: migration de DADOS precisa de contexto de clinica (laco com set_config).
 ALTER TABLE "Clinica" ENABLE ROW LEVEL SECURITY;
@@ -63,9 +63,9 @@ CREATE POLICY tenant_isolation ON "Psicologo" FOR ALL
 CREATE POLICY login_lookup ON "Psicologo" FOR SELECT
   USING ("email" = NULLIF(current_setting('app.login_email', true), ''));
 
--- Runtime (notta_app) so faz DML: sem TRUNCATE, sem DDL, nao e dono.
--- DEFAULT PRIVILEGES vale para as tabelas futuras criadas pelo notta_owner.
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO notta_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO notta_app;
+-- Runtime (praxis_app) so faz DML: sem TRUNCATE, sem DDL, nao e dono.
+-- DEFAULT PRIVILEGES vale para as tabelas futuras criadas pelo praxis_owner.
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO praxis_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO praxis_app;
 -- O GRANT acima pegou tambem o historico do Prisma: o app nao mexe nele.
-REVOKE ALL ON "_prisma_migrations" FROM notta_app;
+REVOKE ALL ON "_prisma_migrations" FROM praxis_app;

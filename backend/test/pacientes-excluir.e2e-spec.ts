@@ -109,7 +109,7 @@ async function novoColega(dono: Usuario, e: string): Promise<Usuario> {
   };
 }
 
-// Leitura como notta_owner, no contexto do psicologo (RLS). So SELECT.
+// Leitura como praxis_owner, no contexto do psicologo (RLS). So SELECT.
 const lerTudo = (u: Usuario, pid?: string) =>
   comoOwner(
     u.clinicaId,
@@ -237,10 +237,10 @@ const excluir = (u: Usuario | undefined, pid: string) =>
 beforeAll(async () => {
   falso = await subirSelahiaFalso();
   // IA ligada, apontando para o falso (a previa e o executor precisam dela).
-  process.env.NOTTA_IA_HABILITADA = '1';
+  process.env.PRAXIS_IA_HABILITADA = '1';
   process.env.SELAHIA_URL = falso.url;
   process.env.SELAHIA_API_KEY = `chave-so-de-teste-${randomUUID().replace(/-/g, '')}`;
-  process.env.NOTTA_IA_LIMITE_DIARIO = '500';
+  process.env.PRAXIS_IA_LIMITE_DIARIO = '500';
   app = await criarAppSemLimite();
   cripto = app.get(CriptografiaService);
   const dono = await novaClinica(email('admin'));

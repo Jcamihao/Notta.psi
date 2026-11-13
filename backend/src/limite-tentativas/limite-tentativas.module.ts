@@ -9,7 +9,7 @@ const MINUTO = 60_000;
 const PREFIXO_IPV6 = 64;
 
 // Armazenamento EM MEMORIA (padrao do throttler): vale para 1 instancia do backend.
-// Com mais de uma instancia, trocar por storage Redis. IP real atras de proxy: NOTTA_TRUST_PROXY.
+// Com mais de uma instancia, trocar por storage Redis. IP real atras de proxy: PRAXIS_TRUST_PROXY.
 // Os throttlers sao ligados por rota (LimiteLogin / LimiteCadastroClinica / LimiteEquipe /
 // LimiteTrocarSenha), nao globais.
 // Excecao: `api`, contado pelo JwtAuthGuard GLOBAL em toda rota autenticada, antes do banco

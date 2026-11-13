@@ -16,8 +16,8 @@ const PADROES = [
     re: /x-selah-api-key['"]?\s*[:=]\s*['"]?(?![$<{])[A-Za-z0-9_+/=-]{16,}/i,
   },
   {
-    tipo: 'NOTTA_OU_SELAHIA_COM_VALOR',
-    re: /\b(?:NOTTA_[A-Z0-9_]+|SELAHIA_API_KEY)\b\s*[:=]\s*['"]?(?![$<{(])[^\s'"]{32,}/,
+    tipo: 'PRAXIS_OU_SELAHIA_COM_VALOR',
+    re: /\b(?:PRAXIS_[A-Z0-9_]+|SELAHIA_API_KEY)\b\s*[:=]\s*['"]?(?![$<{(])[^\s'"]{32,}/,
   },
   {
     tipo: 'CHAVE_PRIVADA_PEM',
@@ -34,12 +34,13 @@ const PADROES = [
 const ALLOWLIST = [
   {
     caminho: /^backend\/(?:test\/|src\/.*\.spec\.ts$)/,
-    tipos: ['NOTTA_OU_SELAHIA_COM_VALOR', 'HEX64_EM_ATRIBUICAO'],
-    motivo: 'suites de teste usam segredos FALSOS de teste (SEGREDOS_CONHECIDOS)',
+    tipos: ['PRAXIS_OU_SELAHIA_COM_VALOR', 'HEX64_EM_ATRIBUICAO'],
+    motivo:
+      'suites de teste usam segredos FALSOS de teste (SEGREDOS_CONHECIDOS)',
   },
   {
     caminho: /^backend\/\.env\.example$/,
-    tipos: ['NOTTA_OU_SELAHIA_COM_VALOR'],
+    tipos: ['PRAXIS_OU_SELAHIA_COM_VALOR'],
     motivo: 'exemplo com valores falsos de desenvolvimento',
   },
 ];
@@ -84,7 +85,9 @@ for (const arquivo of execFileSync('git', ['ls-files', '-z'], {
 const achados = varrer(arquivos);
 if (achados.length > 0) {
   console.error(achados.join('\n'));
-  console.error(`${achados.length} possivel(is) segredo(s). Valores nao sao impressos.`);
+  console.error(
+    `${achados.length} possivel(is) segredo(s). Valores nao sao impressos.`,
+  );
   process.exit(1);
 }
 console.log(`scan:segredos ok (${arquivos.length} arquivos versionados)`);

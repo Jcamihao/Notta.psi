@@ -24,7 +24,7 @@ import { CLIENTE_API } from './cliente-api';
 const sufixo = randomUUID().slice(0, 8);
 const SENHA = 'senha-forte-123';
 const APP_URL = 'https://app.teste.local';
-// NOTTA_APP_URL desta suite e a origem aceita no CSRF do login e do cadastro.
+// PRAXIS_APP_URL desta suite e a origem aceita no CSRF do login e do cadastro.
 const CLIENTE = { ...CLIENTE_API, Origin: APP_URL };
 const NOME_PACIENTE = `Paciente Secreto ${sufixo}`;
 type Usuario = {
@@ -141,7 +141,7 @@ const trilha = (u: Usuario) =>
   );
 
 beforeAll(async () => {
-  process.env.NOTTA_APP_URL = APP_URL;
+  process.env.PRAXIS_APP_URL = APP_URL;
   app = await criarAppSemLimite();
 });
 
@@ -908,10 +908,10 @@ describe('boot', () => {
     Object.assign(process.env, guardar);
   });
 
-  it('NODE_ENV=production sem NOTTA_TERMO_REVISADO=1: o boot FALHA fechado', async () => {
+  it('NODE_ENV=production sem PRAXIS_TERMO_REVISADO=1: o boot FALHA fechado', async () => {
     process.env.NODE_ENV = 'production';
-    process.env.NOTTA_TRUST_PROXY = '0';
-    delete process.env.NOTTA_TERMO_REVISADO;
+    process.env.PRAXIS_TRUST_PROXY = '0';
+    delete process.env.PRAXIS_TERMO_REVISADO;
     let msg = '';
     try {
       const a = await criarApp();
@@ -919,20 +919,20 @@ describe('boot', () => {
     } catch (e) {
       msg = (e as Error).message;
     }
-    expect(msg).toMatch(/NOTTA_TERMO_REVISADO/);
+    expect(msg).toMatch(/PRAXIS_TERMO_REVISADO/);
   });
 
-  it('NODE_ENV=production com NOTTA_TERMO_REVISADO=1 e NOTTA_APP_URL https: sobe', async () => {
+  it('NODE_ENV=production com PRAXIS_TERMO_REVISADO=1 e PRAXIS_APP_URL https: sobe', async () => {
     process.env.NODE_ENV = 'production';
-    process.env.NOTTA_TRUST_PROXY = '0';
-    process.env.NOTTA_TERMO_REVISADO = '1';
-    process.env.NOTTA_APP_URL = 'https://app.exemplo.com';
+    process.env.PRAXIS_TRUST_PROXY = '0';
+    process.env.PRAXIS_TERMO_REVISADO = '1';
+    process.env.PRAXIS_APP_URL = 'https://app.exemplo.com';
     const a = await criarApp();
     await a.close();
   });
 
-  it('NOTTA_APP_URL invalida derruba o boot sem ecoar o valor', async () => {
-    process.env.NOTTA_APP_URL = 'https://joao:segredo-url@app.exemplo.com';
+  it('PRAXIS_APP_URL invalida derruba o boot sem ecoar o valor', async () => {
+    process.env.PRAXIS_APP_URL = 'https://joao:segredo-url@app.exemplo.com';
     let msg = '';
     try {
       const a = await criarApp();
@@ -940,7 +940,7 @@ describe('boot', () => {
     } catch (e) {
       msg = (e as Error).message;
     }
-    expect(msg).toMatch(/NOTTA_APP_URL/);
+    expect(msg).toMatch(/PRAXIS_APP_URL/);
     expect(msg).not.toContain('segredo-url');
   });
 });

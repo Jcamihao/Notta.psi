@@ -31,7 +31,7 @@ const config: IaConfig = {
 function montar(
   opcoes: { consentimento?: 'ok' | 'nao'; usadas?: number } = {},
 ) {
-  process.env.NOTTA_MASTER_KEY = '0123456789abcdef'.repeat(4);
+  process.env.PRAXIS_MASTER_KEY = '0123456789abcdef'.repeat(4);
   const cripto = new CriptografiaService();
   const tx = {
     paciente: {

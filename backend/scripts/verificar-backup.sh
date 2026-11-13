@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Verifica um backup (item 25, parte C). Uso: npm run verificar:backup -- <arquivo.enc>
-# 1) sha256 contra <arquivo>.enc.sha256; 2) decifra com NOTTA_BACKUP_SENHA;
-# 3) restaura num banco temporario notta_restore_<aleatorio>; 4) conta linhas por tabela;
-# 5) decifra uma amostra de cada coluna cifrada com as chaves DO AMBIENTE (NOTTA_MASTER_KEY ou
-#    NOTTA_MASTER_KEYS + NOTTA_MASTER_KEY_ATUAL). Prova que o par backup + chave funciona.
+# 1) sha256 contra <arquivo>.enc.sha256; 2) decifra com PRAXIS_BACKUP_SENHA;
+# 3) restaura num banco temporario praxis_restore_<aleatorio>; 4) conta linhas por tabela;
+# 5) decifra uma amostra de cada coluna cifrada com as chaves DO AMBIENTE (PRAXIS_MASTER_KEY ou
+#    PRAXIS_MASTER_KEYS + PRAXIS_MASTER_KEY_ATUAL). Prova que o par backup + chave funciona.
 # Comandos: PGRESTORE_CMD (padrao "pg_restore"), PSQL_CMD (padrao "psql"). Ex. para docker:
-#   PGRESTORE_CMD="docker exec -i nottapsi-postgres-1 pg_restore -U postgres"
-#   PSQL_CMD="docker exec -i nottapsi-postgres-1 psql -U postgres -v ON_ERROR_STOP=1"
+#   PGRESTORE_CMD="docker exec -i praxispsi-postgres-1 pg_restore -U postgres"
+#   PSQL_CMD="docker exec -i praxispsi-postgres-1 psql -U postgres -v ON_ERROR_STOP=1"
 # No fim apaga o banco temporario e o arquivo decifrado, mesmo em falha. Imprime so contagens e OK/FALHOU.
 set -euo pipefail
 umask 077
@@ -16,11 +16,11 @@ if [ -z "$ARQ" ] || [ ! -f "$ARQ" ]; then
   echo "uso: verificar-backup.sh <arquivo.enc>" >&2
   exit 2
 fi
-if [ -z "${NOTTA_BACKUP_SENHA:-}" ] || [ "${#NOTTA_BACKUP_SENHA}" -lt 24 ]; then
-  echo "FALHOU: NOTTA_BACKUP_SENHA ausente ou com menos de 24 caracteres." >&2
+if [ -z "${PRAXIS_BACKUP_SENHA:-}" ] || [ "${#PRAXIS_BACKUP_SENHA}" -lt 24 ]; then
+  echo "FALHOU: PRAXIS_BACKUP_SENHA ausente ou com menos de 24 caracteres." >&2
   exit 1
 fi
-export NOTTA_BACKUP_SENHA
+export PRAXIS_BACKUP_SENHA
 
 DIR="$(cd "$(dirname "$ARQ")" && pwd)"
 BASE="$(basename "$ARQ")"
@@ -62,15 +62,15 @@ echo "sha256: OK"
 TMPD="$(mktemp -d)"
 chmod 700 "$TMPD"
 DUMP="$TMPD/dump.pgdump"
-if ! openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:NOTTA_BACKUP_SENHA -in "$ARQ" -out "$DUMP" 2>/dev/null; then
+if ! openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:PRAXIS_BACKUP_SENHA -in "$ARQ" -out "$DUMP" 2>/dev/null; then
   falha "nao consegui decifrar (senha de backup errada ou arquivo corrompido)"
 fi
 echo "decifrar: OK"
 
 # 3) restaurar em banco temporario (nome nunca e o do banco real)
-BANCO_TEMP="notta_restore_$(openssl rand -hex 6)"
+BANCO_TEMP="praxis_restore_$(openssl rand -hex 6)"
 case "$BANCO_TEMP" in
-  notta_restore_*) ;;
+  praxis_restore_*) ;;
   *) falha "nome de banco temporario invalido" ;;
 esac
 "${PSQL[@]}" -d postgres -c "CREATE DATABASE \"$BANCO_TEMP\"" </dev/null >/dev/null || falha "nao consegui criar o banco temporario"

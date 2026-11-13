@@ -237,7 +237,7 @@ describe('troca voluntaria e versao do token (tv)', () => {
   });
 
   it('tv desatualizado, sem tv e tv texto = 401; tv certo = 200', async () => {
-    const jwt = new JwtService({ secret: process.env.NOTTA_JWT_SECRET });
+    const jwt = new JwtService({ secret: process.env.PRAXIS_JWT_SECRET });
     // sessao REAL do admin: so o `tv` muda entre os casos
     const { sid } = jwt.decode<{ sid: string }>(admin.token);
     const assinar = (extra: object) =>

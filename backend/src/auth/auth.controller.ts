@@ -82,7 +82,7 @@ export class AuthController {
   @HttpCode(200)
   async login(
     @Body() dto: LoginDto,
-    @Headers('x-notta-cliente') cliente: string | undefined,
+    @Headers('x-praxis-cliente') cliente: string | undefined,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -107,7 +107,7 @@ export class AuthController {
   @Post('auth/renovar')
   @HttpCode(200)
   async renovar(
-    @Headers('x-notta-cliente') cliente: string | undefined,
+    @Headers('x-praxis-cliente') cliente: string | undefined,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -169,7 +169,7 @@ export class AuthController {
     @UsuarioAtual() usuario: UsuarioAutenticado,
     @SessaoAtual() sessao: Sessao,
     @Body() dto: TrocarSenhaDto,
-    @Headers('x-notta-cliente') cliente: string | undefined,
+    @Headers('x-praxis-cliente') cliente: string | undefined,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {

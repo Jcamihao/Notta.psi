@@ -26,7 +26,7 @@ export interface ConteudoSeguranca {
 export const CONTEUDO_SEGURANCA: ConteudoSeguranca = {
   atualizadoEm: '2026-11-11',
   abertura:
-    'Esta página mostra o que o Notta.psi faz hoje, com os limites de cada proteção, e o que ainda não está pronto.',
+    'Esta página mostra o que o praxis.psi faz hoje, com os limites de cada proteção, e o que ainda não está pronto.',
   secoes: [
     {
       titulo: 'O que já existe',
@@ -177,7 +177,7 @@ export const CONTEUDO_SEGURANCA: ConteudoSeguranca = {
           status: 'pendente',
           titulo: 'Estado do produto.',
           texto:
-            'O Notta.psi ainda está em desenvolvimento e não foi publicado em produção. Quando for publicado, a hospedagem e o local onde os dados ficam serão informados aqui.',
+            'O praxis.psi ainda está em desenvolvimento e não foi publicado em produção. Quando for publicado, a hospedagem e o local onde os dados ficam serão informados aqui.',
         },
       ],
     },

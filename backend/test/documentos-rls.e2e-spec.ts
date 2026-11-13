@@ -5,11 +5,11 @@ import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { apagarClinicas, comoOwner, ddl } from './acesso-owner';
 
 // RLS, privilegios, FK, CHECK e trigger de imutabilidade de "Documento" (itens 12, 14, 15 e 44)
-// no Postgres real, como notta_app e como notta_owner.
+// no Postgres real, como praxis_app e como praxis_owner.
 // Padrao psicologo_proprio de docs/ACESSO.md: colega (inclusive ADMIN) e outra clinica veem ZERO.
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel praxis_owner (ver backend/README.md)',
   );
 }
 
@@ -145,17 +145,17 @@ describe('Documento: estrutura no banco', () => {
     expect(c).toEqual([]);
     const g = await owner.$queryRaw<{ privilege_type: string }[]>`
       SELECT privilege_type FROM information_schema.role_table_grants
-      WHERE table_name = 'Documento' AND grantee = 'notta_app' ORDER BY privilege_type`;
+      WHERE table_name = 'Documento' AND grantee = 'praxis_app' ORDER BY privilege_type`;
     expect(g).toEqual([
       { privilege_type: 'INSERT' },
       { privilege_type: 'SELECT' },
     ]);
   });
 
-  it('notta_app tem UPDATE so em 5 colunas, nenhum DELETE/TRUNCATE; triggers e CHECKs existem', async () => {
+  it('praxis_app tem UPDATE so em 5 colunas, nenhum DELETE/TRUNCATE; triggers e CHECKs existem', async () => {
     const col = await owner.$queryRaw<{ column_name: string }[]>`
       SELECT column_name FROM information_schema.column_privileges
-      WHERE table_name = 'Documento' AND grantee = 'notta_app' AND privilege_type = 'UPDATE'
+      WHERE table_name = 'Documento' AND grantee = 'praxis_app' AND privilege_type = 'UPDATE'
       ORDER BY column_name`;
     expect(col.map((x) => x.column_name)).toEqual([
       'aprovadoEm',
@@ -165,8 +165,8 @@ describe('Documento: estrutura no banco', () => {
       'status',
     ]);
     const [priv] = await owner.$queryRaw<{ del: boolean; trg: boolean }[]>`
-      SELECT has_table_privilege('notta_app', '"Documento"', 'DELETE') AS del,
-             has_table_privilege('notta_app', '"Documento"', 'TRIGGER') AS trg`;
+      SELECT has_table_privilege('praxis_app', '"Documento"', 'DELETE') AS del,
+             has_table_privilege('praxis_app', '"Documento"', 'TRIGGER') AS trg`;
     expect(priv).toEqual({ del: false, trg: false });
     const trg = await owner.$queryRaw<{ tgname: string }[]>`
       SELECT tgname FROM pg_trigger WHERE tgrelid = '"Documento"'::regclass AND NOT tgisinternal ORDER BY tgname`;
@@ -268,7 +268,7 @@ describe('Documento: escrita', () => {
     expect(await erro(pacienteDe.psiB)).toBe(inexistente);
   });
 
-  it('notta_app: DELETE e TRUNCATE = permission denied (privilegio, nao so policy)', async () => {
+  it('praxis_app: DELETE e TRUNCATE = permission denied (privilegio, nao so policy)', async () => {
     await expect(sql(psiA, `DELETE FROM "Documento"`)).rejects.toThrow(
       /permission denied/,
     );
@@ -277,7 +277,7 @@ describe('Documento: escrita', () => {
     );
   });
 
-  it('notta_app: colunas de identidade nao tem UPDATE (permission denied)', async () => {
+  it('praxis_app: colunas de identidade nao tem UPDATE (permission denied)', async () => {
     for (const col of [
       'id',
       'clinicaId',
@@ -501,7 +501,7 @@ describe('Documento: trigger de imutabilidade (item 44)', () => {
     await expect(
       sqlDono(psiA, `DELETE FROM "Documento" WHERE id = '${id}'`),
     ).rejects.toThrow(/Documento aprovado e imutavel \(DELETE barrado\)/);
-    // notta_app: sem privilegio de DELETE, mesmo com o desvio ligado
+    // praxis_app: sem privilegio de DELETE, mesmo com o desvio ligado
     await expect(
       tenant.runComoUsuario(psiA, async (tx) => {
         await tx.$executeRaw`SELECT set_config('app.limpeza_de_teste', '1', true)`;

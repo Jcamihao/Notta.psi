@@ -7,7 +7,7 @@ afterEach(() => {
 });
 
 describe('boot: papel de runtime', () => {
-  it('DATABASE_URL apontando para notta_owner (dono das tabelas) derruba o boot sem ecoar a URL', async () => {
+  it('DATABASE_URL apontando para praxis_owner (dono das tabelas) derruba o boot sem ecoar a URL', async () => {
     const owner = process.env.DATABASE_URL_OWNER;
     if (!owner) throw new Error('DATABASE_URL_OWNER ausente (ver README)');
     process.env.DATABASE_URL = owner;
@@ -21,10 +21,10 @@ describe('boot: papel de runtime', () => {
     expect(msg).toMatch(/DATABASE_URL insegura/);
     expect(msg).toMatch(/dono/);
     expect(msg).not.toContain(owner);
-    expect(msg).not.toMatch(/notta_owner:/);
+    expect(msg).not.toMatch(/praxis_owner:/);
   });
 
-  it('notta_app sobe normalmente', async () => {
+  it('praxis_app sobe normalmente', async () => {
     const app = await criarApp();
     await app.close();
   });

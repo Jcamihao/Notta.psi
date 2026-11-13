@@ -27,7 +27,7 @@ function ctx(
     switchToHttp: () => ({ getRequest: () => ({ method, headers }) }),
   } as unknown as ExecutionContext;
 }
-const cookies = `notta_acesso=jwt; notta_csrf=${CSRF}`;
+const cookies = `praxis_acesso=jwt; praxis_csrf=${CSRF}`;
 const certo = {
   cookie: cookies,
   origin: ORIGEM,
@@ -70,12 +70,12 @@ describe('CsrfGuard (item 46)', () => {
   it.each([
     ['header diferente do cookie', { ...certo, 'x-csrf-token': OUTRO }],
     ['header com formato errado', { ...certo, 'x-csrf-token': 'curto' }],
-    ['cookie csrf ausente', { ...certo, cookie: 'notta_acesso=jwt' }],
+    ['cookie csrf ausente', { ...certo, cookie: 'praxis_acesso=jwt' }],
     [
       'cookie csrf com formato errado',
       {
         ...certo,
-        cookie: 'notta_acesso=jwt; notta_csrf=curto',
+        cookie: 'praxis_acesso=jwt; praxis_csrf=curto',
         'x-csrf-token': 'curto',
       },
     ],

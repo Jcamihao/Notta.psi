@@ -36,7 +36,7 @@ function esperar429(res: request.Response, emailUsado?: string) {
   }
 }
 
-const proxyOriginal = process.env.NOTTA_TRUST_PROXY;
+const proxyOriginal = process.env.PRAXIS_TRUST_PROXY;
 
 beforeAll(async () => {
   const setup = await criarAppSemLimite();
@@ -59,14 +59,14 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  delete process.env.NOTTA_TRUST_PROXY;
+  delete process.env.PRAXIS_TRUST_PROXY;
   app = await criarApp();
 });
 
 afterEach(async () => {
   await app.close();
-  if (proxyOriginal === undefined) delete process.env.NOTTA_TRUST_PROXY;
-  else process.env.NOTTA_TRUST_PROXY = proxyOriginal;
+  if (proxyOriginal === undefined) delete process.env.PRAXIS_TRUST_PROXY;
+  else process.env.PRAXIS_TRUST_PROXY = proxyOriginal;
 });
 
 describe('limite de tentativas', () => {
@@ -123,9 +123,9 @@ describe('limite de tentativas', () => {
     }
   });
 
-  it('NOTTA_TRUST_PROXY=1: IPs diferentes via X-Forwarded-For tem limites separados', async () => {
+  it('PRAXIS_TRUST_PROXY=1: IPs diferentes via X-Forwarded-For tem limites separados', async () => {
     await app.close();
-    process.env.NOTTA_TRUST_PROXY = '1';
+    process.env.PRAXIS_TRUST_PROXY = '1';
     app = await criarApp();
     const alvo = email('proxy');
     for (let i = 0; i < 5; i++)
@@ -134,7 +134,7 @@ describe('limite de tentativas', () => {
     await login(alvo, undefined, '203.0.113.2').expect(401);
   });
 
-  it('sem NOTTA_TRUST_PROXY o X-Forwarded-For e ignorado', async () => {
+  it('sem PRAXIS_TRUST_PROXY o X-Forwarded-For e ignorado', async () => {
     const alvo = email('semproxy');
     for (let i = 0; i < 5; i++)
       await login(alvo, undefined, '203.0.113.1').expect(401);
@@ -153,7 +153,7 @@ describe('IPv6: todos os limites por IP agrupam o /64', () => {
 
   beforeEach(async () => {
     await app.close();
-    process.env.NOTTA_TRUST_PROXY = '1';
+    process.env.PRAXIS_TRUST_PROXY = '1';
     app = await criarApp();
   });
 

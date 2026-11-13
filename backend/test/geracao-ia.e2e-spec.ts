@@ -250,12 +250,12 @@ const relogio = (ms: number) =>
 beforeAll(async () => {
   falso = await subirSelahiaFalso();
   // 1o app: IA DESLIGADA (503). 2o: ligada, apontando para o falso, com timeout curto.
-  process.env.NOTTA_IA_HABILITADA = '0';
+  process.env.PRAXIS_IA_HABILITADA = '0';
   appOff = await criarAppSemLimite();
-  process.env.NOTTA_IA_HABILITADA = '1';
+  process.env.PRAXIS_IA_HABILITADA = '1';
   process.env.SELAHIA_URL = falso.url;
   process.env.SELAHIA_API_KEY = CHAVE;
-  process.env.NOTTA_IA_LIMITE_DIARIO = String(LIMITE);
+  process.env.PRAXIS_IA_LIMITE_DIARIO = String(LIMITE);
   app = await criarAppSemLimite({ logger, ia: { timeoutMs: 600 } });
   tenant = app.get(TenantPrismaService);
 });

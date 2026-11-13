@@ -8,7 +8,7 @@ ALTER TABLE "Psicologo" ADD CONSTRAINT "Psicologo_ativo_desativadoEm_check"
   CHECK (("ativo" = false) = ("desativadoEm" IS NOT NULL));
 
 -- 2) Grants por coluna, somados aos ja existentes.
-GRANT UPDATE ("ativo", "desativadoEm") ON "Psicologo" TO notta_app;
+GRANT UPDATE ("ativo", "desativadoEm") ON "Psicologo" TO praxis_app;
 
 -- 3) INSERT: colega novo nasce ativo (ninguem insere ja desativado). Mesma policy da migration
 --    20261031210000 com `"ativo"` a mais.

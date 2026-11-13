@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Poda de backups (item 52B). Uso: npm run podar-backups -- <pasta> [--dias N] [--dry-run]
 # Apaga o par <nome>.enc + <nome>.enc.sha256 cujo .enc tem data de modificacao mais velha que N dias.
-# Padrao 30 dias. Ordem de precedencia: --dias, depois NOTTA_BACKUP_RETENCAO_DIAS, depois 30.
+# Padrao 30 dias. Ordem de precedencia: --dias, depois PRAXIS_BACKUP_RETENCAO_DIAS, depois 30.
 # Regras:
 # - So casa o padrao exato de backup.sh (*.enc e *.enc.sha256), so no nivel da pasta: sem recursao
 #   e sem seguir link simbolico. Subpastas, links e outros arquivos nunca sao tocados.
@@ -19,7 +19,7 @@ MAXIMO_DIAS=36500
 
 uso() {
   echo "uso: podar-backups.sh <pasta> [--dias N] [--dry-run]" >&2
-  echo "  padrao: $PADRAO_DIAS dias; NOTTA_BACKUP_RETENCAO_DIAS = inteiro de 1 a $MAXIMO_DIAS" >&2
+  echo "  padrao: $PADRAO_DIAS dias; PRAXIS_BACKUP_RETENCAO_DIAS = inteiro de 1 a $MAXIMO_DIAS" >&2
 }
 
 PASTA=""
@@ -76,13 +76,13 @@ dias_validos() {
 
 DIAS=$PADRAO_DIAS
 ORIGEM="padrao"
-if [ -n "${NOTTA_BACKUP_RETENCAO_DIAS+x}" ]; then
-  if ! dias_validos "$NOTTA_BACKUP_RETENCAO_DIAS"; then
-    echo "FALHOU: NOTTA_BACKUP_RETENCAO_DIAS invalida (inteiro de 1 a $MAXIMO_DIAS). Nada foi apagado." >&2
+if [ -n "${PRAXIS_BACKUP_RETENCAO_DIAS+x}" ]; then
+  if ! dias_validos "$PRAXIS_BACKUP_RETENCAO_DIAS"; then
+    echo "FALHOU: PRAXIS_BACKUP_RETENCAO_DIAS invalida (inteiro de 1 a $MAXIMO_DIAS). Nada foi apagado." >&2
     exit 2
   fi
-  DIAS=$((10#$NOTTA_BACKUP_RETENCAO_DIAS))
-  ORIGEM="NOTTA_BACKUP_RETENCAO_DIAS"
+  DIAS=$((10#$PRAXIS_BACKUP_RETENCAO_DIAS))
+  ORIGEM="PRAXIS_BACKUP_RETENCAO_DIAS"
 fi
 if [ "$DIAS_FLAG_DEFINIDO" -eq 1 ]; then
   if ! dias_validos "$DIAS_FLAG"; then

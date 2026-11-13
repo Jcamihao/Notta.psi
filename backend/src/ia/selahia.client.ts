@@ -21,7 +21,7 @@ export type MotivoIa =
 export class IaDesabilitadaError extends Error {
   readonly motivo = 'DESABILITADA' as const;
   constructor() {
-    super('IA desabilitada (NOTTA_IA_HABILITADA)');
+    super('IA desabilitada (PRAXIS_IA_HABILITADA)');
     this.name = 'IaDesabilitadaError';
   }
 }

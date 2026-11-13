@@ -45,7 +45,7 @@ describe('ShellComponent', () => {
   const el = () => fixture.nativeElement as HTMLElement;
 
   it('tem landmarks header e main e o nome do app', () => {
-    expect(el().querySelector('header')?.textContent).toContain('Notta.psi');
+    expect(el().querySelector('header')?.textContent).toContain('praxis.psi');
     expect(el().querySelector('main router-outlet')).not.toBeNull();
   });
 
@@ -281,7 +281,7 @@ describe('ShellComponent (troca de senha)', () => {
     expect(topo.querySelector('nav')).toBeNull();
     const botoes = Array.from(topo.querySelectorAll('button')).map((b) => b.textContent?.trim());
     expect(botoes).toEqual(['Sair de todos os aparelhos', 'Sair']);
-    expect(topo.textContent).toContain('Notta.psi');
+    expect(topo.textContent).toContain('praxis.psi');
   });
 
   it('depois da troca mostra uma confirmacao leve, que some na proxima navegacao', async () => {

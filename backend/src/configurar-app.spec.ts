@@ -56,19 +56,19 @@ const CORPO_413_ESPERADO = {
 const aninhado = (n: number) => '['.repeat(n) + ']'.repeat(n);
 
 describe('configurarApp', () => {
-  const original = process.env.NOTTA_TRUST_PROXY;
-  const corsOriginal = process.env.NOTTA_CORS_ORIGIN;
+  const original = process.env.PRAXIS_TRUST_PROXY;
+  const corsOriginal = process.env.PRAXIS_CORS_ORIGIN;
   afterEach(() => {
-    if (original === undefined) delete process.env.NOTTA_TRUST_PROXY;
-    else process.env.NOTTA_TRUST_PROXY = original;
-    if (corsOriginal === undefined) delete process.env.NOTTA_CORS_ORIGIN;
-    else process.env.NOTTA_CORS_ORIGIN = corsOriginal;
+    if (original === undefined) delete process.env.PRAXIS_TRUST_PROXY;
+    else process.env.PRAXIS_TRUST_PROXY = original;
+    if (corsOriginal === undefined) delete process.env.PRAXIS_CORS_ORIGIN;
+    else process.env.PRAXIS_CORS_ORIGIN = corsOriginal;
   });
 
   it.each(['abc', '-1', '1.5', '1 ', ''])(
-    'NOTTA_TRUST_PROXY invalido %j lanca sem ecoar o valor',
+    'PRAXIS_TRUST_PROXY invalido %j lanca sem ecoar o valor',
     async (valor) => {
-      process.env.NOTTA_TRUST_PROXY = valor;
+      process.env.PRAXIS_TRUST_PROXY = valor;
       const mod = await Test.createTestingModule({
         imports: [ModTeste],
       }).compile();
@@ -79,27 +79,27 @@ describe('configurarApp', () => {
       } catch (e) {
         msg = (e as Error).message;
       }
-      expect(msg).toMatch(/NOTTA_TRUST_PROXY/);
+      expect(msg).toMatch(/PRAXIS_TRUST_PROXY/);
       if (valor.trim() !== '') expect(msg).not.toContain(valor);
     },
   );
 
-  it.each(['0', '1', '2'])('NOTTA_TRUST_PROXY=%s ok', async (valor) => {
-    process.env.NOTTA_TRUST_PROXY = valor;
+  it.each(['0', '1', '2'])('PRAXIS_TRUST_PROXY=%s ok', async (valor) => {
+    process.env.PRAXIS_TRUST_PROXY = valor;
     const app = await criar();
     expect(express(app).get('trust proxy')).toBe(Number(valor));
     await app.close();
   });
 
-  it('sem NOTTA_TRUST_PROXY o trust proxy fica desligado', async () => {
-    delete process.env.NOTTA_TRUST_PROXY;
+  it('sem PRAXIS_TRUST_PROXY o trust proxy fica desligado', async () => {
+    delete process.env.PRAXIS_TRUST_PROXY;
     const app = await criar();
     expect(express(app).get('trust proxy')).toBeFalsy();
     await app.close();
   });
 
   it('nao envia x-powered-by', async () => {
-    delete process.env.NOTTA_TRUST_PROXY;
+    delete process.env.PRAXIS_TRUST_PROXY;
     const app = await criar();
     const res = await request(app.getHttpServer()).get('/ping').expect(200);
     expect(res.headers['x-powered-by']).toBeUndefined();
@@ -107,7 +107,7 @@ describe('configurarApp', () => {
   });
 
   it('ValidationPipe recusa campo extra e aceita o valido', async () => {
-    delete process.env.NOTTA_TRUST_PROXY;
+    delete process.env.PRAXIS_TRUST_PROXY;
     const app = await criar();
     const http = app.getHttpServer();
     await request(http).post('/dto').send({ nome: 'a', extra: 1 }).expect(400);
@@ -116,7 +116,7 @@ describe('configurarApp', () => {
   });
 
   it('helmet: headers de seguranca presentes', async () => {
-    delete process.env.NOTTA_TRUST_PROXY;
+    delete process.env.PRAXIS_TRUST_PROXY;
     const app = await criar();
     const res = await request(app.getHttpServer()).get('/ping').expect(200);
     expect(res.headers['x-content-type-options']).toBe('nosniff');
@@ -127,8 +127,8 @@ describe('configurarApp', () => {
     await app.close();
   });
 
-  it('CORS: sem NOTTA_CORS_ORIGIN nao envia access-control-allow-origin', async () => {
-    delete process.env.NOTTA_CORS_ORIGIN;
+  it('CORS: sem PRAXIS_CORS_ORIGIN nao envia access-control-allow-origin', async () => {
+    delete process.env.PRAXIS_CORS_ORIGIN;
     const app = await criar();
     const http = app.getHttpServer();
     const res = await request(http)
@@ -144,8 +144,8 @@ describe('configurarApp', () => {
     await app.close();
   });
 
-  it('CORS: com NOTTA_CORS_ORIGIN responde so para a origem exata', async () => {
-    process.env.NOTTA_CORS_ORIGIN = 'https://app.exemplo.com';
+  it('CORS: com PRAXIS_CORS_ORIGIN responde so para a origem exata', async () => {
+    process.env.PRAXIS_CORS_ORIGIN = 'https://app.exemplo.com';
     const app = await criar();
     const http = app.getHttpServer();
     const certa = await request(http)
@@ -178,8 +178,8 @@ describe('configurarApp', () => {
     'ftp://app.exemplo.com',
     'https://app.exemplo.com/caminho',
     '',
-  ])('NOTTA_CORS_ORIGIN invalida %j derruba sem ecoar', async (valor) => {
-    process.env.NOTTA_CORS_ORIGIN = valor;
+  ])('PRAXIS_CORS_ORIGIN invalida %j derruba sem ecoar', async (valor) => {
+    process.env.PRAXIS_CORS_ORIGIN = valor;
     const mod = await Test.createTestingModule({
       imports: [ModTeste],
     }).compile();
@@ -190,12 +190,12 @@ describe('configurarApp', () => {
     } catch (e) {
       msg = (e as Error).message;
     }
-    expect(msg).toMatch(/NOTTA_CORS_ORIGIN/);
+    expect(msg).toMatch(/PRAXIS_CORS_ORIGIN/);
     if (valor.length > 1) expect(msg).not.toContain(valor);
   });
 
   it('corpo JSON: 200 kb passa, 300 kb -> 413', async () => {
-    delete process.env.NOTTA_TRUST_PROXY;
+    delete process.env.PRAXIS_TRUST_PROXY;
     const app = await criar();
     const http = app.getHttpServer();
     await request(http)
@@ -210,7 +210,7 @@ describe('configurarApp', () => {
   });
 
   it('JSON malformado -> 400 generico, sem ecoar trecho do corpo', async () => {
-    delete process.env.NOTTA_TRUST_PROXY;
+    delete process.env.PRAXIS_TRUST_PROXY;
     const app = await criar();
     const res = await request(app.getHttpServer())
       .post('/dto')
@@ -394,7 +394,7 @@ describe('configurarApp', () => {
     await app.close();
   });
 
-  describe('M-5: NOTTA_TRUST_PROXY e exigida, salvo NODE_ENV=development ou test', () => {
+  describe('M-5: PRAXIS_TRUST_PROXY e exigida, salvo NODE_ENV=development ou test', () => {
     const env = process.env.NODE_ENV;
     afterEach(() => {
       if (env === undefined) delete process.env.NODE_ENV;
@@ -417,13 +417,13 @@ describe('configurarApp', () => {
       'NODE_ENV %s sem a variavel derruba o boot pedindo o numero de saltos',
       async (_n, valor) => {
         definir(valor);
-        delete process.env.NOTTA_TRUST_PROXY;
+        delete process.env.PRAXIS_TRUST_PROXY;
         const mod = await Test.createTestingModule({
           imports: [ModTeste],
         }).compile();
         const app =
           mod.createNestApplication<NestExpressApplication>(OPCOES_APP);
-        expect(() => configurarApp(app)).toThrow(/NOTTA_TRUST_PROXY.*saltos/);
+        expect(() => configurarApp(app)).toThrow(/PRAXIS_TRUST_PROXY.*saltos/);
         expect(() => configurarApp(app)).toThrow(/0 = sem proxy/);
       },
     );
@@ -432,7 +432,7 @@ describe('configurarApp', () => {
       'NODE_ENV %j sobe sem a variavel',
       async (valor) => {
         definir(valor);
-        delete process.env.NOTTA_TRUST_PROXY;
+        delete process.env.PRAXIS_TRUST_PROXY;
         const app = await criar();
         expect(express(app).get('trust proxy')).toBeFalsy();
         await app.close();
@@ -446,7 +446,7 @@ describe('configurarApp', () => {
       ['Production', '2'],
     ])('NODE_ENV %s com %s explicito sobe', async (amb, valor) => {
       definir(amb);
-      process.env.NOTTA_TRUST_PROXY = valor;
+      process.env.PRAXIS_TRUST_PROXY = valor;
       const app = await criar();
       expect(express(app).get('trust proxy')).toBe(Number(valor));
       await app.close();

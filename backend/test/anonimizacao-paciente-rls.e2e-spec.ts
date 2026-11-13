@@ -5,12 +5,12 @@ import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { apagarClinicas, comoOwner } from './acesso-owner';
 
 // Exclusao por anonimizacao (item 26), camada do banco, no Postgres real: a funcao
-// anonimizar_paciente (SECURITY DEFINER), o GRANT so para notta_app, as excecoes dos triggers
+// anonimizar_paciente (SECURITY DEFINER), o GRANT so para praxis_app, as excecoes dos triggers
 // (so o dono, so com a flag, so as colunas listadas), o excluidoEm que nunca volta e os INSERTs
 // barrados para paciente excluido.
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: teste de anonimizacao exige o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: teste de anonimizacao exige o papel praxis_owner (ver backend/README.md)',
   );
 }
 
@@ -204,7 +204,7 @@ async function excluido() {
   return { dono, ...p, excluidoEm: r[0].excluidoEm };
 }
 
-// Flag do dono dentro de uma transacao de notta_owner (so para provar a excecao).
+// Flag do dono dentro de uma transacao de praxis_owner (so para provar a excecao).
 const comFlagDono = (
   dono: U,
   fn: (tx: Parameters<Parameters<typeof comoOwner>[1]>[0]) => Promise<unknown>,
@@ -242,7 +242,7 @@ afterAll(async () => {
 });
 
 describe('estrutura (item 26)', () => {
-  it('excluidoEm existe, nullable, e notta_app NAO tem UPDATE nela', async () => {
+  it('excluidoEm existe, nullable, e praxis_app NAO tem UPDATE nela', async () => {
     const [col] = await comoOwner(
       A,
       (tx) =>
@@ -258,12 +258,12 @@ describe('estrutura (item 26)', () => {
         tx.$queryRaw<
           { column_name: string }[]
         >`SELECT column_name FROM information_schema.column_privileges
-        WHERE table_name = 'Paciente' AND grantee = 'notta_app' AND privilege_type = 'UPDATE'`,
+        WHERE table_name = 'Paciente' AND grantee = 'praxis_app' AND privilege_type = 'UPDATE'`,
     );
     expect(grants.map((g) => g.column_name)).not.toContain('excluidoEm');
   });
 
-  it('funcao SECURITY DEFINER, search_path fixo, dona = notta_owner, EXECUTE so para notta_app', async () => {
+  it('funcao SECURITY DEFINER, search_path fixo, dona = praxis_owner, EXECUTE so para praxis_app', async () => {
     const [f] = await comoOwner(
       A,
       (tx) =>
@@ -277,7 +277,7 @@ describe('estrutura (item 26)', () => {
     expect(f.proconfig).toEqual(
       expect.arrayContaining(['search_path=pg_catalog, public']),
     );
-    expect(f.dono).toBe('notta_owner');
+    expect(f.dono).toBe('praxis_owner');
     const pub = await comoOwner(
       A,
       (tx) =>
@@ -290,7 +290,7 @@ describe('estrutura (item 26)', () => {
       (tx) =>
         tx.$queryRaw<
           { ok: boolean }[]
-        >`SELECT has_function_privilege('notta_app',
+        >`SELECT has_function_privilege('praxis_app',
         'anonimizar_paciente(text,text,jsonb,jsonb)', 'EXECUTE') AS ok`,
     );
     expect(priv.ok).toBe(true);
@@ -498,8 +498,8 @@ describe('funcao anonimiza (dono)', () => {
   });
 });
 
-describe('notta_app nao consegue o que so a funcao pode', () => {
-  it('ligar app.anonimizando como notta_app NAO destrava UPDATE em documento aprovado', async () => {
+describe('praxis_app nao consegue o que so a funcao pode', () => {
+  it('ligar app.anonimizando como praxis_app NAO destrava UPDATE em documento aprovado', async () => {
     const e = await excluido();
     await expect(
       tenant.runComoUsuario(e.dono, async (tx) => {
@@ -515,7 +515,7 @@ describe('notta_app nao consegue o que so a funcao pode', () => {
     );
   });
 
-  it('ligar a flag como notta_app NAO permite gravar excluidoEm', async () => {
+  it('ligar a flag como praxis_app NAO permite gravar excluidoEm', async () => {
     const dono = await novoPsicologo(A, 'dono-a6');
     const p = await novoPaciente(dono);
     await expect(
@@ -531,7 +531,7 @@ describe('notta_app nao consegue o que so a funcao pode', () => {
   });
 });
 
-describe('dono (notta_owner) fora da funcao', () => {
+describe('dono (praxis_owner) fora da funcao', () => {
   it('SEM a flag, nao altera conteudo de documento aprovado', async () => {
     const e = await excluido();
     await expect(
@@ -626,7 +626,7 @@ describe('dono (notta_owner) fora da funcao', () => {
 });
 
 describe('INSERT para paciente excluido e barrado', () => {
-  it('documento, geracao, consentimento e convite: notta_app recebe erro (paciente excluido)', async () => {
+  it('documento, geracao, consentimento e convite: praxis_app recebe erro (paciente excluido)', async () => {
     const e = await excluido();
     const base = {
       clinicaId: e.dono.clinicaId,
@@ -690,7 +690,7 @@ describe('INSERT para paciente excluido e barrado', () => {
     ).rejects.toThrow(/Paciente excluido/);
   });
 
-  it('o dono (notta_owner) tambem e barrado no INSERT de documento de paciente excluido', async () => {
+  it('o dono (praxis_owner) tambem e barrado no INSERT de documento de paciente excluido', async () => {
     const e = await excluido();
     await expect(
       comoOwner(

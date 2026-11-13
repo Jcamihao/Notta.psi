@@ -1,6 +1,6 @@
-# Exemplo de nginx para o Notta.psi (item 49). NAO e usado pelo app; e o modelo para a VPS.
-# Front (Angular, build de producao) em /var/www/notta e API (NestJS) em 127.0.0.1:3000, MESMA origem.
-# Back: NOTTA_APP_URL=https://app.exemplo.com  NOTTA_TRUST_PROXY=1  (NOTTA_API_PREFIXO=/api e o padrao)
+# Exemplo de nginx para o praxis.psi (item 49). NAO e usado pelo app; e o modelo para a VPS.
+# Front (Angular, build de producao) em /var/www/praxis e API (NestJS) em 127.0.0.1:3000, MESMA origem.
+# Back: PRAXIS_APP_URL=https://app.exemplo.com  PRAXIS_TRUST_PROXY=1  (PRAXIS_API_PREFIXO=/api e o padrao)
 
 server {
     listen 80;
@@ -15,7 +15,7 @@ server {
     ssl_certificate     /etc/letsencrypt/live/app.exemplo.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/app.exemplo.com/privkey.pem;
 
-    root /var/www/notta;
+    root /var/www/praxis;
     index index.html;
 
     # Cabecalhos do FRONT (ver docs/SEGURANCA-HEADERS.md): repetidos em cada `location` do front de
@@ -24,7 +24,7 @@ server {
     # 404/500. A CSP nao tem 'unsafe-inline' nem 'unsafe-eval': se o build tiver script inline, use
     # hash (nao afrouxe a CSP).
     # Nonce de estilo: o Angular injeta o CSS dos componentes como <style>, que precisa de nonce. O
-    # index.html traz ngCspNonce="NOTTA_CSP_NONCE"; o sub_filter abaixo troca o texto por $request_id
+    # index.html traz ngCspNonce="PRAXIS_CSP_NONCE"; o sub_filter abaixo troca o texto por $request_id
     # (aleatorio, novo por requisicao) e o MESMO valor vai em style-src. Por isso o HTML (location /
     # e /termo/) nunca fica em cache. Receita nao rodada em nginx real: teste na VPS (docs/SEGURANCA-HEADERS.md).
 
@@ -43,7 +43,7 @@ server {
     location ^~ /termo/ {
         sub_filter_once off;
         sub_filter_types text/html;
-        sub_filter 'NOTTA_CSP_NONCE' $request_id;
+        sub_filter 'PRAXIS_CSP_NONCE' $request_id;
         add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'nonce-$request_id'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
         add_header Referrer-Policy "no-referrer" always;
         add_header X-Content-Type-Options "nosniff" always;
@@ -67,7 +67,7 @@ server {
     location / {
         sub_filter_once off;
         sub_filter_types text/html;
-        sub_filter 'NOTTA_CSP_NONCE' $request_id;
+        sub_filter 'PRAXIS_CSP_NONCE' $request_id;
         add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'nonce-$request_id'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
         add_header Referrer-Policy "no-referrer" always;
         add_header X-Content-Type-Options "nosniff" always;

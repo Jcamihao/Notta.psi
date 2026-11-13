@@ -14,7 +14,7 @@ import { KeyRound, LucideAngularModule, ShieldCheck, UserCheck } from 'lucide-an
   template: `
     <main class="acesso-principal">
       <div class="acesso-coluna">
-        <p class="marca">Notta.psi</p>
+        <p class="marca">praxis.psi</p>
         <ng-content />
       </div>
     </main>

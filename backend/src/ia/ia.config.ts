@@ -31,7 +31,7 @@ export function lerConfigIa(env: NodeJS.ProcessEnv = process.env): IaConfig {
     timeoutMs: TIMEOUT_SELAHIA_MS,
     limiteDiario: LIMITE_DIARIO_PADRAO,
   };
-  if (env.NOTTA_IA_HABILITADA !== '1') return desligada;
+  if (env.PRAXIS_IA_HABILITADA !== '1') return desligada;
 
   let url: URL;
   try {
@@ -73,7 +73,7 @@ export function lerConfigIa(env: NodeJS.ProcessEnv = process.env): IaConfig {
     url: url.origin + url.pathname.replace(/\/+$/, ''),
     apiKey,
     timeoutMs: TIMEOUT_SELAHIA_MS,
-    limiteDiario: lerLimiteDiario(env.NOTTA_IA_LIMITE_DIARIO),
+    limiteDiario: lerLimiteDiario(env.PRAXIS_IA_LIMITE_DIARIO),
   };
 }
 
@@ -83,7 +83,7 @@ function lerLimiteDiario(bruto: string | undefined): number {
   if (v === '') return LIMITE_DIARIO_PADRAO;
   const n = /^\d{1,6}$/.test(v) ? Number(v) : 0;
   if (n < 1) {
-    throw new Error('NOTTA_IA_LIMITE_DIARIO invalido: use um inteiro >= 1');
+    throw new Error('PRAXIS_IA_LIMITE_DIARIO invalido: use um inteiro >= 1');
   }
   return n;
 }

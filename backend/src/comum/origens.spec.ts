@@ -3,21 +3,24 @@ import { origensPermitidas } from './origens';
 const env = (e: Record<string, string>) => e as NodeJS.ProcessEnv;
 
 describe('origensPermitidas (origem aceita no CSRF)', () => {
-  it('NOTTA_APP_URL vira so a origem (sem caminho, sem barra)', () => {
-    expect(
-      origensPermitidas(
-        env({ NODE_ENV: 'production', NOTTA_APP_URL: 'https://app.ex.com/x/' }),
-      ),
-    ).toEqual(['https://app.ex.com']);
-  });
-
-  it('soma NOTTA_CORS_ORIGIN sem repetir', () => {
+  it('PRAXIS_APP_URL vira so a origem (sem caminho, sem barra)', () => {
     expect(
       origensPermitidas(
         env({
           NODE_ENV: 'production',
-          NOTTA_APP_URL: 'https://app.ex.com',
-          NOTTA_CORS_ORIGIN: 'https://app.ex.com',
+          PRAXIS_APP_URL: 'https://app.ex.com/x/',
+        }),
+      ),
+    ).toEqual(['https://app.ex.com']);
+  });
+
+  it('soma PRAXIS_CORS_ORIGIN sem repetir', () => {
+    expect(
+      origensPermitidas(
+        env({
+          NODE_ENV: 'production',
+          PRAXIS_APP_URL: 'https://app.ex.com',
+          PRAXIS_CORS_ORIGIN: 'https://app.ex.com',
         }),
       ),
     ).toEqual(['https://app.ex.com']);
@@ -25,8 +28,8 @@ describe('origensPermitidas (origem aceita no CSRF)', () => {
       origensPermitidas(
         env({
           NODE_ENV: 'production',
-          NOTTA_APP_URL: 'https://app.ex.com',
-          NOTTA_CORS_ORIGIN: 'https://outro.ex.com',
+          PRAXIS_APP_URL: 'https://app.ex.com',
+          PRAXIS_CORS_ORIGIN: 'https://outro.ex.com',
         }),
       ),
     ).toEqual(['https://app.ex.com', 'https://outro.ex.com']);
@@ -46,14 +49,14 @@ describe('origensPermitidas (origem aceita no CSRF)', () => {
     (NODE_ENV) => {
       expect(() =>
         origensPermitidas(env(NODE_ENV === undefined ? {} : { NODE_ENV })),
-      ).toThrow(/NOTTA_APP_URL obrigatoria/);
+      ).toThrow(/PRAXIS_APP_URL obrigatoria/);
     },
   );
 
   it('origem invalida derruba o boot sem ecoar o valor', () => {
     const f = () =>
       origensPermitidas(
-        env({ NODE_ENV: 'production', NOTTA_APP_URL: 'nao-e-url-segredo' }),
+        env({ NODE_ENV: 'production', PRAXIS_APP_URL: 'nao-e-url-segredo' }),
       );
     expect(f).toThrow(/invalida/);
     expect(f).not.toThrow(/segredo/);

@@ -1,5 +1,5 @@
 -- Trilha de auditoria (item 11): quem fez o que em que recurso e quando, SEM conteudo, nome
--- nem IP. Somente-acrescentar: o notta_app so tem SELECT e INSERT, e um trigger barra
+-- nem IP. Somente-acrescentar: o praxis_app so tem SELECT e INSERT, e um trigger barra
 -- UPDATE, DELETE e TRUNCATE ate para o dono da tabela (docs/ACESSO.md).
 
 -- CreateTable
@@ -24,9 +24,9 @@ CREATE INDEX "Auditoria_clinicaId_recurso_recursoId_idx" ON "Auditoria"("clinica
 -- AddForeignKey
 ALTER TABLE "Auditoria" ADD CONSTRAINT "Auditoria_psicologoId_clinicaId_fkey" FOREIGN KEY ("psicologoId", "clinicaId") REFERENCES "Psicologo"("id", "clinicaId") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- 1) Privilegios: o notta_app so le e acrescenta (tira o que o DEFAULT PRIVILEGES deu).
-REVOKE ALL ON "Auditoria" FROM notta_app;
-GRANT SELECT, INSERT ON "Auditoria" TO notta_app;
+-- 1) Privilegios: o praxis_app so le e acrescenta (tira o que o DEFAULT PRIVILEGES deu).
+REVOKE ALL ON "Auditoria" FROM praxis_app;
+GRANT SELECT, INSERT ON "Auditoria" TO praxis_app;
 
 -- 2) RLS ENABLE + FORCE. INSERT: clinica E psicologo do contexto (ninguem grava em nome de
 --    outro). SELECT: so as PROPRIAS linhas. Leitura pela clinica/ADMIN e item futuro.
@@ -37,17 +37,17 @@ CREATE POLICY auditoria_insert ON "Auditoria" FOR INSERT
 CREATE POLICY auditoria_select_proprio ON "Auditoria" FOR SELECT
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), '') AND "psicologoId" = NULLIF(current_setting('app.current_psicologo_id', true), ''));
 
--- 3) So o notta_owner (dono) alcanca linhas para UPDATE/DELETE, e so da clinica do contexto:
+-- 3) So o praxis_owner (dono) alcanca linhas para UPDATE/DELETE, e so da clinica do contexto:
 --    sem estas policies o FORCE RLS faria o UPDATE/DELETE do dono afetar 0 linhas e o trigger
 --    abaixo nunca dispararia (nem daria para limpar os dados de teste). A barreira real e o trigger.
-CREATE POLICY auditoria_dono_update ON "Auditoria" FOR UPDATE TO notta_owner
+CREATE POLICY auditoria_dono_update ON "Auditoria" FOR UPDATE TO praxis_owner
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), ''));
-CREATE POLICY auditoria_dono_delete ON "Auditoria" FOR DELETE TO notta_owner
+CREATE POLICY auditoria_dono_delete ON "Auditoria" FOR DELETE TO praxis_owner
   USING ("clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), ''));
 
 -- 4) Trigger: UPDATE, DELETE e TRUNCATE sempre levantam excecao. Unico desvio: DELETE feito
 --    pelo DONO da tabela com `app.limpeza_de_teste = '1'` na transacao (so a limpeza das suites,
---    test/acesso-owner.ts). O notta_app nao e dono e nem tem DELETE, entao nunca usa o desvio.
+--    test/acesso-owner.ts). O praxis_app nao e dono e nem tem DELETE, entao nunca usa o desvio.
 CREATE FUNCTION auditoria_somente_acrescentar() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN

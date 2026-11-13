@@ -184,15 +184,15 @@ describe('throttler api: 300/min por psicologo em rota autenticada', () => {
 // segura a vaga ate o teste abrir e quem e recusado responde na hora. Sem sleep e sem supor
 // quanto o bcrypt demora.
 describe('tetos de hash (login)', () => {
-  const proxy = process.env.NOTTA_TRUST_PROXY;
+  const proxy = process.env.PRAXIS_TRUST_PROXY;
   afterEach(() => {
     jest.restoreAllMocks();
-    if (proxy === undefined) delete process.env.NOTTA_TRUST_PROXY;
-    else process.env.NOTTA_TRUST_PROXY = proxy;
+    if (proxy === undefined) delete process.env.PRAXIS_TRUST_PROXY;
+    else process.env.PRAXIS_TRUST_PROXY = proxy;
   });
 
   async function subir(comProxy = false) {
-    if (comProxy) process.env.NOTTA_TRUST_PROXY = '1'; // IP vem do X-Forwarded-For
+    if (comProxy) process.env.PRAXIS_TRUST_PROXY = '1'; // IP vem do X-Forwarded-For
     const app = await criarAppSemLimite();
     await app.listen(0, '127.0.0.1');
     const base = await app.getUrl();

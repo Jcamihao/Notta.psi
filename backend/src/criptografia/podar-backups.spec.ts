@@ -169,10 +169,10 @@ describe('podar-backups.sh (item 52B)', () => {
     par('velho', 40);
     par('novo', 1);
     // env 60: 40 dias ainda nao venceu
-    rodar([dir], { NOTTA_BACKUP_RETENCAO_DIAS: '60' });
+    rodar([dir], { PRAXIS_BACKUP_RETENCAO_DIAS: '60' });
     expect(existe('velho.enc')).toBe(true);
     // env 60 mas --dias 30: venceu
-    rodar([dir, '--dias', '30'], { NOTTA_BACKUP_RETENCAO_DIAS: '60' });
+    rodar([dir, '--dias', '30'], { PRAXIS_BACKUP_RETENCAO_DIAS: '60' });
     expect(existe('velho.enc')).toBe(false);
   });
 
@@ -182,7 +182,7 @@ describe('podar-backups.sh (item 52B)', () => {
     rodar([dir, '--dias=5']);
     expect(existe('velho.enc')).toBe(false);
     par('velho2', 10);
-    rodar([dir], { NOTTA_BACKUP_RETENCAO_DIAS: '15' });
+    rodar([dir], { PRAXIS_BACKUP_RETENCAO_DIAS: '15' });
     expect(existe('velho2.enc')).toBe(true);
   });
 
@@ -191,7 +191,7 @@ describe('podar-backups.sh (item 52B)', () => {
     (valor) => {
       par('velho', 400);
       par('novo', 1);
-      const r = rodar([dir], { NOTTA_BACKUP_RETENCAO_DIAS: valor });
+      const r = rodar([dir], { PRAXIS_BACKUP_RETENCAO_DIAS: valor });
       expect(r.status).toBe(2);
       expect(r.saida).toContain('FALHOU');
       expect(existe('velho.enc')).toBe(true);

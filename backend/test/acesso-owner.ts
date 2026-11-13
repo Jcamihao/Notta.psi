@@ -2,8 +2,8 @@ import { Papel, Prisma, PrismaClient } from '@prisma/client';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 
-// So para teste: operacoes que o notta_app NAO pode fazer (mudar papel, apagar
-// Psicologo/Clinica). Vao como notta_owner, que tambem passa pelo FORCE RLS: precisa
+// So para teste: operacoes que o praxis_app NAO pode fazer (mudar papel, apagar
+// Psicologo/Clinica). Vao como praxis_owner, que tambem passa pelo FORCE RLS: precisa
 // da clinica (e, para UPDATE em Psicologo, do proprio id) no contexto.
 export async function comoOwner<T>(
   clinicaId: string,
@@ -12,7 +12,7 @@ export async function comoOwner<T>(
 ): Promise<T> {
   if (!process.env.DATABASE_URL_OWNER) {
     throw new Error(
-      'DATABASE_URL_OWNER ausente: este teste usa o papel notta_owner (ver backend/README.md)',
+      'DATABASE_URL_OWNER ausente: este teste usa o papel praxis_owner (ver backend/README.md)',
     );
   }
   const owner = new PrismaClient({
@@ -46,7 +46,7 @@ export async function mudarPapelComoOwner(
   if (r.count !== 1) throw new Error('papel nao mudou');
 }
 
-// Limpeza das suites: o notta_app nao tem DELETE em Psicologo, Clinica, Paciente, Documento, Auditoria nem Consentimento.
+// Limpeza das suites: o praxis_app nao tem DELETE em Psicologo, Clinica, Paciente, Documento, Auditoria nem Consentimento.
 export async function apagarClinicas(ids: string[]) {
   for (const id of ids) {
     // Paciente (FK RESTRICT, sem DELETE para o app): o owner apaga sob a policy, que exige o
@@ -59,7 +59,7 @@ export async function apagarClinicas(ids: string[]) {
         id,
         async (tx) => {
           // Auditoria e Consentimento sao somente-acrescentar: so o DONO apaga, e so com este
-          // desvio EXPLICITO na transacao (triggers *_somente_acrescentar). O notta_app nao tem
+          // desvio EXPLICITO na transacao (triggers *_somente_acrescentar). O praxis_app nao tem
           // como. Consentimento (filha) antes de Paciente (FK RESTRICT).
           await tx.$executeRaw`SELECT set_config('app.limpeza_de_teste', '1', true)`;
           await tx.consentimento.deleteMany({ where: { psicologoId } });

@@ -31,7 +31,7 @@ type Linha = Prisma.PacienteUncheckedCreateInput & {
 };
 
 function montar() {
-  process.env.NOTTA_MASTER_KEY = '0123456789abcdef'.repeat(4);
+  process.env.PRAXIS_MASTER_KEY = '0123456789abcdef'.repeat(4);
   const cripto = new CriptografiaService();
   const linhas: Linha[] = [];
   const tx = {
@@ -327,7 +327,7 @@ function montarExcluir(opcoes: {
   geracoes?: string[];
   funcao?: () => Promise<unknown>;
 }) {
-  process.env.NOTTA_MASTER_KEY = '0123456789abcdef'.repeat(4);
+  process.env.PRAXIS_MASTER_KEY = '0123456789abcdef'.repeat(4);
   const cripto = new CriptografiaService();
   const excluidoEm = new Date('2026-11-11T12:00:00Z');
   const chamadaFuncao = jest.fn<Promise<unknown>, unknown[]>(
@@ -548,7 +548,7 @@ type LinhaExp = {
 };
 
 function criptoDeTeste() {
-  process.env.NOTTA_MASTER_KEY = '0123456789abcdef'.repeat(4);
+  process.env.PRAXIS_MASTER_KEY = '0123456789abcdef'.repeat(4);
   return new CriptografiaService();
 }
 

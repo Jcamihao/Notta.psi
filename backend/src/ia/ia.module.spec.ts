@@ -7,13 +7,13 @@ describe('AppModule + IaModule no boot', () => {
   const original = { ...process.env };
   beforeEach(() => {
     process.env.DATABASE_URL = 'postgresql://x:y@localhost:1/nenhum';
-    process.env.NOTTA_JWT_SECRET = 'segredo-jwt-de-teste-unitario-'.repeat(2);
-    process.env.NOTTA_MASTER_KEY = '0123456789abcdef'.repeat(4);
+    process.env.PRAXIS_JWT_SECRET = 'segredo-jwt-de-teste-unitario-'.repeat(2);
+    process.env.PRAXIS_MASTER_KEY = '0123456789abcdef'.repeat(4);
     process.env.NODE_ENV = 'production';
     // Item 22: producao exige o termo revisado e a URL do app (convite de consentimento).
-    process.env.NOTTA_TERMO_REVISADO = '1';
-    process.env.NOTTA_APP_URL = 'https://app.exemplo.com';
-    delete process.env.NOTTA_IA_HABILITADA;
+    process.env.PRAXIS_TERMO_REVISADO = '1';
+    process.env.PRAXIS_APP_URL = 'https://app.exemplo.com';
+    delete process.env.PRAXIS_IA_HABILITADA;
     delete process.env.SELAHIA_URL;
     delete process.env.SELAHIA_API_KEY;
   });
@@ -31,7 +31,7 @@ describe('AppModule + IaModule no boot', () => {
   });
 
   it('sobe com a IA ligada e config valida', async () => {
-    process.env.NOTTA_IA_HABILITADA = '1';
+    process.env.PRAXIS_IA_HABILITADA = '1';
     process.env.SELAHIA_URL = 'https://selahia.exemplo.com';
     process.env.SELAHIA_API_KEY = 'k7Qw9ZpLr2VnX4sB8tYhM1aD6fGcJ3uE';
     const mod = await subir();
@@ -40,7 +40,7 @@ describe('AppModule + IaModule no boot', () => {
   });
 
   it('IA ligada sem URL ou sem chave derruba o boot, sem ecoar a chave', async () => {
-    process.env.NOTTA_IA_HABILITADA = '1';
+    process.env.PRAXIS_IA_HABILITADA = '1';
     process.env.SELAHIA_API_KEY = 'k7Qw9ZpLr2VnX4sB8tYhM1aD6fGcJ3uE';
     await expect(subir()).rejects.toThrow(/SELAHIA_URL/);
     await expect(subir()).rejects.not.toThrow(/k7Qw9Zp/);

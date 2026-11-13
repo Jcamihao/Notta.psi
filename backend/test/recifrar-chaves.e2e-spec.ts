@@ -19,16 +19,16 @@ import { apagarClinicas } from './acesso-owner';
 // servico sobe com k2 atual; o comando recifra so a clinica do teste (isolado das outras suites).
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: recifragem exige o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: recifragem exige o papel praxis_owner (ver backend/README.md)',
   );
 }
 
-const K1 = 'e2e0'.repeat(16); // a mesma chave de teste do setup (NOTTA_MASTER_KEY)
+const K1 = 'e2e0'.repeat(16); // a mesma chave de teste do setup (PRAXIS_MASTER_KEY)
 const K2 = randomBytes(32).toString('hex'); // gerada na hora, nunca no repo
 const envOriginal = {
-  NOTTA_MASTER_KEY: process.env.NOTTA_MASTER_KEY,
-  NOTTA_MASTER_KEYS: process.env.NOTTA_MASTER_KEYS,
-  NOTTA_MASTER_KEY_ATUAL: process.env.NOTTA_MASTER_KEY_ATUAL,
+  PRAXIS_MASTER_KEY: process.env.PRAXIS_MASTER_KEY,
+  PRAXIS_MASTER_KEYS: process.env.PRAXIS_MASTER_KEYS,
+  PRAXIS_MASTER_KEY_ATUAL: process.env.PRAXIS_MASTER_KEY_ATUAL,
 };
 
 function servico(vars: Record<string, string>) {
@@ -87,7 +87,7 @@ async function criarPsicologo(clinicaId: string, nome: string) {
 const comoPsi = <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) =>
   tenant.runComoUsuario(psi, fn);
 
-// Valor em disco (sem contexto de app): le como notta_owner com a flag, via comando de leitura.
+// Valor em disco (sem contexto de app): le como praxis_owner com a flag, via comando de leitura.
 const cru = async (tabela: string, coluna: string, id: string) => {
   const r = await owner.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.recifrar', '1', true)`;
@@ -99,7 +99,7 @@ const cru = async (tabela: string, coluna: string, id: string) => {
 };
 
 beforeAll(async () => {
-  cripto1 = servico({ NOTTA_MASTER_KEY: K1 });
+  cripto1 = servico({ PRAXIS_MASTER_KEY: K1 });
   for (const [id, nome] of [
     [C, 'C'],
     [OUTRA, 'O'],
@@ -235,8 +235,8 @@ beforeAll(async () => {
 
   // Servico com k2 atual (k1 continua legivel).
   cripto2 = servico({
-    NOTTA_MASTER_KEYS: `k1:${K1},k2:${K2}`,
-    NOTTA_MASTER_KEY_ATUAL: 'k2',
+    PRAXIS_MASTER_KEYS: `k1:${K1},k2:${K2}`,
+    PRAXIS_MASTER_KEY_ATUAL: 'k2',
   });
 });
 
@@ -403,7 +403,7 @@ describe('recifragem com duas chaves', () => {
     expect(r.every((x) => x.c.lidas === 0)).toBe(true);
   });
 
-  it('notta_app com a flag nao consegue nada (sem contexto: zero linhas)', async () => {
+  it('praxis_app com a flag nao consegue nada (sem contexto: zero linhas)', async () => {
     const n = await app.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.recifrar', '1', true)`;
       return tx.$executeRawUnsafe(

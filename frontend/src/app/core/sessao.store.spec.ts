@@ -284,7 +284,7 @@ describe('SessaoStore', () => {
         const s = configurar(gerenciador);
         const p = s.renovar();
         await tick();
-        expect(nomes).toEqual(['notta-renovar-sessao']);
+        expect(nomes).toEqual(['praxis-renovar-sessao']);
         flushEu();
         await p;
       });

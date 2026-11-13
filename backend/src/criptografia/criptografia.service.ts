@@ -21,7 +21,9 @@ const TAG_BYTES = 16;
 const HEX_RE = /^[0-9a-fA-F]{64}$/;
 
 // HKDF-SHA256: IKM = a chave mestra do kid, salt vazio (RFC 5869: vira 32 bytes zero),
-// info = notta-psi|clinica|<clinicaId>, 32 bytes de saida.
+// info = notta-psi|clinica|<clinicaId>, 32 bytes de saida. ROTULO CRIPTOGRAFICO CONGELADO: ele vem do
+// nome antigo do produto (Notta.psi) e NUNCA pode ser renomeado, senao toda chave de clinica muda e
+// todo dado e todo backup ja cifrado fica ilegivel. O teste de vetor conhecido (HKDF feito em Python) protege isso.
 export function derivarChaveClinica(
   masterKey: Buffer,
   clinicaId: string,
@@ -90,7 +92,7 @@ function validarChave(hex: string, nome: string): Buffer {
   }
   const master = Buffer.from(hex, 'hex');
   // Fraca: menos de 16 bytes distintos (cobre bytes todos iguais, 64 zeros do exemplo antigo e
-  // `00..01`) ou chave que esta nas suites de teste (so passa com NOTTA_PERMITE_SEGREDO_DE_TESTE=1).
+  // `00..01`) ou chave que esta nas suites de teste (so passa com PRAXIS_PERMITE_SEGREDO_DE_TESTE=1).
   const deTeste = SEGREDOS_CONHECIDOS.masterDeTeste.some(
     (k) => k === normalizarSegredo(hex),
   );
@@ -127,30 +129,30 @@ export class CriptografiaService {
   private readonly derivadas = new Map<string, Buffer>();
 
   constructor() {
-    const unica = lerEnv('NOTTA_MASTER_KEY');
-    const lista = lerEnv('NOTTA_MASTER_KEYS');
-    const atual = lerEnv('NOTTA_MASTER_KEY_ATUAL');
+    const unica = lerEnv('PRAXIS_MASTER_KEY');
+    const lista = lerEnv('PRAXIS_MASTER_KEYS');
+    const atual = lerEnv('PRAXIS_MASTER_KEY_ATUAL');
     if (lista === undefined) {
       if (atual !== undefined) {
         throw new Error(
-          'NOTTA_MASTER_KEY_ATUAL so vale junto com NOTTA_MASTER_KEYS',
+          'PRAXIS_MASTER_KEY_ATUAL so vale junto com PRAXIS_MASTER_KEYS',
         );
       }
       this.mestras.set(
         KID_UNICO,
-        validarChave(unica ?? '', 'NOTTA_MASTER_KEY'),
+        validarChave(unica ?? '', 'PRAXIS_MASTER_KEY'),
       );
       this.atual = KID_UNICO;
       return;
     }
     if (unica !== undefined) {
       throw new Error(
-        'NOTTA_MASTER_KEY e NOTTA_MASTER_KEYS definidas juntas: deixe so NOTTA_MASTER_KEYS',
+        'PRAXIS_MASTER_KEY e PRAXIS_MASTER_KEYS definidas juntas: deixe so PRAXIS_MASTER_KEYS',
       );
     }
     if (atual === undefined) {
       throw new Error(
-        'NOTTA_MASTER_KEY_ATUAL obrigatoria quando NOTTA_MASTER_KEYS existir',
+        'PRAXIS_MASTER_KEY_ATUAL obrigatoria quando PRAXIS_MASTER_KEYS existir',
       );
     }
     for (const item of lista.split(',').map((s) => s.trim())) {
@@ -158,20 +160,22 @@ export class CriptografiaService {
       const kid = i < 0 ? '' : item.slice(0, i);
       if (!KID_RE.test(kid)) {
         throw new Error(
-          'NOTTA_MASTER_KEYS invalida: use kid:hex separados por virgula, com kid no formato k<numero>',
+          'PRAXIS_MASTER_KEYS invalida: use kid:hex separados por virgula, com kid no formato k<numero>',
         );
       }
       if (this.mestras.has(kid)) {
-        throw new Error(`NOTTA_MASTER_KEYS: kid ${kid} repetido`);
+        throw new Error(`PRAXIS_MASTER_KEYS: kid ${kid} repetido`);
       }
       this.mestras.set(
         kid,
-        validarChave(item.slice(i + 1), `NOTTA_MASTER_KEYS (kid ${kid})`),
+        validarChave(item.slice(i + 1), `PRAXIS_MASTER_KEYS (kid ${kid})`),
       );
     }
     const atualAparada = atual.trim();
     if (!KID_RE.test(atualAparada) || !this.mestras.has(atualAparada)) {
-      throw new Error('NOTTA_MASTER_KEY_ATUAL nao existe em NOTTA_MASTER_KEYS');
+      throw new Error(
+        'PRAXIS_MASTER_KEY_ATUAL nao existe em PRAXIS_MASTER_KEYS',
+      );
     }
     this.atual = atualAparada;
   }

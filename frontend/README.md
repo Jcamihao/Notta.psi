@@ -1,4 +1,4 @@
-# Notta.psi — frontend
+# praxis.psi — frontend
 
 Angular 20 (standalone, Signals, zoneless) + SCSS. Projeto independente do `backend/`.
 
@@ -31,7 +31,7 @@ Com o backend real rodando na porta 3000, `npm start` ja basta (o proxy aponta p
 Sem o backend, rode um servidor falso que segue `contrato.md` (ATENCAO: este exemplo e anterior a
 sessao por cookie; o login dele devolve `token` e o front agora nao o le. Ajuste-o para cookies
 ou use o back real). Ele fica FORA do repo, por
-exemplo em `/tmp/notta-falso/falso.mjs` (so Node, sem dependencia):
+exemplo em `/tmp/praxis-falso/falso.mjs` (so Node, sem dependencia):
 
 ```js
 import http from 'node:http';
@@ -170,7 +170,7 @@ http
 ```
 
 ```bash
-node /tmp/notta-falso/falso.mjs   # terminal 1
+node /tmp/praxis-falso/falso.mjs   # terminal 1
 npm start                         # terminal 2, abra http://localhost:4200/cadastro
 ```
 
@@ -217,9 +217,9 @@ icones do `lucide-angular` (importados um a um): nenhuma requisicao sai de local
 
 A sessao vive em cookies `httpOnly` (acesso de 15 min, refresh de ate 7 dias, parado ate 30 min);
 o JS nao le o token e nada de sessao fica em `sessionStorage`/`localStorage` (itens 46 e 49). O
-front so le o cookie `notta_csrf` (nao httpOnly de proposito) e nunca manda `Authorization` nem
-`x-notta-cliente`. Back e front ficam na mesma origem (proxy `/api`); em dev o back precisa de
-`NOTTA_APP_URL=http://localhost:4200` (Origin do CSRF) e `NOTTA_CORS_ORIGIN` igual.
+front so le o cookie `praxis_csrf` (nao httpOnly de proposito) e nunca manda `Authorization` nem
+`x-praxis-cliente`. Back e front ficam na mesma origem (proxy `/api`); em dev o back precisa de
+`PRAXIS_APP_URL=http://localhost:4200` (Origin do CSRF) e `PRAXIS_CORS_ORIGIN` igual.
 
 - `SessaoStore` e o estado da sessao: o que `GET /api/eu` diz (`usuario`, `ehAdmin()`,
   `senhaProvisoria()`, `autenticado()`). `garantir()` consulta o `/eu` UMA vez (o primeiro guard

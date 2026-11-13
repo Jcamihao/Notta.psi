@@ -77,12 +77,12 @@ describe('lerOpcoes', () => {
 });
 
 describe('verificarPapel', () => {
-  it('recusa notta_app (o runtime nunca descarta)', () => {
-    expect(() => verificarPapel('notta_app')).toThrow(/notta_owner/);
+  it('recusa praxis_app (o runtime nunca descarta)', () => {
+    expect(() => verificarPapel('praxis_app')).toThrow(/praxis_owner/);
   });
 
-  it('aceita notta_owner', () => {
-    expect(() => verificarPapel('notta_owner')).not.toThrow();
+  it('aceita praxis_owner', () => {
+    expect(() => verificarPapel('praxis_owner')).not.toThrow();
   });
 });
 

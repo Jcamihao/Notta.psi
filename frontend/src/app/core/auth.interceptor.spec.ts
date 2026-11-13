@@ -17,9 +17,9 @@ const EU: Eu = {
 };
 const NAO_AUTORIZADO = { status: 401, statusText: 'Unauthorized' };
 
-const definirCsrf = (v: string) => (document.cookie = `notta_csrf=${v}; path=/`);
+const definirCsrf = (v: string) => (document.cookie = `praxis_csrf=${v}; path=/`);
 const apagarCsrf = () =>
-  (document.cookie = 'notta_csrf=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT');
+  (document.cookie = 'praxis_csrf=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT');
 const tick = () => new Promise((r) => setTimeout(r));
 
 describe('authInterceptor', () => {
@@ -66,7 +66,7 @@ describe('authInterceptor', () => {
 
   describe('CSRF e credenciais', () => {
     for (const metodo of ['POST', 'PUT', 'PATCH', 'DELETE']) {
-      it(`${metodo} em /api/ leva X-CSRF-Token com o valor do cookie notta_csrf`, () => {
+      it(`${metodo} em /api/ leva X-CSRF-Token com o valor do cookie praxis_csrf`, () => {
         definirCsrf('csrf-1');
         chamar(metodo, '/api/pacientes');
         const r = ctrl.expectOne('/api/pacientes');
@@ -104,7 +104,7 @@ describe('authInterceptor', () => {
       chamar('GET', '/api/eu');
       for (const r of ctrl.match(() => true)) {
         expect(r.request.headers.has('Authorization')).toBeFalse();
-        expect(r.request.headers.has('x-notta-cliente')).toBeFalse();
+        expect(r.request.headers.has('x-praxis-cliente')).toBeFalse();
       }
     });
 

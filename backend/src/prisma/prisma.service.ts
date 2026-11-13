@@ -17,12 +17,12 @@ export function conferirPapelRuntime(linha: PapelRuntime | undefined): void {
   if (problemas.length) {
     throw new Error(
       `DATABASE_URL insegura: o papel de runtime ${problemas.join(', ')}. ` +
-        'Use notta_app (sem superuser, sem BYPASSRLS, nao dono das tabelas).',
+        'Use praxis_app (sem superuser, sem BYPASSRLS, nao dono das tabelas).',
     );
   }
 }
 
-// Conecta como notta_app (DATABASE_URL): sem superuser, sujeito a RLS. Conferido no boot.
+// Conecta como praxis_app (DATABASE_URL): sem superuser, sujeito a RLS. Conferido no boot.
 @Injectable()
 export class PrismaService
   extends PrismaClient

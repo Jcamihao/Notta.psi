@@ -90,7 +90,7 @@ const MENSAGENS: Record<string, string> = {
   telefone: 'Use de 8 a 20 caracteres: só números, espaço, +, - e parênteses.',
   emailLongo: 'O e-mail pode ter até 254 caracteres.',
   emUso: 'Este e-mail já tem cadastro. Entre com ele ou use outro.',
-  emUsoEquipe: 'Este e-mail já está cadastrado no Notta.psi. Use outro e-mail.',
+  emUsoEquipe: 'Este e-mail já está cadastrado no praxis.psi. Use outro e-mail.',
   senhaAtualIncorreta: 'Senha atual incorreta. Confira e digite de novo.',
   senhaIgual: 'A nova senha precisa ser diferente da atual.',
   confirmacaoDiferente: 'As senhas não conferem. Digite a nova senha igual nos dois campos.',

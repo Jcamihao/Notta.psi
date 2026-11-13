@@ -8,7 +8,7 @@ import { apagarClinicas, comoOwner } from './acesso-owner';
 // "Consentimento" (origem, conviteId) no Postgres real. Inclui a policy publica convite_por_token.
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel praxis_owner (ver backend/README.md)',
   );
 }
 
@@ -100,7 +100,7 @@ const ver = (u: U) =>
 const sql = (u: U, texto: string) =>
   tenant.runComoUsuario(u, (tx) => tx.$executeRawUnsafe(texto));
 
-// Como notta_owner (dono), com o contexto do usuario.
+// Como praxis_owner (dono), com o contexto do usuario.
 const sqlDono = (u: U, texto: string) =>
   comoOwner(u.clinicaId, (tx) => tx.$executeRawUnsafe(texto), {
     psicologoId: u.psicologoId,
@@ -192,15 +192,15 @@ describe('ConviteConsentimento: estrutura no banco', () => {
     expect(u[0].indexdef).toContain(`'PENDENTE'`);
   });
 
-  it('notta_app: SELECT e INSERT; UPDATE so em estado e usadoEm; sem DELETE nem TRUNCATE', async () => {
+  it('praxis_app: SELECT e INSERT; UPDATE so em estado e usadoEm; sem DELETE nem TRUNCATE', async () => {
     const [g] = await owner.$queryRaw<Record<string, boolean>[]>`
       SELECT
-        has_table_privilege('notta_app', '"ConviteConsentimento"', 'SELECT') AS sel,
-        has_table_privilege('notta_app', '"ConviteConsentimento"', 'INSERT') AS ins,
-        has_table_privilege('notta_app', '"ConviteConsentimento"', 'UPDATE') AS upd,
-        has_table_privilege('notta_app', '"ConviteConsentimento"', 'DELETE') AS del,
-        has_table_privilege('notta_app', '"ConviteConsentimento"', 'TRUNCATE') AS trunc,
-        has_table_privilege('notta_app', '"ConviteConsentimento"', 'TRIGGER') AS trg`;
+        has_table_privilege('praxis_app', '"ConviteConsentimento"', 'SELECT') AS sel,
+        has_table_privilege('praxis_app', '"ConviteConsentimento"', 'INSERT') AS ins,
+        has_table_privilege('praxis_app', '"ConviteConsentimento"', 'UPDATE') AS upd,
+        has_table_privilege('praxis_app', '"ConviteConsentimento"', 'DELETE') AS del,
+        has_table_privilege('praxis_app', '"ConviteConsentimento"', 'TRUNCATE') AS trunc,
+        has_table_privilege('praxis_app', '"ConviteConsentimento"', 'TRIGGER') AS trg`;
     expect(g).toEqual({
       sel: true,
       ins: true,
@@ -211,7 +211,7 @@ describe('ConviteConsentimento: estrutura no banco', () => {
     });
     const cols = await owner.$queryRaw<{ column_name: string }[]>`
       SELECT column_name FROM information_schema.column_privileges
-      WHERE table_name = 'ConviteConsentimento' AND grantee = 'notta_app' AND privilege_type = 'UPDATE'
+      WHERE table_name = 'ConviteConsentimento' AND grantee = 'praxis_app' AND privilege_type = 'UPDATE'
       ORDER BY column_name`;
     expect(cols.map((c) => c.column_name)).toEqual(['estado', 'usadoEm']);
   });
@@ -348,7 +348,7 @@ describe('ConviteConsentimento: cancelar pelo psicologo', () => {
     expect((await upd(psiA, 'CANCELADO')).count).toBe(0);
   });
 
-  it('notta_app nao altera outras colunas (expiraEm, tokenHash) nem apaga', async () => {
+  it('praxis_app nao altera outras colunas (expiraEm, tokenHash) nem apaga', async () => {
     const p = await novoPaciente(psiA);
     const id = await criarConvite(psiA, { pacienteId: p });
     await expect(

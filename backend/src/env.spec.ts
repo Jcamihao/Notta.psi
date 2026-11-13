@@ -13,22 +13,22 @@ describe('validarEnv', () => {
   });
 });
 
-describe('validarEnv: NOTTA_RETENCAO_RASCUNHO_DIAS', () => {
+describe('validarEnv: PRAXIS_RETENCAO_RASCUNHO_DIAS', () => {
   const base = { DATABASE_URL: 'postgresql://x:y@h/db' };
 
   it('ausente ou valido passa', () => {
     expect(() => validarEnv(base)).not.toThrow();
     expect(() =>
-      validarEnv({ ...base, NOTTA_RETENCAO_RASCUNHO_DIAS: '14' }),
+      validarEnv({ ...base, PRAXIS_RETENCAO_RASCUNHO_DIAS: '14' }),
     ).not.toThrow();
   });
 
   it('invalido derruba o boot sem ecoar o valor', () => {
     expect(() =>
-      validarEnv({ ...base, NOTTA_RETENCAO_RASCUNHO_DIAS: '0' }),
-    ).toThrow(/NOTTA_RETENCAO_RASCUNHO_DIAS/);
+      validarEnv({ ...base, PRAXIS_RETENCAO_RASCUNHO_DIAS: '0' }),
+    ).toThrow(/PRAXIS_RETENCAO_RASCUNHO_DIAS/);
     expect(() =>
-      validarEnv({ ...base, NOTTA_RETENCAO_RASCUNHO_DIAS: 'sete' }),
-    ).toThrow(/NOTTA_RETENCAO_RASCUNHO_DIAS/);
+      validarEnv({ ...base, PRAXIS_RETENCAO_RASCUNHO_DIAS: 'sete' }),
+    ).toThrow(/PRAXIS_RETENCAO_RASCUNHO_DIAS/);
   });
 });

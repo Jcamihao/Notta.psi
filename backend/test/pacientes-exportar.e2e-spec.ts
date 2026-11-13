@@ -141,7 +141,7 @@ async function pacienteComHistorico(u: Usuario) {
   };
 }
 
-// Contagem de EXPORTOU para um paciente, lida como notta_owner no contexto do psicologo.
+// Contagem de EXPORTOU para um paciente, lida como praxis_owner no contexto do psicologo.
 const exportacoesAuditadas = (u: Usuario, pid: string) =>
   comoOwner(
     u.clinicaId,

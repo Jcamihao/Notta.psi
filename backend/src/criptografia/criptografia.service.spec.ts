@@ -12,10 +12,10 @@ const FORMATO = /^v1\.k1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]*$/;
 
 // null = variavel ausente.
 function servico(chave: string | null = MASTER) {
-  delete process.env.NOTTA_MASTER_KEYS;
-  delete process.env.NOTTA_MASTER_KEY_ATUAL;
-  if (chave === null) delete process.env.NOTTA_MASTER_KEY;
-  else process.env.NOTTA_MASTER_KEY = chave;
+  delete process.env.PRAXIS_MASTER_KEYS;
+  delete process.env.PRAXIS_MASTER_KEY_ATUAL;
+  if (chave === null) delete process.env.PRAXIS_MASTER_KEY;
+  else process.env.PRAXIS_MASTER_KEY = chave;
   return new CriptografiaService();
 }
 
@@ -29,14 +29,14 @@ function adulterar(valor: string, i: number, pos: number): string {
 }
 
 describe('CriptografiaService', () => {
-  const original = process.env.NOTTA_MASTER_KEY;
-  const permite = process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE;
+  const original = process.env.PRAXIS_MASTER_KEY;
+  const permite = process.env.PRAXIS_PERMITE_SEGREDO_DE_TESTE;
   afterEach(() => {
-    if (original === undefined) delete process.env.NOTTA_MASTER_KEY;
-    else process.env.NOTTA_MASTER_KEY = original;
+    if (original === undefined) delete process.env.PRAXIS_MASTER_KEY;
+    else process.env.PRAXIS_MASTER_KEY = original;
     if (permite === undefined)
-      delete process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE;
-    else process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE = permite;
+      delete process.env.PRAXIS_PERMITE_SEGREDO_DE_TESTE;
+    else process.env.PRAXIS_PERMITE_SEGREDO_DE_TESTE = permite;
   });
 
   describe('roundtrip', () => {
@@ -245,7 +245,7 @@ describe('CriptografiaService', () => {
     it('vetor conhecido: cifrado gerado em Python (cryptography/AESGCM) decifra', () => {
       // Chave mestra 000102..1f, clinica-teste-123 (chave HKDF do vetor abaixo),
       // iv 00..0b, AAD do GCM = 'v1.k1|' + aadDe('Documento','texto','doc-1','psi-1').
-      process.env.NOTTA_MASTER_KEY =
+      process.env.PRAXIS_MASTER_KEY =
         '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f';
       const kat = new CriptografiaService();
       const valor =
@@ -285,7 +285,7 @@ describe('CriptografiaService', () => {
       } catch (e) {
         erro = e as Error;
       }
-      expect(erro?.message).toMatch(/NOTTA_MASTER_KEY/);
+      expect(erro?.message).toMatch(/PRAXIS_MASTER_KEY/);
       if (chave) expect(erro?.message).not.toContain(chave.trim());
       expect(erro?.message).not.toMatch(/\b6[0-9]\b/);
     });
@@ -307,7 +307,7 @@ describe('CriptografiaService', () => {
       } catch (e) {
         erro = e as Error;
       }
-      expect(erro?.message).toMatch(/NOTTA_MASTER_KEY/);
+      expect(erro?.message).toMatch(/PRAXIS_MASTER_KEY/);
       expect(erro?.message).not.toContain(chave);
       expect(erro?.message).not.toContain(chave.slice(0, 8));
     });
@@ -319,9 +319,9 @@ describe('CriptografiaService', () => {
     ])(
       'chave de teste das suites (%s) so passa com a variavel de teste',
       (_, chave) => {
-        delete process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE;
-        expect(() => servico(chave)).toThrow(/NOTTA_MASTER_KEY/);
-        process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE = '1';
+        delete process.env.PRAXIS_PERMITE_SEGREDO_DE_TESTE;
+        expect(() => servico(chave)).toThrow(/PRAXIS_MASTER_KEY/);
+        process.env.PRAXIS_PERMITE_SEGREDO_DE_TESTE = '1';
         expect(() => servico(chave)).not.toThrow();
       },
     );
@@ -387,7 +387,7 @@ describe('chaveiro com varias chaves (item 25, parte A)', () => {
     '9a3f51c07e2b48d6a1f0e93c5b7d2a846c1e0f9d3b5a7c28e4f16d0b9a3c5e72';
   const CHAVE_B =
     'c4d8e2f1a7b93065d2e8f4a1c6b0973e5a1d9f3e7c2b8a46f0e5d1c9b7a3e268';
-  const ENV_LISTA = ['NOTTA_MASTER_KEYS', 'NOTTA_MASTER_KEY_ATUAL'] as const;
+  const ENV_LISTA = ['PRAXIS_MASTER_KEYS', 'PRAXIS_MASTER_KEY_ATUAL'] as const;
   const salvo = ENV_LISTA.map((n) => process.env[n]);
   afterEach(() => {
     ENV_LISTA.forEach((n, i) => {
@@ -397,25 +397,25 @@ describe('chaveiro com varias chaves (item 25, parte A)', () => {
     });
   });
 
-  // undefined = variavel ausente. NOTTA_MASTER_KEY fica so se passada.
+  // undefined = variavel ausente. PRAXIS_MASTER_KEY fica so se passada.
   function multi(
     lista: string | undefined,
     atual: string | undefined,
     unica?: string,
   ) {
-    if (unica === undefined) delete process.env.NOTTA_MASTER_KEY;
-    else process.env.NOTTA_MASTER_KEY = unica;
-    if (lista === undefined) delete process.env.NOTTA_MASTER_KEYS;
-    else process.env.NOTTA_MASTER_KEYS = lista;
-    if (atual === undefined) delete process.env.NOTTA_MASTER_KEY_ATUAL;
-    else process.env.NOTTA_MASTER_KEY_ATUAL = atual;
+    if (unica === undefined) delete process.env.PRAXIS_MASTER_KEY;
+    else process.env.PRAXIS_MASTER_KEY = unica;
+    if (lista === undefined) delete process.env.PRAXIS_MASTER_KEYS;
+    else process.env.PRAXIS_MASTER_KEYS = lista;
+    if (atual === undefined) delete process.env.PRAXIS_MASTER_KEY_ATUAL;
+    else process.env.PRAXIS_MASTER_KEY_ATUAL = atual;
     return new CriptografiaService();
   }
 
   const falha = (fn: () => unknown) =>
     expect(fn).toThrow(new Error('falha ao decifrar'));
 
-  it('so NOTTA_MASTER_KEY (compat): vira k1, atual, cifra e decifra', () => {
+  it('so PRAXIS_MASTER_KEY (compat): vira k1, atual, cifra e decifra', () => {
     const c = multi(undefined, undefined, CHAVE_A);
     const v = c.cifrar('cli-a', 'compat', AAD);
     expect(kidDe(v)).toBe('k1');
@@ -486,18 +486,18 @@ describe('chaveiro com varias chaves (item 25, parte A)', () => {
   });
 
   it('ATUAL inexistente na lista = erro de boot', () => {
-    expect(() => multi(`k1:${CHAVE_A}`, 'k2')).toThrow(/NOTTA_MASTER_KEY/);
+    expect(() => multi(`k1:${CHAVE_A}`, 'k2')).toThrow(/PRAXIS_MASTER_KEY/);
   });
 
   it.each([
     [
-      'NOTTA_MASTER_KEY e NOTTA_MASTER_KEYS juntas',
+      'PRAXIS_MASTER_KEY e PRAXIS_MASTER_KEYS juntas',
       () => multi(`k1:${CHAVE_A}`, 'k1', CHAVE_B),
     ],
-    ['NOTTA_MASTER_KEYS sem ATUAL', () => multi(`k1:${CHAVE_A}`, undefined)],
-    ['ATUAL sem NOTTA_MASTER_KEYS', () => multi(undefined, 'k1', CHAVE_A)],
+    ['PRAXIS_MASTER_KEYS sem ATUAL', () => multi(`k1:${CHAVE_A}`, undefined)],
+    ['ATUAL sem PRAXIS_MASTER_KEYS', () => multi(undefined, 'k1', CHAVE_A)],
   ])('%s = erro de boot', (_, fn) => {
-    expect(fn).toThrow(/NOTTA_MASTER_KEY/);
+    expect(fn).toThrow(/PRAXIS_MASTER_KEY/);
   });
 
   it.each([
@@ -518,7 +518,7 @@ describe('chaveiro com varias chaves (item 25, parte A)', () => {
       erro = e as Error;
     }
     expect(erro).toBeInstanceOf(Error);
-    expect(erro?.message).toMatch(/NOTTA_MASTER_KEYS/);
+    expect(erro?.message).toMatch(/PRAXIS_MASTER_KEYS/);
     for (const c of [CHAVE_A, CHAVE_B, 'a'.repeat(62), 'z'.repeat(64)]) {
       expect(erro?.message).not.toContain(c);
     }
@@ -526,9 +526,9 @@ describe('chaveiro com varias chaves (item 25, parte A)', () => {
 
   it('chave de teste das suites na lista so passa com a variavel de teste', () => {
     const de_teste = '0123456789abcdef'.repeat(4);
-    delete process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE;
-    expect(() => multi(`k1:${de_teste}`, 'k1')).toThrow(/NOTTA_MASTER_KEYS/);
-    process.env.NOTTA_PERMITE_SEGREDO_DE_TESTE = '1';
+    delete process.env.PRAXIS_PERMITE_SEGREDO_DE_TESTE;
+    expect(() => multi(`k1:${de_teste}`, 'k1')).toThrow(/PRAXIS_MASTER_KEYS/);
+    process.env.PRAXIS_PERMITE_SEGREDO_DE_TESTE = '1';
     expect(() => multi(`k1:${de_teste}`, 'k1')).not.toThrow();
   });
 

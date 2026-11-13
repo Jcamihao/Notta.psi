@@ -65,7 +65,7 @@ beforeAll(async () => {
     .send(corpoClinica(emailAdmin, { senha: SENHA }))
     .expect(201);
   clinicaId = (res.body as { clinicaId: string }).clinicaId;
-  // PSICOLOGO direto no banco (notta_app). O banco so aceita colega com senha provisoria
+  // PSICOLOGO direto no banco (praxis_app). O banco so aceita colega com senha provisoria
   // (M-2): cria provisorio e faz a troca legitima na propria linha (hash novo, +1 versao).
   const tenant = app.get(TenantPrismaService);
   const { id: psicologoId } = await tenant.run(clinicaId, (tx) =>

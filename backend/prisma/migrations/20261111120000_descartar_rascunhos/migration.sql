@@ -1,5 +1,5 @@
 -- Retencao de RASCUNHO (item 52A). Rascunho sem edicao ha mais de N dias (`atualizadoEm` antes do
--- corte) e APAGADO de verdade pelo dono (notta_owner), com a sua GeracaoIa ligada. Quem executa e o
+-- corte) e APAGADO de verdade pelo dono (praxis_owner), com a sua GeracaoIa ligada. Quem executa e o
 -- comando `npm run descartar` (backend/src/ferramentas/descartar.ts); a funcao abaixo e o unico
 -- caminho de descarte e guarda as regras no banco:
 --  - so Documento RASCUNHO com atualizadoEm < corte. APROVADO nunca: o trigger documento_imutavel
@@ -8,27 +8,27 @@
 --  - apaga as GeracaoIa ligadas (como origem OU como gerado) antes do Documento (FK RESTRICT);
 --  - grava a auditoria DESCARTOU na MESMA transacao do DELETE;
 --  - SKIP LOCKED: dois processos do comando nao apagam o mesmo rascunho nem falham.
--- notta_app NAO ganha nada: sem EXECUTE, sem DELETE, sem SELECT novo. Os DELETEs usam as policies
+-- praxis_app NAO ganha nada: sem EXECUTE, sem DELETE, sem SELECT novo. Os DELETEs usam as policies
 -- do dono que ja existem (documento_dono_delete e geracaoia_dono_delete, so da clinica do contexto).
 -- A flag `app.descartando` vale so na transacao e so para o dono; ela abre as leituras e a
 -- auditoria do dono da clinica do contexto, e nada mais.
 
 -- 1) Policies do dono, so com a flag e so da clinica do contexto (somam com as existentes).
-CREATE POLICY documento_descartar_select ON "Documento" FOR SELECT TO notta_owner
+CREATE POLICY documento_descartar_select ON "Documento" FOR SELECT TO praxis_owner
   USING (current_setting('app.descartando', true) = '1'
          AND "clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), ''));
 
-CREATE POLICY geracaoia_descartar_select ON "GeracaoIa" FOR SELECT TO notta_owner
+CREATE POLICY geracaoia_descartar_select ON "GeracaoIa" FOR SELECT TO praxis_owner
   USING (current_setting('app.descartando', true) = '1'
          AND "clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), ''));
 
-CREATE POLICY auditoria_descartar_insert ON "Auditoria" FOR INSERT TO notta_owner
+CREATE POLICY auditoria_descartar_insert ON "Auditoria" FOR INSERT TO praxis_owner
   WITH CHECK (current_setting('app.descartando', true) = '1'
          AND "clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), ''));
 
 -- Listar clinicas (so ids): a tabela Clinica so mostra a propria clinica do contexto, entao o
 -- comando precisa de uma leitura de ids com a flag. Nada de nome sai daqui.
-CREATE POLICY clinica_descartar_select ON "Clinica" FOR SELECT TO notta_owner
+CREATE POLICY clinica_descartar_select ON "Clinica" FOR SELECT TO praxis_owner
   USING (current_setting('app.descartando', true) = '1');
 
 -- 2) Lista de clinicas para o comando (so ids).
@@ -132,8 +132,8 @@ BEGIN
 END;
 $$;
 
--- 4) Privilegios: so o dono (dono da funcao, executa por padrao). PUBLIC e notta_app ficam de fora.
+-- 4) Privilegios: so o dono (dono da funcao, executa por padrao). PUBLIC e praxis_app ficam de fora.
 REVOKE ALL ON FUNCTION clinicas_para_descarte() FROM PUBLIC;
-REVOKE ALL ON FUNCTION clinicas_para_descarte() FROM notta_app;
+REVOKE ALL ON FUNCTION clinicas_para_descarte() FROM praxis_app;
 REVOKE ALL ON FUNCTION descartar_rascunhos_vencidos(timestamptz, integer, boolean) FROM PUBLIC;
-REVOKE ALL ON FUNCTION descartar_rascunhos_vencidos(timestamptz, integer, boolean) FROM notta_app;
+REVOKE ALL ON FUNCTION descartar_rascunhos_vencidos(timestamptz, integer, boolean) FROM praxis_app;

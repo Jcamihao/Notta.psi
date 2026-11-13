@@ -241,7 +241,7 @@ describe('POST /pacientes/:id/documentos', () => {
       conteudo: 'texto DOIS secreto',
     });
     const c2 = (await linhaCrua(a, d2.id)).conteudoCifrado;
-    // o notta_app nao tem UPDATE: troca o cifrado como owner (so teste), sob a policy
+    // o praxis_app nao tem UPDATE: troca o cifrado como owner (so teste), sob a policy
     await comoOwner(
       a.clinicaId,
       (tx) =>

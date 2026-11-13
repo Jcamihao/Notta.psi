@@ -47,9 +47,9 @@ import { NavItemComponent } from '../ui/nav-item.component';
     <header class="lateral" [class.aberto]="menuAberto()" [class.sem-menu]="obrigatoria()">
       <div class="lateral-topo">
         @if (obrigatoria()) {
-          <span class="marca">Notta.psi</span>
+          <span class="marca">praxis.psi</span>
         } @else {
-          <a class="marca" routerLink="/">Notta.psi</a>
+          <a class="marca" routerLink="/">praxis.psi</a>
           <button
             #alternar
             app-icon-button

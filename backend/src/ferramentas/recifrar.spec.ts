@@ -23,9 +23,9 @@ const DOC: Alvo = { tabela: 'Documento', coluna: 'conteudoCifrado' };
 function servico(vars: Record<string, string>): CriptografiaService {
   const antes = { ...process.env };
   for (const k of [
-    'NOTTA_MASTER_KEY',
-    'NOTTA_MASTER_KEYS',
-    'NOTTA_MASTER_KEY_ATUAL',
+    'PRAXIS_MASTER_KEY',
+    'PRAXIS_MASTER_KEYS',
+    'PRAXIS_MASTER_KEY_ATUAL',
   ]) {
     delete process.env[k];
   }
@@ -40,11 +40,11 @@ function servico(vars: Record<string, string>): CriptografiaService {
   }
 }
 
-const so1 = () => servico({ NOTTA_MASTER_KEY: K1 });
+const so1 = () => servico({ PRAXIS_MASTER_KEY: K1 });
 const k1ComK2 = () =>
   servico({
-    NOTTA_MASTER_KEYS: `k1:${K1},k2:${K2}`,
-    NOTTA_MASTER_KEY_ATUAL: 'k2',
+    PRAXIS_MASTER_KEYS: `k1:${K1},k2:${K2}`,
+    PRAXIS_MASTER_KEY_ATUAL: 'k2',
   });
 
 function linhas(cripto: CriptografiaService, alvo: Alvo, n: number): Linha[] {

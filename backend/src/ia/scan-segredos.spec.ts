@@ -26,7 +26,7 @@ describe('scan:segredos', () => {
   it('passa em repo limpo e em placeholders de documentacao', () => {
     const r = rodar({
       'README.md':
-        'x-selah-api-key: <chave do app>\nexport NOTTA_MASTER_KEY=<64 hex>\nNOTTA_JWT_SECRET=$(openssl rand -base64 48)\nSELAHIA_API_KEY=\n',
+        'x-selah-api-key: <chave do app>\nexport PRAXIS_MASTER_KEY=<64 hex>\nPRAXIS_JWT_SECRET=$(openssl rand -base64 48)\nSELAHIA_API_KEY=\n',
       'src/a.ts':
         "const h = { 'x-selah-api-key': this.config.apiKey };\nconst k = process.env.SELAHIA_API_KEY;\n",
     });
@@ -39,11 +39,11 @@ describe('scan:segredos', () => {
       `curl -H "x-selah-api-key: ${VALOR}"`,
       'SELAH_API_KEY_COM_VALOR',
     ],
-    ['NOTTA_*', `NOTTA_MASTER_KEY=${VALOR}`, 'NOTTA_OU_SELAHIA_COM_VALOR'],
+    ['PRAXIS_*', `PRAXIS_MASTER_KEY=${VALOR}`, 'PRAXIS_OU_SELAHIA_COM_VALOR'],
     [
       'SELAHIA_API_KEY',
       `SELAHIA_API_KEY="${VALOR}"`,
-      'NOTTA_OU_SELAHIA_COM_VALOR',
+      'PRAXIS_OU_SELAHIA_COM_VALOR',
     ],
     ['PEM', PEM, 'CHAVE_PRIVADA_PEM'],
     ['hex64', `const chave = '${HEX64}';`, 'HEX64_EM_ATRIBUICAO'],
@@ -61,9 +61,9 @@ describe('scan:segredos', () => {
 
   it('allowlist: teste e .env.example passam so para os tipos liberados', () => {
     const ok = rodar({
-      'backend/test/x.e2e-spec.ts': `process.env.NOTTA_JWT_SECRET = '${VALOR}';\nconst k = '${HEX64}'; const kk = { chave: '${HEX64}' };`,
-      'backend/src/a.spec.ts': `NOTTA_MASTER_KEY: '${VALOR}'`,
-      'backend/.env.example': `NOTTA_MASTER_KEY=${VALOR}`,
+      'backend/test/x.e2e-spec.ts': `process.env.PRAXIS_JWT_SECRET = '${VALOR}';\nconst k = '${HEX64}'; const kk = { chave: '${HEX64}' };`,
+      'backend/src/a.spec.ts': `PRAXIS_MASTER_KEY: '${VALOR}'`,
+      'backend/.env.example': `PRAXIS_MASTER_KEY=${VALOR}`,
     });
     expect(ok.codigo).toBe(0);
     // chave real do SelahIA e PEM nao passam nem em teste

@@ -26,17 +26,17 @@ CREATE POLICY tenant_isolation_insert ON "Psicologo" FOR INSERT
 -- 2) Sem DELETE de Psicologo para o app (a desativacao, item 58, tera caminho proprio).
 --    A policy tenant_isolation_delete fica: sem o GRANT ela nao e alcancavel, e o caminho
 --    novo nao precisa recria-la.
-REVOKE DELETE ON "Psicologo" FROM notta_app;
+REVOKE DELETE ON "Psicologo" FROM praxis_app;
 
 -- 3) Clinica: nenhuma rota edita ou apaga clinica. SELECT e INSERT (cadastro) continuam.
-REVOKE UPDATE, DELETE ON "Clinica" FROM notta_app;
+REVOKE UPDATE, DELETE ON "Clinica" FROM praxis_app;
 
 -- 4) Trigger BEFORE UPDATE em Psicologo.
 --    - senhaProvisoria so vai de true para false se senhaHash mudou na mesma instrucao;
 --      nunca de false para true.
 --    - tokenVersao so muda para OLD + 1, e so se senhaHash mudou na mesma instrucao.
 --    nome e abordagemPadrao seguem livres. Funcao e trigger sao do owner (esta migration roda
---    como notta_owner); o app nao tem TRIGGER nem e dono, entao nao desliga nem troca
+--    como praxis_owner); o app nao tem TRIGGER nem e dono, entao nao desliga nem troca
 --    (session_replication_role exige superuser).
 CREATE FUNCTION psicologo_barreira_update() RETURNS trigger
 LANGUAGE plpgsql AS $$
@@ -63,6 +63,6 @@ CREATE TRIGGER psicologo_barreira_update BEFORE UPDATE ON "Psicologo"
   FOR EACH ROW EXECUTE FUNCTION psicologo_barreira_update();
 
 -- 5) M-11 (lo_create): o REVOKE de lo_create/lo_creat FROM PUBLIC NAO cabe numa migration.
---    As funcoes sao do superuser e o notta_owner nao tem como revoga-las (o Postgres aceita o
+--    As funcoes sao do superuser e o praxis_owner nao tem como revoga-las (o Postgres aceita o
 --    comando e nao muda nada). Fica em prisma/bootstrap/endurecer-banco.sql, rodado UMA vez por
 --    banco como superuser (ver README); test/acesso-psicologo.e2e-spec.ts confere o resultado.

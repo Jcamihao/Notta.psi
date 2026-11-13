@@ -25,7 +25,9 @@ describe('SegurancaPage', () => {
   afterEach(() => ctrl.verify());
 
   it('tem h1 com o titulo da pagina e a data de atualizacao', () => {
-    expect(el().querySelector('h1')?.textContent?.trim()).toBe('Como o Notta.psi protege os dados');
+    expect(el().querySelector('h1')?.textContent?.trim()).toBe(
+      'Como o praxis.psi protege os dados',
+    );
     expect(el().textContent).toContain('Atualizado em 11/11/2026');
   });
 

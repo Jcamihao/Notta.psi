@@ -9,7 +9,7 @@ import { apagarClinicas, comoOwner, mudarPapelComoOwner } from './acesso-owner';
 // `ativo`, mexer em outra coluna do alvo).
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: este teste usa o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: este teste usa o papel praxis_owner (ver backend/README.md)',
   );
 }
 
@@ -106,7 +106,7 @@ describe('estrutura (item 58)', () => {
     expect(chk.def).toContain('ativo = false');
     const grants = await owner.$queryRaw<{ column_name: string }[]>`
       SELECT column_name FROM information_schema.column_privileges
-      WHERE table_name = 'Psicologo' AND grantee = 'notta_app' AND privilege_type = 'UPDATE'
+      WHERE table_name = 'Psicologo' AND grantee = 'praxis_app' AND privilege_type = 'UPDATE'
       ORDER BY column_name`;
     expect(grants.map((g) => g.column_name)).toEqual([
       'abordagemPadrao',

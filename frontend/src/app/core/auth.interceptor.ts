@@ -8,11 +8,11 @@ const METODOS_COM_CSRF = ['POST', 'PUT', 'PATCH', 'DELETE'];
 // Ainda nao ha sessao nestas chamadas: sem CSRF e sem tentar renovar em 401.
 const SEM_SESSAO = ['/api/auth/login', '/api/clinicas', '/api/auth/renovar'];
 
-// Cookie `notta_csrf` (nao httpOnly de proposito: double-submit). Some junto com a sessao.
+// Cookie `praxis_csrf` (nao httpOnly de proposito: double-submit). Some junto com a sessao.
 function lerCsrf(): string | null {
   for (const parte of document.cookie.split(';')) {
     const i = parte.indexOf('=');
-    if (i <= 0 || parte.slice(0, i).trim() !== 'notta_csrf') continue;
+    if (i <= 0 || parte.slice(0, i).trim() !== 'praxis_csrf') continue;
     try {
       return decodeURIComponent(parte.slice(i + 1).trim()) || null;
     } catch {

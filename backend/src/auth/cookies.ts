@@ -6,18 +6,18 @@ import { ACESSO_SEGUNDOS } from './jwt.config';
 // Nomes FIXOS, sem prefixo __Host-/__Secure-: o front le o CSRF pelo nome; o refresh precisa de
 // Path proprio (__Host- exige Path=/); e __Host- sem Secure e rejeitado, o que quebraria o http de
 // desenvolvimento. Ver docs/ACESSO.md (sessao).
-export const COOKIE_ACESSO = 'notta_acesso';
-export const COOKIE_REFRESH = 'notta_refresh';
-export const COOKIE_CSRF = 'notta_csrf';
+export const COOKIE_ACESSO = 'praxis_acesso';
+export const COOKIE_REFRESH = 'praxis_refresh';
+export const COOKIE_CSRF = 'praxis_csrf';
 
 // Base da API como o NAVEGADOR a ve (o proxy tira o prefixo antes do back). Padrao `/api`;
-// `NOTTA_API_PREFIXO=` (vazio) = API na raiz. O refresh so viaja para `<prefixo>/auth/*`.
+// `PRAXIS_API_PREFIXO=` (vazio) = API na raiz. O refresh so viaja para `<prefixo>/auth/*`.
 export function prefixoApi(env: NodeJS.ProcessEnv = process.env): string {
-  const bruto = env.NOTTA_API_PREFIXO;
+  const bruto = env.PRAXIS_API_PREFIXO;
   if (bruto === undefined) return '/api';
   if (bruto !== '' && !/^(\/[A-Za-z0-9._~-]+)+$/.test(bruto)) {
     throw new Error(
-      'NOTTA_API_PREFIXO invalida: use caminho como /api (sem barra no fim) ou vazio',
+      'PRAXIS_API_PREFIXO invalida: use caminho como /api (sem barra no fim) ou vazio',
     );
   }
   return bruto;
@@ -45,7 +45,7 @@ export function lerCookie(cabecalho: string | undefined, nome: string) {
   return undefined;
 }
 
-// Secure quando a requisicao e https (com NOTTA_TRUST_PROXY, o X-Forwarded-Proto vale) ou fora de
+// Secure quando a requisicao e https (com PRAXIS_TRUST_PROXY, o X-Forwarded-Proto vale) ou fora de
 // development/test. localhost em http dev nao tem Secure (os navegadores o tratam como seguro).
 const opcoes = (req: Request, env: NodeJS.ProcessEnv = process.env) => ({
   secure: req.secure || !emDev(env),

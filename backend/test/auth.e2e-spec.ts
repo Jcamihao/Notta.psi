@@ -144,7 +144,7 @@ describe('GET /eu e JwtAuthGuard', () => {
   });
 
   it('todos os tokens invalidos -> 401 com o MESMO corpo generico', async () => {
-    const segredo = process.env.NOTTA_JWT_SECRET!;
+    const segredo = process.env.PRAXIS_JWT_SECRET!;
     const jwt = new JwtService({ secret: segredo });
     const outro = new JwtService({ secret: 'outro-segredo-'.repeat(4) });
     const agora = Math.floor(Date.now() / 1000);
@@ -378,9 +378,9 @@ describe('logs', () => {
 });
 
 describe('boot', () => {
-  const original = process.env.NOTTA_JWT_SECRET;
+  const original = process.env.PRAXIS_JWT_SECRET;
   afterEach(() => {
-    process.env.NOTTA_JWT_SECRET = original;
+    process.env.PRAXIS_JWT_SECRET = original;
   });
 
   it.each([
@@ -404,10 +404,10 @@ describe('boot', () => {
     ['de tutorial', 'my-super-secret-jwt-key-for-production'],
     ['15 caracteres distintos', 'abcdefghijklmno'.repeat(4)],
   ])(
-    'NOTTA_JWT_SECRET %s derruba o boot sem ecoar o valor',
+    'PRAXIS_JWT_SECRET %s derruba o boot sem ecoar o valor',
     async (_n, valor) => {
-      if (valor === undefined) delete process.env.NOTTA_JWT_SECRET;
-      else process.env.NOTTA_JWT_SECRET = valor;
+      if (valor === undefined) delete process.env.PRAXIS_JWT_SECRET;
+      else process.env.PRAXIS_JWT_SECRET = valor;
       let msg = '';
       try {
         const x = await criarApp();
@@ -415,13 +415,13 @@ describe('boot', () => {
       } catch (err) {
         msg = (err as Error).message;
       }
-      expect(msg).toMatch(/NOTTA_JWT_SECRET/);
+      expect(msg).toMatch(/PRAXIS_JWT_SECRET/);
       if (valor) expect(msg).not.toContain(valor);
     },
   );
 
-  it('NOTTA_JWT_SECRET com 32 caracteres (16+ distintos) sobe', async () => {
-    process.env.NOTTA_JWT_SECRET = 'abcdefghijklmnop'.repeat(2);
+  it('PRAXIS_JWT_SECRET com 32 caracteres (16+ distintos) sobe', async () => {
+    process.env.PRAXIS_JWT_SECRET = 'abcdefghijklmnop'.repeat(2);
     const x = await criarApp();
     await x.close();
   });

@@ -3,7 +3,7 @@
 //
 // RASCUNHO NAO REVISADO. O texto abaixo foi escrito pelo agente, NAO por advogado. Antes de uso
 // real o dono precisa fazer a revisao juridica, trocar o texto, mudar a `versao` (cada convite e
-// cada consentimento guardam a versao e o texto exibidos) e so entao ligar NOTTA_TERMO_REVISADO=1.
+// cada consentimento guardam a versao e o texto exibidos) e so entao ligar PRAXIS_TERMO_REVISADO=1.
 // Em producao o boot FALHA sem essa variavel (ver convite.config.ts).
 //
 // Versao nova = convites antigos (feitos com a versao anterior) deixam de valer: o paciente nunca

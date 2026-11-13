@@ -1,11 +1,11 @@
-# Notta.psi — Núcleo Clínico + Prontuário Assistido por IA (Sub-projeto 1)
+# praxis.psi — Núcleo Clínico + Prontuário Assistido por IA (Sub-projeto 1)
 
 **Data:** 2026-09-27
 **Status:** aguardando revisão do dono do projeto
 
 ## 1. Contexto e objetivo
 
-Notta.psi é uma plataforma para **clínicas e psicólogos** que reduz o trabalho de
+praxis.psi é uma plataforma para **clínicas e psicólogos** que reduz o trabalho de
 registro clínico e, em fases futuras, estende o cuidado para entre as sessões.
 
 Este documento cobre **apenas o sub-projeto 1**: o núcleo multi-clínica e o
@@ -97,7 +97,7 @@ chave de criptografia por clínica.**
 
 ## 7. Anonimização antes da IA
 
-**Decisão: anonimização automática no backend do Notta.psi, antes de qualquer
+**Decisão: anonimização automática no backend do praxis.psi, antes de qualquer
 chamada ao SelahIA.**
 
 - Identificadores diretos (nome completo do paciente cadastrado, CPF,
@@ -144,7 +144,7 @@ já usado pelo Lumen.
 
 - Novo adapter `psicologia`, seguindo o padrão já existente em
   `src/adapters/<app>/` (módulo, controller, service, prompt, schemas,
-  sanitize), com chave de API própria do Notta.psi.
+  sanitize), com chave de API própria do praxis.psi.
 - O prompt varia por abordagem clínica e por tipo de documento (evolução vs.
   anamnese); ambos os eixos ficam explícitos na chamada, não implícitos no
   texto de entrada.
@@ -171,5 +171,5 @@ já usado pelo Lumen.
   implementada e testada com texto real.
 - Termos de retenção/treinamento do provedor de IA por trás do SelahIA ainda
   não foram verificados.
-- Nome comercial "Notta.psi" ainda não teve domínio, marca ou redes sociais
+- Nome comercial "praxis.psi" ainda não teve domínio, marca ou redes sociais
   verificados.

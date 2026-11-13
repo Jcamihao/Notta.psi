@@ -7,7 +7,7 @@ import { apagarClinicas, comoOwner, ddl } from './acesso-owner';
 // RLS, privilegios e trigger de "Auditoria" (item 11) no Postgres real. Somente-acrescentar.
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel praxis_owner (ver backend/README.md)',
   );
 }
 
@@ -68,7 +68,7 @@ const ver = (u: U) =>
 const sql = (u: U, texto: string) =>
   tenant.runComoUsuario(u, (tx) => tx.$executeRawUnsafe(texto));
 
-// Como notta_owner (dono), com o contexto do usuario.
+// Como praxis_owner (dono), com o contexto do usuario.
 const sqlDono = (u: U, texto: string) =>
   comoOwner(u.clinicaId, (tx) => tx.$executeRawUnsafe(texto), {
     psicologoId: u.psicologoId,
@@ -125,16 +125,16 @@ describe('Auditoria: estrutura no banco', () => {
     expect(c).toEqual([]);
   });
 
-  it('notta_app tem so SELECT e INSERT (nada de UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER)', async () => {
+  it('praxis_app tem so SELECT e INSERT (nada de UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER)', async () => {
     const [g] = await owner.$queryRaw<Record<string, boolean>[]>`
       SELECT
-        has_table_privilege('notta_app', '"Auditoria"', 'SELECT') AS sel,
-        has_table_privilege('notta_app', '"Auditoria"', 'INSERT') AS ins,
-        has_table_privilege('notta_app', '"Auditoria"', 'UPDATE') AS upd,
-        has_table_privilege('notta_app', '"Auditoria"', 'DELETE') AS del,
-        has_table_privilege('notta_app', '"Auditoria"', 'TRUNCATE') AS trunc,
-        has_table_privilege('notta_app', '"Auditoria"', 'REFERENCES') AS ref,
-        has_table_privilege('notta_app', '"Auditoria"', 'TRIGGER') AS trg`;
+        has_table_privilege('praxis_app', '"Auditoria"', 'SELECT') AS sel,
+        has_table_privilege('praxis_app', '"Auditoria"', 'INSERT') AS ins,
+        has_table_privilege('praxis_app', '"Auditoria"', 'UPDATE') AS upd,
+        has_table_privilege('praxis_app', '"Auditoria"', 'DELETE') AS del,
+        has_table_privilege('praxis_app', '"Auditoria"', 'TRUNCATE') AS trunc,
+        has_table_privilege('praxis_app', '"Auditoria"', 'REFERENCES') AS ref,
+        has_table_privilege('praxis_app', '"Auditoria"', 'TRIGGER') AS trg`;
     expect(g).toEqual({
       sel: true,
       ins: true,
@@ -207,7 +207,7 @@ describe('Auditoria: escrita', () => {
 });
 
 describe('Auditoria: somente-acrescentar', () => {
-  it('notta_app: UPDATE, DELETE e TRUNCATE = permission denied (mesmo com o desvio de teste ligado)', async () => {
+  it('praxis_app: UPDATE, DELETE e TRUNCATE = permission denied (mesmo com o desvio de teste ligado)', async () => {
     const desvio = (u: U, texto: string) =>
       tenant.runComoUsuario(u, async (tx) => {
         await tx.$executeRaw`SELECT set_config('app.limpeza_de_teste', '1', true)`;
@@ -231,7 +231,7 @@ describe('Auditoria: somente-acrescentar', () => {
     expect(await ver(psiA)).toHaveLength(2);
   });
 
-  it('trigger barra UPDATE e DELETE ate para o notta_owner (dono)', async () => {
+  it('trigger barra UPDATE e DELETE ate para o praxis_owner (dono)', async () => {
     await expect(
       sqlDono(psiA, `UPDATE "Auditoria" SET acao = 'EDITOU'`),
     ).rejects.toThrow(/somente-acrescentar/);

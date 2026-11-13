@@ -11,16 +11,16 @@ const build = (arquivos) => {
   for (const [nome, conteudo] of Object.entries(arquivos)) writeFileSync(join(dir, nome), conteudo);
   return verificar(dir).achados;
 };
-const RAIZ = '<app-root ngCspNonce="NOTTA_CSP_NONCE">';
+const RAIZ = '<app-root ngCspNonce="PRAXIS_CSP_NONCE">';
 const limpo =
-  '<!doctype html><html><head><link rel="stylesheet" href="s.css"></head><body><app-root ngCspNonce="NOTTA_CSP_NONCE"></app-root><script src="main.js" type="module"></script></body></html>';
+  '<!doctype html><html><head><link rel="stylesheet" href="s.css"></head><body><app-root ngCspNonce="PRAXIS_CSP_NONCE"></app-root><script src="main.js" type="module"></script></body></html>';
 
 test('build limpo passa', () => {
   assert.deepEqual(build({ 'index.html': limpo, 'main.js': 'const a = 1; export { a };' }), []);
 });
 
 test('index.html sem ngCspNonce no app-root falha', () => {
-  const a = build({ 'index.html': limpo.replace(' ngCspNonce="NOTTA_CSP_NONCE"', '') });
+  const a = build({ 'index.html': limpo.replace(' ngCspNonce="PRAXIS_CSP_NONCE"', '') });
   assert.equal(a.length, 1);
   assert.match(a[0], /ngCspNonce/);
 });

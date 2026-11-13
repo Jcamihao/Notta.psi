@@ -2,24 +2,24 @@ import { lerConfigConvite } from './convite.config';
 
 const prod = {
   NODE_ENV: 'production',
-  NOTTA_TERMO_REVISADO: '1',
-  NOTTA_APP_URL: 'https://app.exemplo.com',
+  PRAXIS_TERMO_REVISADO: '1',
+  PRAXIS_APP_URL: 'https://app.exemplo.com',
 };
 const com = (extra: Record<string, string | undefined>) =>
   ({ ...prod, ...extra }) as NodeJS.ProcessEnv;
 
-describe('lerConfigConvite: NOTTA_TERMO_REVISADO', () => {
+describe('lerConfigConvite: PRAXIS_TERMO_REVISADO', () => {
   it('producao sem a variavel derruba o boot', () => {
     expect(() =>
-      lerConfigConvite(com({ NOTTA_TERMO_REVISADO: undefined })),
-    ).toThrow(/NOTTA_TERMO_REVISADO/);
+      lerConfigConvite(com({ PRAXIS_TERMO_REVISADO: undefined })),
+    ).toThrow(/PRAXIS_TERMO_REVISADO/);
   });
 
   it.each(['', '0', 'true', 'sim', ' 1', '1 ', '2'])(
-    'producao com NOTTA_TERMO_REVISADO=%j derruba o boot (so o valor exato 1 vale)',
+    'producao com PRAXIS_TERMO_REVISADO=%j derruba o boot (so o valor exato 1 vale)',
     (v) => {
-      expect(() => lerConfigConvite(com({ NOTTA_TERMO_REVISADO: v }))).toThrow(
-        /NOTTA_TERMO_REVISADO/,
+      expect(() => lerConfigConvite(com({ PRAXIS_TERMO_REVISADO: v }))).toThrow(
+        /PRAXIS_TERMO_REVISADO/,
       );
     },
   );
@@ -29,13 +29,13 @@ describe('lerConfigConvite: NOTTA_TERMO_REVISADO', () => {
     (nodeEnv) => {
       expect(() =>
         lerConfigConvite(
-          com({ NODE_ENV: nodeEnv, NOTTA_TERMO_REVISADO: undefined }),
+          com({ NODE_ENV: nodeEnv, PRAXIS_TERMO_REVISADO: undefined }),
         ),
-      ).toThrow(/NOTTA_TERMO_REVISADO/);
+      ).toThrow(/PRAXIS_TERMO_REVISADO/);
     },
   );
 
-  it('producao com NOTTA_TERMO_REVISADO=1 sobe', () => {
+  it('producao com PRAXIS_TERMO_REVISADO=1 sobe', () => {
     expect(lerConfigConvite(com({})).appUrl).toBe('https://app.exemplo.com');
   });
 
@@ -47,7 +47,7 @@ describe('lerConfigConvite: NOTTA_TERMO_REVISADO', () => {
   );
 });
 
-describe('lerConfigConvite: NOTTA_APP_URL', () => {
+describe('lerConfigConvite: PRAXIS_APP_URL', () => {
   it('dev/test sem a variavel usa o ng serve local', () => {
     expect(lerConfigConvite({ NODE_ENV: 'development' }).appUrl).toBe(
       'http://localhost:4200',
@@ -55,16 +55,16 @@ describe('lerConfigConvite: NOTTA_APP_URL', () => {
   });
 
   it('producao sem a variavel derruba o boot', () => {
-    expect(() => lerConfigConvite(com({ NOTTA_APP_URL: undefined }))).toThrow(
-      /NOTTA_APP_URL/,
+    expect(() => lerConfigConvite(com({ PRAXIS_APP_URL: undefined }))).toThrow(
+      /PRAXIS_APP_URL/,
     );
   });
 
   it.each(['lixo', 'ftp://app.exemplo.com', '//app.exemplo.com'])(
     'URL invalida %j derruba o boot',
     (url) => {
-      expect(() => lerConfigConvite(com({ NOTTA_APP_URL: url }))).toThrow(
-        /NOTTA_APP_URL/,
+      expect(() => lerConfigConvite(com({ PRAXIS_APP_URL: url }))).toThrow(
+        /PRAXIS_APP_URL/,
       );
     },
   );
@@ -73,7 +73,7 @@ describe('lerConfigConvite: NOTTA_APP_URL', () => {
     const url = 'https://joao:segredo@app.exemplo.com';
     let msg = '';
     try {
-      lerConfigConvite(com({ NOTTA_APP_URL: url }));
+      lerConfigConvite(com({ PRAXIS_APP_URL: url }));
     } catch (e) {
       msg = (e as Error).message;
     }
@@ -84,7 +84,7 @@ describe('lerConfigConvite: NOTTA_APP_URL', () => {
   it.each(['https://app.exemplo.com/?a=1', 'https://app.exemplo.com/#x'])(
     'query ou fragmento (%j) derruba o boot',
     (url) => {
-      expect(() => lerConfigConvite(com({ NOTTA_APP_URL: url }))).toThrow(
+      expect(() => lerConfigConvite(com({ PRAXIS_APP_URL: url }))).toThrow(
         /query nem fragmento/,
       );
     },
@@ -93,7 +93,7 @@ describe('lerConfigConvite: NOTTA_APP_URL', () => {
   it.each(['http://app.exemplo.com', 'http://localhost:4200'])(
     'http (%j) e recusado em producao, ate para localhost',
     (url) => {
-      expect(() => lerConfigConvite(com({ NOTTA_APP_URL: url }))).toThrow(
+      expect(() => lerConfigConvite(com({ PRAXIS_APP_URL: url }))).toThrow(
         /precisa ser https/,
       );
     },
@@ -105,7 +105,7 @@ describe('lerConfigConvite: NOTTA_APP_URL', () => {
       expect(
         lerConfigConvite({
           NODE_ENV: 'development',
-          NOTTA_APP_URL: url,
+          PRAXIS_APP_URL: url,
         }).appUrl,
       ).toBe(url);
     },
@@ -115,18 +115,18 @@ describe('lerConfigConvite: NOTTA_APP_URL', () => {
     expect(() =>
       lerConfigConvite({
         NODE_ENV: 'development',
-        NOTTA_APP_URL: 'http://app.exemplo.com',
+        PRAXIS_APP_URL: 'http://app.exemplo.com',
       }),
     ).toThrow(/precisa ser https/);
   });
 
   it('tira a barra do fim e guarda o caminho', () => {
     expect(
-      lerConfigConvite(com({ NOTTA_APP_URL: 'https://app.exemplo.com/psi//' }))
+      lerConfigConvite(com({ PRAXIS_APP_URL: 'https://app.exemplo.com/psi//' }))
         .appUrl,
     ).toBe('https://app.exemplo.com/psi');
     expect(
-      lerConfigConvite(com({ NOTTA_APP_URL: 'https://app.exemplo.com/' }))
+      lerConfigConvite(com({ PRAXIS_APP_URL: 'https://app.exemplo.com/' }))
         .appUrl,
     ).toBe('https://app.exemplo.com');
   });

@@ -82,7 +82,7 @@ model Paciente {
 }
 
 // Trilha de auditoria (item 11): QUEM fez O QUE em QUE recurso e QUANDO. Somente-acrescentar
-// (notta_app so SELECT/INSERT + trigger). NUNCA grava conteudo, nome nem IP. `recursoId` sem FK:
+// (praxis_app so SELECT/INSERT + trigger). NUNCA grava conteudo, nome nem IP. `recursoId` sem FK:
 // a trilha sobrevive ao recurso. Valores de acao/recurso: src/auditoria/auditoria.service.ts.
 model Auditoria {
   id          String    @id @default(uuid())
@@ -99,7 +99,7 @@ model Auditoria {
 }
 
 // Consentimento do paciente (item 10): cada evento (CONCEDIDO, REVOGADO) e uma linha NOVA; nada
-// e sobrescrito. Estado atual = evento da maior `seq`. Somente-acrescentar (notta_app so
+// e sobrescrito. Estado atual = evento da maior `seq`. Somente-acrescentar (praxis_app so
 // SELECT/INSERT + trigger). `evento` tem CHECK no banco. Termo = snapshot (src/consentimento).
 model Consentimento {
   id          String                @id @default(uuid())
@@ -153,7 +153,7 @@ model ConviteConsentimento {
 // Documento clinico (item 12): nota bruta, evolucao ou anamnese. O texto (`conteudoCifrado`) e
 // cifrado (AES-256-GCM, AAD = Documento|conteudoCifrado|id|psicologoId); o id nasce no app porque
 // entra no AAD. `dataSessao` fica em claro (metadado de linha do tempo, nao e conteudo clinico).
-// `tipo` e `status` tem CHECK no banco. Nasce RASCUNHO (a policy de INSERT exige); notta_app so
+// `tipo` e `status` tem CHECK no banco. Nasce RASCUNHO (a policy de INSERT exige); praxis_app so
 // SELECT/INSERT (UPDATE entra no item 14, aprovacao no 15).
 model Documento {
   id              String      @id
@@ -188,7 +188,7 @@ model Documento {
 // mostrou e que sai EXATAMENTE assim; `mapaCifrado` = mapa codigo->original (JSON, tem dado
 // pessoal em claro por dentro, por isso cifrado). Ambos AES-GCM, AAD = GeracaoIa|<coluna>|id|
 // psicologoId, e zerados no PRONTO. Estados, CHECKs e trigger: migration 20261106120000.
-// notta_app: SELECT, INSERT e UPDATE so nas colunas de andamento; sem DELETE (retencao: item 52).
+// praxis_app: SELECT, INSERT e UPDATE so nas colunas de andamento; sem DELETE (retencao: item 52).
 model GeracaoIa {
   id            String     @id
   clinicaId     String

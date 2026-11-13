@@ -1,17 +1,17 @@
 -- Exclusao do paciente por ANONIMIZACAO (item 26, LGPD). Nao apaga linhas: o conteudo cifrado e
 -- trocado por tombstones validos (cifrados com o AAD certo de cada linha, calculados no app), os
 -- identificadores somem e `Paciente.excluidoEm` marca a exclusao. Quem executa e a funcao
--- `anonimizar_paciente` (SECURITY DEFINER, dona = notta_owner): notta_app so tem EXECUTE nela.
+-- `anonimizar_paciente` (SECURITY DEFINER, dona = praxis_owner): praxis_app so tem EXECUTE nela.
 -- Triggers: a excecao de documento_imutavel e geracao_ia_barreira vale SO para o dono, com a flag
 -- `app.anonimizando` ligada pela propria funcao, e SO para as colunas listadas. Os corpos de
 -- documento_imutavel e geracao_ia_barreira abaixo sao os de 20261109120000_recifrar_dono; a unica
 -- mudanca e a excecao nova no ramo APROVADO e no topo de geracao_ia_barreira.
 
--- 1) Coluna nova. notta_app NAO ganha UPDATE nela: so a funcao escreve.
+-- 1) Coluna nova. praxis_app NAO ganha UPDATE nela: so a funcao escreve.
 ALTER TABLE "Paciente" ADD COLUMN "excluidoEm" TIMESTAMP(3);
 
 -- 2) Policies do dono, so com a flag (permissivas: somam com as de clinica existentes).
-CREATE POLICY paciente_anonimizar_update ON "Paciente" FOR UPDATE TO notta_owner
+CREATE POLICY paciente_anonimizar_update ON "Paciente" FOR UPDATE TO praxis_owner
   USING (current_setting('app.anonimizando', true) = '1'
          AND "clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), '')
          AND "psicologoId" = NULLIF(current_setting('app.current_psicologo_id', true), ''))
@@ -19,7 +19,7 @@ CREATE POLICY paciente_anonimizar_update ON "Paciente" FOR UPDATE TO notta_owner
          AND "clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), '')
          AND "psicologoId" = NULLIF(current_setting('app.current_psicologo_id', true), ''));
 
-CREATE POLICY documento_anonimizar_update ON "Documento" FOR UPDATE TO notta_owner
+CREATE POLICY documento_anonimizar_update ON "Documento" FOR UPDATE TO praxis_owner
   USING (current_setting('app.anonimizando', true) = '1'
          AND "clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), '')
          AND "psicologoId" = NULLIF(current_setting('app.current_psicologo_id', true), ''))
@@ -27,7 +27,7 @@ CREATE POLICY documento_anonimizar_update ON "Documento" FOR UPDATE TO notta_own
          AND "clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), '')
          AND "psicologoId" = NULLIF(current_setting('app.current_psicologo_id', true), ''));
 
-CREATE POLICY geracaoia_anonimizar_update ON "GeracaoIa" FOR UPDATE TO notta_owner
+CREATE POLICY geracaoia_anonimizar_update ON "GeracaoIa" FOR UPDATE TO praxis_owner
   USING (current_setting('app.anonimizando', true) = '1'
          AND "clinicaId" = NULLIF(current_setting('app.current_clinica_id', true), '')
          AND "psicologoId" = NULLIF(current_setting('app.current_psicologo_id', true), ''))
@@ -196,7 +196,7 @@ BEGIN
 END;
 $$;
 
--- 7) A funcao. SECURITY DEFINER (roda como notta_owner, dono das tabelas, sob RLS FORCE) com
+-- 7) A funcao. SECURITY DEFINER (roda como praxis_owner, dono das tabelas, sob RLS FORCE) com
 --    search_path fixo. Recusa paciente que nao e do psicologo do contexto (ou ja excluido) com o
 --    MESMO erro do inexistente (no_data_found). Tudo numa transacao: quem chama ja abriu a
 --    transacao com app.current_clinica_id e app.current_psicologo_id.
@@ -281,4 +281,4 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION anonimizar_paciente(text, text, jsonb, jsonb) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION anonimizar_paciente(text, text, jsonb, jsonb) TO notta_app;
+GRANT EXECUTE ON FUNCTION anonimizar_paciente(text, text, jsonb, jsonb) TO praxis_app;

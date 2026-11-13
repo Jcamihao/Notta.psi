@@ -8,7 +8,7 @@ import { apagarClinicas, comoOwner, ddl } from './acesso-owner';
 // Padrao psicologo_proprio + somente-acrescentar (docs/ACESSO.md).
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel praxis_owner (ver backend/README.md)',
   );
 }
 
@@ -91,7 +91,7 @@ const ver = (u: U) =>
 const sql = (u: U, texto: string) =>
   tenant.runComoUsuario(u, (tx) => tx.$executeRawUnsafe(texto));
 
-// Como notta_owner (dono), com o contexto do usuario.
+// Como praxis_owner (dono), com o contexto do usuario.
 const sqlDono = (u: U, texto: string) =>
   comoOwner(u.clinicaId, (tx) => tx.$executeRawUnsafe(texto), {
     psicologoId: u.psicologoId,
@@ -169,16 +169,16 @@ describe('Consentimento: estrutura no banco', () => {
     ]);
   });
 
-  it('notta_app tem so SELECT e INSERT (nada de UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER)', async () => {
+  it('praxis_app tem so SELECT e INSERT (nada de UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER)', async () => {
     const [g] = await owner.$queryRaw<Record<string, boolean>[]>`
       SELECT
-        has_table_privilege('notta_app', '"Consentimento"', 'SELECT') AS sel,
-        has_table_privilege('notta_app', '"Consentimento"', 'INSERT') AS ins,
-        has_table_privilege('notta_app', '"Consentimento"', 'UPDATE') AS upd,
-        has_table_privilege('notta_app', '"Consentimento"', 'DELETE') AS del,
-        has_table_privilege('notta_app', '"Consentimento"', 'TRUNCATE') AS trunc,
-        has_table_privilege('notta_app', '"Consentimento"', 'REFERENCES') AS ref,
-        has_table_privilege('notta_app', '"Consentimento"', 'TRIGGER') AS trg`;
+        has_table_privilege('praxis_app', '"Consentimento"', 'SELECT') AS sel,
+        has_table_privilege('praxis_app', '"Consentimento"', 'INSERT') AS ins,
+        has_table_privilege('praxis_app', '"Consentimento"', 'UPDATE') AS upd,
+        has_table_privilege('praxis_app', '"Consentimento"', 'DELETE') AS del,
+        has_table_privilege('praxis_app', '"Consentimento"', 'TRUNCATE') AS trunc,
+        has_table_privilege('praxis_app', '"Consentimento"', 'REFERENCES') AS ref,
+        has_table_privilege('praxis_app', '"Consentimento"', 'TRIGGER') AS trg`;
     expect(g).toEqual({
       sel: true,
       ins: true,
@@ -284,7 +284,7 @@ describe('Consentimento: escrita', () => {
 });
 
 describe('Consentimento: somente-acrescentar', () => {
-  it('notta_app: UPDATE, DELETE e TRUNCATE = permission denied (mesmo com o desvio de teste ligado)', async () => {
+  it('praxis_app: UPDATE, DELETE e TRUNCATE = permission denied (mesmo com o desvio de teste ligado)', async () => {
     const desvio = (u: U, texto: string) =>
       tenant.runComoUsuario(u, async (tx) => {
         await tx.$executeRaw`SELECT set_config('app.limpeza_de_teste', '1', true)`;
@@ -305,7 +305,7 @@ describe('Consentimento: somente-acrescentar', () => {
     expect(await ver(psiA)).toHaveLength(1);
   });
 
-  it('trigger barra UPDATE e DELETE ate para o notta_owner (dono)', async () => {
+  it('trigger barra UPDATE e DELETE ate para o praxis_owner (dono)', async () => {
     await expect(
       sqlDono(psiA, `UPDATE "Consentimento" SET evento = 'REVOGADO'`),
     ).rejects.toThrow(/somente-acrescentar/);

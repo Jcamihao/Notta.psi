@@ -1,25 +1,25 @@
 -- Recifragem pelo dono (item 25, parte B): o comando `npm run recifrar` troca a chave de cada
--- valor cifrado para a chave atual, sem parar o sistema. O dono (notta_owner) esta sujeito a
+-- valor cifrado para a chave atual, sem parar o sistema. O dono (praxis_owner) esta sujeito a
 -- RLS FORCE, entao so enxerga/atualiza as linhas com a flag app.recifrar = '1' (ligada com
--- set_config(..., true) dentro da transacao do comando). notta_app NAO ganha nada.
+-- set_config(..., true) dentro da transacao do comando). praxis_app NAO ganha nada.
 -- Excecao nos triggers: so o DONO da tabela, com a flag, e so a coluna cifrada muda.
 
 -- 1) Policies do dono, so com a flag. Permissivas: somam com as policies de clinica existentes.
-CREATE POLICY paciente_recifrar_select ON "Paciente" FOR SELECT TO notta_owner
+CREATE POLICY paciente_recifrar_select ON "Paciente" FOR SELECT TO praxis_owner
   USING (current_setting('app.recifrar', true) = '1');
-CREATE POLICY paciente_recifrar_update ON "Paciente" FOR UPDATE TO notta_owner
+CREATE POLICY paciente_recifrar_update ON "Paciente" FOR UPDATE TO praxis_owner
   USING (current_setting('app.recifrar', true) = '1')
   WITH CHECK (current_setting('app.recifrar', true) = '1');
 
-CREATE POLICY documento_recifrar_select ON "Documento" FOR SELECT TO notta_owner
+CREATE POLICY documento_recifrar_select ON "Documento" FOR SELECT TO praxis_owner
   USING (current_setting('app.recifrar', true) = '1');
-CREATE POLICY documento_recifrar_update ON "Documento" FOR UPDATE TO notta_owner
+CREATE POLICY documento_recifrar_update ON "Documento" FOR UPDATE TO praxis_owner
   USING (current_setting('app.recifrar', true) = '1')
   WITH CHECK (current_setting('app.recifrar', true) = '1');
 
-CREATE POLICY geracaoia_recifrar_select ON "GeracaoIa" FOR SELECT TO notta_owner
+CREATE POLICY geracaoia_recifrar_select ON "GeracaoIa" FOR SELECT TO praxis_owner
   USING (current_setting('app.recifrar', true) = '1');
-CREATE POLICY geracaoia_recifrar_update ON "GeracaoIa" FOR UPDATE TO notta_owner
+CREATE POLICY geracaoia_recifrar_update ON "GeracaoIa" FOR UPDATE TO praxis_owner
   USING (current_setting('app.recifrar', true) = '1')
   WITH CHECK (current_setting('app.recifrar', true) = '1');
 

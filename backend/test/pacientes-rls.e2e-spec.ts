@@ -4,11 +4,11 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { TenantPrismaService } from '../src/prisma/tenant-prisma.service';
 import { apagarClinicas } from './acesso-owner';
 
-// RLS e privilegios de "Paciente" (item 9) no Postgres real, como notta_app.
+// RLS e privilegios de "Paciente" (item 9) no Postgres real, como praxis_app.
 // Padrao psicologo_proprio de docs/ACESSO.md: colega (inclusive ADMIN) e outra clinica veem ZERO.
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: teste de acesso exige o papel praxis_owner (ver backend/README.md)',
   );
 }
 

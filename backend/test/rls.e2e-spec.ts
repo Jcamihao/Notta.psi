@@ -7,7 +7,7 @@ import { apagarClinicas } from './acesso-owner';
 // Integracao com Postgres real: sem as URLs falha alto, nunca pula.
 if (!process.env.DATABASE_URL_OWNER) {
   throw new Error(
-    'DATABASE_URL_OWNER ausente: teste de RLS exige o papel notta_owner (ver backend/README.md)',
+    'DATABASE_URL_OWNER ausente: teste de RLS exige o papel praxis_owner (ver backend/README.md)',
   );
 }
 
@@ -116,7 +116,7 @@ describe('RLS por clinica', () => {
   });
 
   it('WITH CHECK: mover Psicologo de A para B sob contexto A falha', async () => {
-    // App: clinicaId e coluna imutavel para o notta_app.
+    // App: clinicaId e coluna imutavel para o praxis_app.
     await expect(
       tenant.run(A, (tx) =>
         tx.psicologo.updateMany({
@@ -150,7 +150,7 @@ describe('RLS por clinica', () => {
       }),
     );
     expect(r).toEqual({ count: 0 });
-    // M-2: o notta_app nao tem DELETE em Psicologo nem UPDATE/DELETE em Clinica.
+    // M-2: o praxis_app nao tem DELETE em Psicologo nem UPDATE/DELETE em Clinica.
     for (const op of [
       (tx: Prisma.TransactionClient) =>
         tx.psicologo.deleteMany({ where: { clinicaId: B } }),
@@ -253,12 +253,12 @@ describe('RLS por clinica', () => {
   });
 
   describe('papeis', () => {
-    it('FORCE: notta_owner sem contexto tambem ve zero linhas', async () => {
+    it('FORCE: praxis_owner sem contexto tambem ve zero linhas', async () => {
       expect(await owner.psicologo.count()).toBe(0);
       expect(await owner.clinica.count()).toBe(0);
     });
 
-    it('notta_app nao e dono: nao desliga RLS nem faz TRUNCATE', async () => {
+    it('praxis_app nao e dono: nao desliga RLS nem faz TRUNCATE', async () => {
       await expect(
         app.$executeRawUnsafe(
           'ALTER TABLE "Psicologo" DISABLE ROW LEVEL SECURITY',
