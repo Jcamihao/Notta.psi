@@ -25,7 +25,7 @@ Este documento é para um agente de código (Codex ou outro Claude) que vai cont
 **B. Decisões de produto abertas:** ver a seção 7 (item 67, salvar rascunho no celular, registro manual de consentimento, planos, canal do paciente, reativação de psicólogo, entre outras).
 
 **C. Próximos itens de código, em ordem (nenhum depende de decisão externa, exceto onde indicado):**
-1. 27 linha do tempo do paciente.
+1. ~~27 linha do tempo do paciente~~ (feito em 2026-11-13).
 2. 28 busca e filtros (o texto é cifrado: exige decifrar no app só os documentos do próprio psicólogo e paginação da lista, que hoje carrega no máximo 500).
 3. 29 ajuste de linguagem técnica e 30 exportar em PDF ou Word.
 4. 67 transferir pacientes de psicólogo desativado (PRECISA de decisão do dono: quem autoriza e como fica o registro).
@@ -36,6 +36,7 @@ Este documento é para um agente de código (Codex ou outro Claude) que vai cont
 9. Revisar o item 50 (cifrar identificadores): nome, nascimento, telefone e e-mail do paciente já são cifrados; conferir se sobra algo (CPF e endereço não existem como campos hoje) e fechar ou ajustar o item.
 
 **D. Pendências técnicas pequenas (achadas pelos revisores, sem item próprio):**
+- 3 testes antigos (`DocumentoLeituraPage` e `DocumentosSecaoComponent`, itens 15 e 16) dependem do fuso: passam em UTC e em America/Sao_Paulo, mas falham com `TZ=Asia/Tokyo` (fixtures com hora perto da meia-noite UTC). Só afeta quem roda os testes num fuso muito a leste.
 - As telas de IA (`ia-gerar.page.ts`, `ia.service.ts`) mostram "IA desligada neste ambiente" para qualquer 503, inclusive o do banco ocupado.
 - Card de rascunhos pendentes na Início: exige rota nova no back (hoje rascunho só se lista por paciente).
 - Retenção das tabelas `Sessao` e do que ficou `RESTRICT`: não tratada.
@@ -105,7 +106,7 @@ Para subir o app à mão: gere `PRAXIS_MASTER_KEY` (`npm run -s chave:gerar`) e 
 
 ## 4. O que já está pronto e verificado
 
-Itens de `docs/FEATURES.md` feitos e verificados (`[x]`): 1 a 23, 25, 26, 41, 42, 44, 45, 46, 49, 51, 52, 57 a 64 e a Fase 1.6. O item 24 está aberto (espera o domínio) e o 54 está `[~]` (rascunho de `docs/PLANO-DE-INCIDENTE.md` entregue; falta revisão de advogado e um simulado). Resumo do que existe:
+Itens de `docs/FEATURES.md` feitos e verificados (`[x]`): 1 a 23, 25 a 27, 41, 42, 44, 45, 46, 49, 51, 52, 57 a 64, 66, 79 e a Fase 1.6. O item 24 está aberto (espera o domínio) e o 54 está `[~]` (rascunho de `docs/PLANO-DE-INCIDENTE.md` entregue; falta revisão de advogado e um simulado). Resumo do que existe:
 
 - **Isolamento:** todo dado de clínica tem `clinicaId` e RLS ENABLE + FORCE. Cada psicólogo lê só os próprios pacientes e documentos (padrão `psicologo_proprio`, `docs/ACESSO.md`); o ADMIN gerencia a equipe e atende os próprios pacientes, mas não lê prontuário de colega. FKs filhas incluem `psicologoId`, porque checagem de FK ignora RLS.
 - **Criptografia:** AES-256-GCM, chave por clínica derivada por HKDF de uma chave mestra, formato `v1.<kid>.<iv>.<tag>.<ct>`, AAD obrigatório (`aadDe(tabela, coluna, id, psicologoId)`), chaveiro com várias chaves (`k1`, `k2`...) e `kid` lido do próprio valor (sem fallback). Paciente (nome, nascimento, telefone, e-mail) e conteúdo de documento ficam cifrados.
@@ -122,6 +123,7 @@ Os contratos de cada item e os relatórios dos agentes estão em `.superpowers/s
 ## 5. Onde parou
 
 ### Estado em 2026-11-13
+- **Item 27 (linha do tempo do paciente) feito**, só no front (`frontend/src/app/pacientes/linha-do-tempo.*`): junta cadastro, consentimento, termos por link e documentos (sem texto clínico), em 5 leituras sequenciais. O revisor achou e corrigiu um vazamento: ao trocar de paciente na mesma rota a página mostrava o anterior (agora assina o `paramMap`). O mês do agrupamento é o do fuso do navegador, de propósito.
 Nada está pela metade e a árvore fica limpa. Entregas desde 2026-11-06, todas verificadas e publicadas na branch `claude/awesome-brown-ee1acu`:
 - **Itens fechados:** 26 (exportar e excluir dados, LGPD), 52 (retenção e descarte, como comandos que AINDA NÃO rodam sozinhos), 66 (painel de sigilo fiel ao código e mensagem 503) e 79 (tela de Início, item criado nesta fase).
 - **Marca praxis:** o produto passou a se chamar **praxis.psi** (empresa Praxis) em todo o repositório, inclusive nomes técnicos (ver exceções na seção 0.1 E); fonte Red Hat; paleta híbrida escolhida pelo dono; logo provisório com o ponto azul.
@@ -152,7 +154,7 @@ Item 23 (página pública `/seguranca`): feito por Haiku e revisado por Sonnet, 
 
 ## 6. O que falta (ordem recomendada)
 
-1. **Fase 5 (uso diário), sem dependência externa:** 27 linha do tempo; 28 busca (o texto é cifrado; a lista de pacientes hoje carrega no máximo 500 e ordena no app, precisa de paginação aqui); 29 ajuste de linguagem técnica; 30 exportar PDF ou Word.
+1. **Fase 5 (uso diário), sem dependência externa:** 28 busca (o texto é cifrado; a lista de pacientes hoje carrega no máximo 500 e ordena no app, precisa de paginação aqui); 29 ajuste de linguagem técnica; 30 exportar PDF ou Word.
 2. **Antes de abrir para clínicas:** 67 transferir pacientes de psicólogo desativado (precisa de decisão do dono). O 54 (plano de incidente) tem rascunho em `docs/PLANO-DE-INCIDENTE.md`: faltam encarregado, qualificação jurídica (controlador ou operador, agora com a razão social da Praxis), revisão de advogado e um simulado.
 3. **Depende do dono comprar o domínio** (o provedor de e-mail escolhido é o **Resend**, que exige domínio verificado): 24 recuperar senha e confirmar e-mail, 65 convite por e-mail de uso único (fecha o risco I-1), 47 MFA por código de e-mail, 48 bloqueio de conta e aviso de novo login. O domínio também serve para `PRAXIS_APP_URL` e o deploy.
 4. **Fase 6 (comercial):** 31 landing page (seguir o modelo de site do manual da Praxis; usar a skill de design de landing, não o design system do app), 32 lista de early access, 33 planos e cobrança, 53 monitoramento e alertas.
