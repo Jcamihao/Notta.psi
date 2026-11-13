@@ -40,7 +40,7 @@ import { LucideAngularModule, LucideIconData } from 'lucide-angular';
       background: var(--accent);
     }
     :host([data-tone='accent']:hover) {
-      background: var(--pink-400);
+      background: var(--accent-hover);
     }
   `,
 })

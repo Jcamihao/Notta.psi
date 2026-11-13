@@ -24,7 +24,7 @@ import { KeyRound, LucideAngularModule, ShieldCheck, UserCheck } from 'lucide-an
         <dl>
           <div>
             <dt>
-              <span class="chip chip-rosa"
+              <span class="chip chip-acento"
                 ><lucide-icon [img]="icones.KeyRound" [size]="13" [strokeWidth]="1.5"
               /></span>
               Dados cifrados, com chave por clínica
@@ -116,8 +116,8 @@ import { KeyRound, LucideAngularModule, ShieldCheck, UserCheck } from 'lucide-an
       color: var(--ink-900);
       border-radius: 50%;
     }
-    .chip-rosa {
-      background: var(--pink-300);
+    .chip-acento {
+      background: var(--accent);
     }
     .chip-azul {
       background: var(--blue-300);
@@ -133,7 +133,7 @@ import { KeyRound, LucideAngularModule, ShieldCheck, UserCheck } from 'lucide-an
       text-underline-offset: 3px;
     }
     .sigilo-link a:focus-visible {
-      outline-color: var(--pink-300);
+      outline-color: var(--accent);
     }
     dt {
       display: flex;

@@ -32,7 +32,7 @@ describe('ButtonComponent', () => {
     await f.whenStable();
     const a = f.nativeElement.querySelector('a') as HTMLAnchorElement;
     const s = getComputedStyle(a);
-    expect(s.backgroundColor).toBe('rgb(20, 20, 20)');
+    expect(s.backgroundColor).toBe('rgb(11, 11, 12)');
     expect(s.color).toBe('rgb(255, 255, 255)');
     expect(s.textDecorationLine).toBe('none');
   });
@@ -56,21 +56,21 @@ describe('ButtonComponent', () => {
     const { botao } = await montar();
     const s = getComputedStyle(botao);
     expect(botao.dataset['variant']).toBe('primary');
-    expect(s.backgroundColor).toBe('rgb(20, 20, 20)');
+    expect(s.backgroundColor).toBe('rgb(11, 11, 12)');
     expect(s.color).toBe('rgb(255, 255, 255)');
     expect(s.borderRadius).toBe('999px');
   });
 
-  it('progress e rosa com texto em tinta; disabled usa tinta sobre cinza (AA)', async () => {
+  it('progress e azul da marca com texto em tinta; disabled usa tinta sobre cinza (AA)', async () => {
     const { f, botao } = await montar();
     f.componentInstance.variant.set('progress');
     await f.whenStable();
-    expect(getComputedStyle(botao).backgroundColor).toBe('rgb(242, 179, 220)');
-    expect(getComputedStyle(botao).color).toBe('rgb(20, 20, 20)');
+    expect(getComputedStyle(botao).backgroundColor).toBe('rgb(56, 182, 255)');
+    expect(getComputedStyle(botao).color).toBe('rgb(11, 11, 12)');
     f.componentInstance.variant.set('disabled');
     await f.whenStable();
-    expect(getComputedStyle(botao).backgroundColor).toBe('rgb(169, 164, 155)');
-    expect(getComputedStyle(botao).color).toBe('rgb(20, 20, 20)');
+    expect(getComputedStyle(botao).backgroundColor).toBe('rgb(169, 169, 174)');
+    expect(getComputedStyle(botao).color).toBe('rgb(11, 11, 12)');
   });
 
   it('full ocupa a largura toda', async () => {

@@ -1,29 +1,36 @@
-// Tokens do design system "intelly" (docs/DESIGN-SYSTEM.md, fonte do visual do praxis.psi).
-// Valores exatamente como no documento. A fonte e a da marca praxis (manual de marca v1): Red Hat Text para leitura (400/500/600/700) e
-// Red Hat Display para titulos e marca (700/900), auto-hospedadas (@fontsource, OFL, subset latin) e
-// entram pelo array "styles" do angular.json.
+// Tokens do design system "intelly" (docs/DESIGN-SYSTEM.md) na paleta HIBRIDA da marca praxis
+// (decisao do dono em 2026-11-13): area de trabalho em neutros claros, menu e painel no preto da
+// marca (#0b0b0c) e o azul ceu da marca (#38b6ff) SO em acao e destaque (botao, foco, item ativo).
+// Rosa, amarelo e azul pastel ficam so como cor de status e de avatar. Os nomes `cream-*` e `ink-*`
+// vem do documento original e foram mantidos para nao mexer em todos os componentes: hoje `cream-*`
+// sao os cinzas claros neutros e `ink-*` os pretos e cinzas neutros.
+// Fonte: Red Hat Text (leitura, 400/500/600/700) e Red Hat Display (titulos e marca, 700/900),
+// auto-hospedadas (@fontsource, OFL, subset latin) pelo array "styles" do angular.json.
 //
-// Contraste (WCAG 2.x) dos pares usados com texto:
-//   ink-900 sobre cream-100 16.5 | cream-50 17.4 | cream-200 14.9 | white 18.4
-//   ink-500 sobre cream-100 4.95 | cream-50 5.21 (texto secundario so nesses dois fundos;
-//     sobre cream-200 da 4.46 e nao passa)
-//   white e cream-100 sobre ink-900 18.4 / 16.5 | ink-300 sobre ink-900 7.4 | ink-400 sobre ink-900 5.2
-//   pink-400 sobre ink-900 9.0 | ink-900 sobre pink-200 13.1, pink-300 10.8, blue-300 9.9,
-//     yellow-300 12.8, ink-300 7.4
-// Pares do original que NAO carregam texto aqui: rosa sobre creme (1.5 a 1.8), ink-400 sobre
-// creme (3.2), ink-300 sobre creme (2.2) e branco sobre ink-300 (2.5, botao desabilitado).
+// Contraste (WCAG 2.x, calculado em 2026-11-13) dos pares usados com texto:
+//   ink-900 sobre cream-100 17.9 | cream-50 19.7 | cream-200 16.2 | white 19.7
+//   ink-500 sobre cream-100 6.7 | cream-50 7.4 | cream-200 6.1 (texto secundario passa nos tres)
+//   white e cream-100 sobre ink-900 19.7 / 17.9 | ink-300 sobre ink-900 8.4 | ink-400 sobre ink-900 5.7
+//   sky-300 (azul da marca) sobre ink-900 8.7 | ink-900 sobre sky-300 8.7, sky-200 10.6
+//   ink-900 sobre pink-200 13.9, blue-300 10.6, yellow-300 13.7, ink-300 8.4
+// REGRA DA MARCA: texto sobre o azul e SEMPRE preto (branco sobre sky-300 da 2.3 e reprova). Azul
+// como texto so sobre fundo preto; sobre claro, so em elemento grafico ou titulo grande.
+// Pares que NAO carregam texto: ink-400 sobre cream-100 (3.1), ink-300 sobre cream-100 (2.1) e
+// branco sobre ink-300 (2.3, botao desabilitado).
 :root {
   /* base */
-  --cream-50: #fcf8ef;
-  --cream-100: #f8f2e3;
-  --cream-200: #eee6d7;
-  --cream-300: #e4dbca;
-  --ink-900: #141414;
-  --ink-700: #2b2b2b;
-  --ink-500: #6e685d;
-  --ink-400: #8d877c;
-  --ink-300: #a9a49b;
+  --cream-50: #ffffff;
+  --cream-100: #f4f4f2;
+  --cream-200: #e9e9e7;
+  --cream-300: #ddddda;
+  --ink-900: #0b0b0c;
+  --ink-700: #2a2a2d;
+  --ink-500: #55555a;
+  --ink-400: #8a8a90;
+  --ink-300: #a9a9ae;
   --white: #ffffff;
+  --sky-300: #38b6ff;
+  --sky-200: #6cc8ff;
   --pink-200: #f7cdea;
   --pink-300: #f2b3dc;
   --pink-400: #ec9dd0;
@@ -41,16 +48,17 @@
   --surface-event-team: var(--yellow-300);
   --surface-event-group: var(--blue-300);
   --surface-control: var(--cream-200);
-  --accent: var(--pink-300);
+  --accent: var(--sky-300);
+  --accent-hover: var(--sky-200);
   --text-primary: var(--ink-900);
   --text-secondary: var(--ink-500);
   --text-inverse: var(--white);
-  --text-nav-active: var(--pink-400);
+  --text-nav-active: var(--sky-300);
   --text-weekend: var(--pink-300);
   --text-sidebar-label: var(--ink-400);
   --btn-primary-bg: var(--ink-900);
   --btn-disabled-bg: var(--ink-300);
-  --btn-progress-bg: var(--pink-300);
+  --btn-progress-bg: var(--sky-300);
   --border-input: var(--ink-900);
   --line-now: var(--ink-400);
   --avatar-ty: var(--yellow-200);

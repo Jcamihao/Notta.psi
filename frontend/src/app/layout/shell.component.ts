@@ -217,7 +217,7 @@ import { NavItemComponent } from '../ui/nav-item.component';
       border-radius: var(--radius-panel);
     }
     .lateral :focus-visible {
-      outline-color: var(--pink-300);
+      outline-color: var(--accent);
     }
     .lateral-alternar {
       display: none;
@@ -288,7 +288,7 @@ import { NavItemComponent } from '../ui/nav-item.component';
       font-size: var(--fs-day);
       font-weight: var(--fw-medium);
       color: var(--ink-900);
-      background: var(--pink-300);
+      background: var(--accent);
       border: 0;
       border-radius: var(--radius-pill);
       cursor: pointer;

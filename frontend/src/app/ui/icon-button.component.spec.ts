@@ -32,13 +32,13 @@ describe('IconButtonComponent', () => {
     expect(svg.getAttribute('stroke-linecap')).toBe('round');
   });
 
-  it('tons: dark preto, accent rosa', async () => {
+  it('tons: dark preto, accent azul da marca', async () => {
     const f = TestBed.createComponent(Host);
     await f.whenStable();
     const b = f.nativeElement.querySelector('button') as HTMLButtonElement;
-    expect(getComputedStyle(b).backgroundColor).toBe('rgb(20, 20, 20)');
+    expect(getComputedStyle(b).backgroundColor).toBe('rgb(11, 11, 12)');
     f.componentInstance.tom.set('accent');
     await f.whenStable();
-    expect(getComputedStyle(b).backgroundColor).toBe('rgb(242, 179, 220)');
+    expect(getComputedStyle(b).backgroundColor).toBe('rgb(56, 182, 255)');
   });
 });

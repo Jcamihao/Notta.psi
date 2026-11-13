@@ -50,7 +50,7 @@ import { LucideAngularModule, LucideIconData } from 'lucide-angular';
       background: var(--text-nav-active);
     }
     :host(:focus-visible) {
-      outline-color: var(--pink-300);
+      outline-color: var(--accent);
     }
   `,
 })

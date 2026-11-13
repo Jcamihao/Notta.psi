@@ -17,7 +17,7 @@ describe('PillComponent', () => {
     await f.whenStable();
     const p = f.nativeElement.querySelector('app-pill') as HTMLElement;
     expect(p.textContent?.trim()).toBe('TCC');
-    expect(getComputedStyle(p).color).toBe('rgb(20, 20, 20)');
+    expect(getComputedStyle(p).color).toBe('rgb(11, 11, 12)');
     expect(getComputedStyle(p).backgroundColor).toBe('rgb(247, 205, 234)');
     f.componentInstance.tom.set('yellow');
     await f.whenStable();

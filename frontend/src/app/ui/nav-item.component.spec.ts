@@ -25,7 +25,7 @@ class Host {
 }
 
 describe('NavItemComponent', () => {
-  it('link com icone e rotulo; ativo = aria-current, rosa e barra de 2px', async () => {
+  it('link com icone e rotulo; ativo = aria-current, azul da marca e barra de 2px', async () => {
     TestBed.configureTestingModule({
       providers: [provideRouter([{ path: 'equipe', children: [] }])],
     });
@@ -39,7 +39,7 @@ describe('NavItemComponent', () => {
     await TestBed.inject(Router).navigateByUrl('/equipe');
     await f.whenStable();
     expect(a.getAttribute('aria-current')).toBe('page');
-    expect(getComputedStyle(a).color).toBe('rgb(236, 157, 208)');
+    expect(getComputedStyle(a).color).toBe('rgb(56, 182, 255)');
     expect(getComputedStyle(a, '::before').width).toBe('2px');
   });
 

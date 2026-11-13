@@ -39,6 +39,12 @@ No logo file supplied: "intelly" is rendered in plain DM Sans 500. (praxis.psi: 
 ```
 (praxis.psi: NAO usar este import; auto-hospedar com `@fontsource/red-hat-text` e `@fontsource/red-hat-display`.)
 
+### ATUALIZACAO 2026-11-13: paleta hibrida da marca praxis (decisao do dono)
+Os valores de cor do bloco abaixo sao os do documento ORIGINAL (historico). Valem hoje os de `frontend/src/styles/tokens.scss`:
+- Neutros: `cream-50` #FFFFFF, `cream-100` #F4F4F2 (fundo), `cream-200` #E9E9E7, `cream-300` #DDDDDA; `ink-900` #0B0B0C (preto da marca, menu e painel), `ink-700` #2A2A2D, `ink-500` #55555A (texto secundario), `ink-400` #8A8A90, `ink-300` #A9A9AE.
+- Azul ceu da marca (`sky-300` #38B6FF, hover `sky-200` #6CC8FF), via `--accent`: SO em acao e destaque (botao em andamento, foco, item ativo do menu, icone de destaque). Texto sobre o azul e sempre preto (branco da 2.3:1 e reprova). Azul como texto so sobre preto.
+- Rosa, amarelo e azul pastel: so status e avatar. Fonte: Red Hat Text e Red Hat Display.
+
 ### Cores
 ```css
 :root{
