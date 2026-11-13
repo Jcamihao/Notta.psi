@@ -71,7 +71,7 @@
                 type="button"
                 [variant]="estado() === f.valor ? 'primary' : 'soft'"
                 [attr.aria-pressed]="estado() === f.valor"
-                (click)="estado.set(f.valor)"
+                (click)="escolherFiltro(f.valor)"
               >
                 {{ f.rotulo }}
               </button>
@@ -86,9 +86,20 @@
         }
 
         <div class="busca-resumo">
-          <p class="busca-contagem" aria-live="polite" data-teste="contagem">
-            {{ filtrados().length }} de {{ l.length }}
-            {{ l.length === 1 ? 'paciente' : 'pacientes' }}
+          <p
+            #contagem
+            class="busca-contagem"
+            tabindex="-1"
+            aria-live="polite"
+            data-teste="contagem"
+          >
+            @if (pag().totalPaginas > 1) {
+              {{ pag().de }} a {{ pag().ate }} de {{ pag().total }}
+              {{ pag().total === 1 ? 'paciente' : 'pacientes' }}
+            } @else {
+              {{ filtrados().length }} de {{ l.length }}
+              {{ l.length === 1 ? 'paciente' : 'pacientes' }}
+            }
           </p>
           @if (temFiltro()) {
             <button app-button type="button" variant="soft" (click)="limpar()">
@@ -118,7 +129,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (p of filtrados(); track p.id) {
+              @for (p of pag().itens; track p.id) {
                 <tr>
                   <th scope="row">
                     <span class="pessoa">
@@ -157,6 +168,43 @@
               }
             </tbody>
           </table>
+
+          @if (pag().total > menorOpcao) {
+            <nav class="paginacao" aria-label="Paginação">
+              <div class="campo paginacao-por">
+                <label for="pacientes-por-pagina">Por página</label>
+                <div class="campo-select">
+                  <select id="pacientes-por-pagina" (change)="aoMudarPorPagina($event)">
+                    @for (n of opcoesPorPagina; track n) {
+                      <option [value]="n" [selected]="n === porPagina()">{{ n }}</option>
+                    }
+                  </select>
+                  <lucide-icon [img]="icones.ChevronDown" [size]="16" [strokeWidth]="1.5" />
+                </div>
+              </div>
+              <div class="paginacao-controles">
+                <button
+                  app-button
+                  type="button"
+                  variant="soft"
+                  [disabled]="pag().pagina <= 1"
+                  (click)="irPara(-1)"
+                >
+                  Anterior
+                </button>
+                <p class="paginacao-texto">Página {{ pag().pagina }} de {{ pag().totalPaginas }}</p>
+                <button
+                  app-button
+                  type="button"
+                  variant="soft"
+                  [disabled]="pag().pagina >= pag().totalPaginas"
+                  (click)="irPara(1)"
+                >
+                  Próxima
+                </button>
+              </div>
+            </nav>
+          }
         } @else {
           <p class="busca-vazio" role="status" data-teste="sem-resultado">
             Nenhum paciente encontrado.

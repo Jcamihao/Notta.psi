@@ -1,12 +1,13 @@
 import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
-import { CircleAlert, CircleCheck, LucideAngularModule, Search } from 'lucide-angular';
+import { ChevronDown, CircleAlert, CircleCheck, LucideAngularModule, Search } from 'lucide-angular';
 import { filter, map } from 'rxjs';
 import { AvatarComponent } from '../ui/avatar.component';
 import { ButtonComponent } from '../ui/button.component';
 import { PillComponent } from '../ui/pill.component';
 import { filtrarPacientes, FiltroConsentimento } from './busca-pacientes';
+import { OPCOES_POR_PAGINA, paginar, POR_PAGINA_PADRAO, PorPagina } from './paginacao';
 import { ROTULO_CONSENTIMENTO, TOM_CONSENTIMENTO } from './consentimento.service';
 import { Paciente, PacientesService } from './pacientes.service';
 
@@ -32,7 +33,7 @@ export function dataBr(iso: string): string {
   styleUrl: './pacientes.page.scss',
 })
 export class PacientesPage {
-  readonly icones = { CircleAlert, CircleCheck, Search };
+  readonly icones = { ChevronDown, CircleAlert, CircleCheck, Search };
   private readonly servico = inject(PacientesService);
   private readonly router = inject(Router);
 
@@ -57,6 +58,15 @@ export class PacientesPage {
     filtrarPacientes(this.lista() ?? [], this.termo(), this.estado()),
   );
   readonly campoBusca = viewChild<ElementRef<HTMLInputElement>>('campoBusca');
+  readonly contagem = viewChild<ElementRef<HTMLElement>>('contagem');
+
+  // Paginacao no navegador, sobre a lista ja filtrada. Pagina e tamanho so em signals (sigilo).
+  readonly opcoesPorPagina = OPCOES_POR_PAGINA;
+  readonly menorOpcao = OPCOES_POR_PAGINA[0];
+  readonly pagina = signal(1);
+  readonly porPagina = signal<PorPagina>(POR_PAGINA_PADRAO);
+  // A pagina pedida pode passar do fim (lista encolheu): paginar() devolve a pagina valida.
+  readonly pag = computed(() => paginar(this.filtrados(), this.pagina(), this.porPagina()));
   readonly aviso = toSignal(
     this.router.events.pipe(
       filter((e) => e instanceof NavigationEnd),
@@ -75,11 +85,38 @@ export class PacientesPage {
 
   aoDigitar(evento: Event): void {
     this.termo.set((evento.target as HTMLInputElement).value);
+    this.pagina.set(1);
+  }
+
+  escolherFiltro(valor: FiltroConsentimento): void {
+    this.estado.set(valor);
+    this.pagina.set(1);
+  }
+
+  aoMudarPorPagina(evento: Event): void {
+    const valor = Number((evento.target as HTMLSelectElement).value);
+    const escolhida = OPCOES_POR_PAGINA.find((o) => o === valor) ?? POR_PAGINA_PADRAO;
+    this.porPagina.set(escolhida);
+    this.pagina.set(1);
+  }
+
+  // Anterior/Proxima: o botao pode ficar desabilitado no clique, entao o foco vai para a contagem
+  // (topo da lista) em vez de se perder.
+  irPara(delta: -1 | 1): void {
+    this.pagina.set(this.pag().pagina + delta);
+    const contagem = this.contagem()?.nativeElement;
+    if (!contagem) return;
+    contagem.focus({ preventScroll: true });
+    const topo = contagem.getBoundingClientRect().top;
+    if (topo < 0 || topo > window.innerHeight) {
+      contagem.scrollIntoView({ block: 'nearest' });
+    }
   }
 
   limpar(): void {
     this.termo.set('');
     this.estado.set('TODOS');
+    this.pagina.set(1);
     // O campo continua no DOM: zera o valor e devolve o foco para ele.
     const campo = this.campoBusca()?.nativeElement;
     if (campo) {

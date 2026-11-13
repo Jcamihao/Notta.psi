@@ -86,6 +86,42 @@
 .busca-vazio {
   padding: var(--space-6) 0;
 }
+
+// Paginacao: cartao plano na largura da tabela. "Por pagina" a esquerda, controles a direita;
+// abaixo de 40rem tudo empilha (ver o @container no fim).
+.paginacao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-6);
+  padding: var(--space-5) var(--space-6);
+  background: var(--surface-day);
+  border-radius: var(--radius-card);
+}
+.paginacao-por {
+  gap: var(--space-2);
+}
+.paginacao-por select {
+  width: auto;
+}
+.paginacao-controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  margin-left: auto;
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+.paginacao-texto {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-legenda);
+  white-space: nowrap;
+}
 .pacientes-carregando {
   margin: 0;
   color: var(--text-secondary);
@@ -216,6 +252,14 @@
   }
   .vazio {
     padding: var(--space-6);
+  }
+  .paginacao {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .paginacao-controles {
+    margin-left: 0;
+    justify-content: space-between;
   }
 }
 

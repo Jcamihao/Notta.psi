@@ -447,3 +447,232 @@ describe('PacientesPage (busca e filtros)', () => {
     }
   });
 });
+
+describe('PacientesPage (paginacao)', () => {
+  let fixture: ComponentFixture<PacientesPage>;
+  let ctrl: HttpTestingController;
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [PacientesPage],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    ctrl = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(PacientesPage);
+    await fixture.whenStable();
+  });
+  afterEach(() => ctrl.verify());
+
+  const el = () => fixture.nativeElement as HTMLElement;
+  const campo = () => el().querySelector('input[type="search"]') as HTMLInputElement;
+  const botao = (rotulo: string) =>
+    Array.from(el().querySelectorAll('button')).find((b) => b.textContent?.trim() === rotulo) as
+      HTMLButtonElement | undefined;
+  const nomes = () =>
+    Array.from(el().querySelectorAll('tbody th a')).map((a) => a.textContent?.trim());
+  const contagem = () => el().querySelector('[data-teste="contagem"]');
+  const nav = () => el().querySelector('nav[aria-label="Paginação"]') as HTMLElement | null;
+  const select = () => nav()?.querySelector('select') as HTMLSelectElement | null;
+  const textoPagina = () => nav()?.querySelector('p')?.textContent?.trim();
+  const passo = async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+  };
+  const clicar = async (rotulo: string) => {
+    botao(rotulo)!.click();
+    await passo();
+  };
+  const digitar = async (texto: string) => {
+    campo().value = texto;
+    campo().dispatchEvent(new Event('input'));
+    await passo();
+  };
+  const trocarPorPagina = async (valor: number) => {
+    select()!.value = String(valor);
+    select()!.dispatchEvent(new Event('change'));
+    await passo();
+  };
+  const carregar = async (l: Paciente[]) => {
+    ctrl.expectOne('/api/pacientes').flush(l);
+    await passo();
+  };
+  const muitos = (n: number, consentimento: Paciente['consentimento'] = 'NENHUM'): Paciente[] =>
+    Array.from({ length: n }, (_, i) => ({
+      id: `p${i + 1}`,
+      nome: `Paciente ${String(i + 1).padStart(3, '0')}`,
+      nascimento: null,
+      telefone: null,
+      email: null,
+      criadoEm: '2026-10-01T10:00:00.000Z',
+      consentimento,
+    }));
+
+  it('com 45 pacientes e padrao 20: 20 linhas, contagem, pagina 1 de 3 e Anterior desabilitado', async () => {
+    await carregar(muitos(45));
+    expect(nomes().length).toBe(20);
+    expect(nomes()[0]).toBe('Paciente 001');
+    expect(contagem()?.textContent?.trim()).toBe('1 a 20 de 45 pacientes');
+    expect(textoPagina()).toBe('Página 1 de 3');
+    expect(botao('Anterior')?.disabled).toBeTrue();
+    expect(botao('Próxima')?.disabled).toBeFalse();
+    expect(select()?.value).toBe('20');
+    expect(nav()?.querySelector('label')?.textContent?.trim()).toBe('Por página');
+  });
+
+  it('Próxima vai para 21 a 40 e depois 41 a 45 (5 linhas), com Próxima desabilitada', async () => {
+    await carregar(muitos(45));
+    await clicar('Próxima');
+    expect(nomes().length).toBe(20);
+    expect(nomes()[0]).toBe('Paciente 021');
+    expect(contagem()?.textContent?.trim()).toBe('21 a 40 de 45 pacientes');
+    expect(textoPagina()).toBe('Página 2 de 3');
+    expect(botao('Anterior')?.disabled).toBeFalse();
+    await clicar('Próxima');
+    expect(nomes()).toEqual([
+      'Paciente 041',
+      'Paciente 042',
+      'Paciente 043',
+      'Paciente 044',
+      'Paciente 045',
+    ]);
+    expect(contagem()?.textContent?.trim()).toBe('41 a 45 de 45 pacientes');
+    expect(textoPagina()).toBe('Página 3 de 3');
+    expect(botao('Próxima')?.disabled).toBeTrue();
+    await clicar('Anterior');
+    expect(textoPagina()).toBe('Página 2 de 3');
+  });
+
+  it('trocar "Por página" para 10 e 30 recalcula e volta para a pagina 1', async () => {
+    await carregar(muitos(45));
+    await clicar('Próxima');
+    await trocarPorPagina(10);
+    expect(nomes().length).toBe(10);
+    expect(textoPagina()).toBe('Página 1 de 5');
+    expect(contagem()?.textContent?.trim()).toBe('1 a 10 de 45 pacientes');
+    await clicar('Próxima');
+    await trocarPorPagina(30);
+    expect(nomes().length).toBe(30);
+    expect(textoPagina()).toBe('Página 1 de 2');
+    expect(contagem()?.textContent?.trim()).toBe('1 a 30 de 45 pacientes');
+  });
+
+  it('busca, filtro de consentimento e "Limpar" voltam para a pagina 1', async () => {
+    await carregar(muitos(45));
+    await clicar('Próxima');
+    await digitar('paciente');
+    expect(textoPagina()).toBe('Página 1 de 3');
+    await clicar('Próxima');
+    expect(textoPagina()).toBe('Página 2 de 3');
+    await clicar('Revogado');
+    await clicar('Todos');
+    expect(textoPagina()).toBe('Página 1 de 3');
+    await clicar('Próxima');
+    await clicar('Limpar busca e filtros');
+    expect(textoPagina()).toBe('Página 1 de 3');
+  });
+
+  it('busca que reduz para 10 ou menos esconde os controles', async () => {
+    await carregar(muitos(45));
+    expect(nav()).not.toBeNull();
+    await digitar('paciente 00');
+    expect(nav()).toBeNull();
+    expect(nomes().length).toBe(9);
+  });
+
+  it('com 10 pacientes nao aparece nenhum controle de paginacao', async () => {
+    await carregar(muitos(10));
+    expect(nomes().length).toBe(10);
+    expect(nav()).toBeNull();
+    expect(contagem()?.textContent?.trim()).toBe('10 de 10 pacientes');
+  });
+
+  it('com 11 pacientes e padrao 20: controles aparecem, mas numa pagina so (Página 1 de 1)', async () => {
+    await carregar(muitos(11));
+    expect(nav()).not.toBeNull();
+    expect(textoPagina()).toBe('Página 1 de 1');
+    expect(botao('Próxima')?.disabled).toBeTrue();
+    expect(contagem()?.textContent?.trim()).toBe('11 de 11 pacientes');
+  });
+
+  it('o foco vai para a linha de contagem depois de Próxima; Por página mantem o foco no select', async () => {
+    await carregar(muitos(45));
+    const proxima = botao('Próxima')!;
+    proxima.focus();
+    proxima.click();
+    await passo();
+    expect(document.activeElement).toBe(contagem());
+    expect(contagem()?.getAttribute('tabindex')).toBe('-1');
+    select()!.focus();
+    await trocarPorPagina(10);
+    expect(document.activeElement).toBe(select());
+  });
+
+  it('foco nao se perde quando Próxima fica desabilitada na ultima pagina', async () => {
+    await carregar(muitos(45));
+    await clicar('Próxima');
+    await clicar('Próxima');
+    expect(botao('Próxima')?.disabled).toBeTrue();
+    expect(document.activeElement).toBe(contagem());
+  });
+
+  it('paginar nao faz nenhuma requisicao extra', async () => {
+    await carregar(muitos(45));
+    await clicar('Próxima');
+    await trocarPorPagina(10);
+    await clicar('Anterior');
+    expect(ctrl.match(() => true).length).toBe(0);
+  });
+
+  it('a lista encolhe depois de uma nova carga: pagina corrigida sem erro', async () => {
+    await carregar(muitos(45));
+    await clicar('Próxima');
+    await clicar('Próxima');
+    expect(textoPagina()).toBe('Página 3 de 3');
+    (fixture.componentInstance as PacientesPage).carregar();
+    await passo();
+    await carregar(muitos(25));
+    expect(textoPagina()).toBe('Página 2 de 2');
+    expect(nomes()).toEqual([
+      'Paciente 021',
+      'Paciente 022',
+      'Paciente 023',
+      'Paciente 024',
+      'Paciente 025',
+    ]);
+  });
+
+  it('com 500 pacientes: so 20 linhas no DOM e a nota de limite continua', async () => {
+    await carregar(muitos(500));
+    expect(el().querySelectorAll('tbody tr').length).toBe(20);
+    expect(textoPagina()).toBe('Página 1 de 25');
+    expect(el().querySelector('[role="note"]')?.textContent).toContain(
+      'A lista mostra no máximo 500 pacientes',
+    );
+    await trocarPorPagina(30);
+    expect(el().querySelectorAll('tbody tr').length).toBe(30);
+    expect(textoPagina()).toBe('Página 1 de 17');
+  });
+
+  it('o numero da pagina e o tamanho nao vao para URL, console, storage nem history.state', async () => {
+    const router = TestBed.inject(Router);
+    const logs = [
+      spyOn(console, 'log'),
+      spyOn(console, 'info'),
+      spyOn(console, 'warn'),
+      spyOn(console, 'error'),
+      spyOn(console, 'debug'),
+    ];
+    await carregar(muitos(45));
+    await clicar('Próxima');
+    await trocarPorPagina(10);
+    await clicar('Próxima');
+    expect(location.href).not.toContain('pagina');
+    expect(router.url).not.toContain('Página');
+    expect(JSON.stringify(history.state ?? null)).not.toContain('Página');
+    expect(Object.keys(localStorage).join('')).not.toContain('pagina');
+    expect(Object.keys(sessionStorage).join('')).not.toContain('pagina');
+    for (const spy of logs) {
+      expect(JSON.stringify(spy.calls.allArgs())).not.toContain('Página');
+    }
+  });
+});
