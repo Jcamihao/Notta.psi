@@ -188,6 +188,14 @@ describe('LinhaDoTempoPage', () => {
       expect(marcadores.every((m) => m.getAttribute('aria-hidden') === 'true')).toBeTrue();
     });
 
+    it('so o primeiro item tem o texto "Mais recente" para leitor de tela', async () => {
+      fixture.detectChanges();
+      await atender();
+      const textos = itens().map((li) => li.querySelector('.so-leitor')?.textContent ?? '');
+      expect(textos[0]).toContain('Mais recente');
+      expect(textos.slice(1).some((t) => t.includes('Mais recente'))).toBeFalse();
+    });
+
     it('documento aprovado: link para o id certo, pilula Aprovado e pilula IA', async () => {
       fixture.detectChanges();
       await atender();
