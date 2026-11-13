@@ -47,3 +47,8 @@
   gap: var(--space-2) var(--space-5);
   color: var(--text-secondary);
 }
+
+// Escala do manual de marca: data do pedido em legenda 14px.
+.pedidos-meta {
+  font-size: var(--fs-legenda);
+}

@@ -58,7 +58,9 @@
   }
   tbody th {
     min-width: 9rem;
+    max-width: 22rem;
     font-weight: var(--fw-medium);
+    overflow-wrap: anywhere;
   }
   tbody tr > * {
     border-top: 1px solid var(--cream-200);
@@ -68,6 +70,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  min-width: 0;
 }
 .tabela-email {
   min-width: 12rem;
@@ -214,4 +217,9 @@
   .equipe-novo {
     padding: var(--space-6);
   }
+}
+
+// Escala do manual de marca: dados da tabela em legenda 14px; o nome (primeira coluna) fica em corpo.
+.tabela td {
+  font-size: var(--fs-legenda);
 }

@@ -109,3 +109,9 @@
   flex-wrap: wrap;
   gap: var(--space-3);
 }
+
+// Escala do manual de marca: datas e dica em legenda 14px.
+.convites-datas,
+.convites-dica {
+  font-size: var(--fs-legenda);
+}

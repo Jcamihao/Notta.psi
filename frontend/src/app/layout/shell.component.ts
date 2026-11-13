@@ -252,6 +252,7 @@ import { WordmarkComponent } from '../ui/wordmark.component';
       min-width: 0;
     }
     .quem-nome {
+      font-size: var(--fs-legenda);
       font-weight: var(--fw-medium);
       overflow-wrap: anywhere;
     }

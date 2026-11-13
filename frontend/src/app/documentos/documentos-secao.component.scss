@@ -80,3 +80,9 @@
     font-weight: var(--fw-medium);
   }
 }
+
+// Escala do manual de marca: texto de apoio (datas e prazo) em legenda 14px; o titulo do item fica em corpo.
+.documentos-meta,
+.documentos-descarte {
+  font-size: var(--fs-legenda);
+}

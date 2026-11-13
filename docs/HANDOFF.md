@@ -14,13 +14,13 @@ Este documento é para um agente de código (Codex ou outro Claude) que vai cont
 **A. Ações do dono (o agente não consegue fazer):**
 - [ ] Renomear o repositório no GitHub para `praxis.psi` (Settings do repositório). Depois: `git remote set-url origin <nova url>`. O endereço antigo redireciona.
 - [ ] Renomear a pasta local para `praxis.psi`. O Docker Compose cria outro volume de banco ao mudar o nome da pasta; o antigo fica órfão.
-- [ ] Recriar o banco de desenvolvimento: as migrations já aplicadas foram editadas para os papéis `praxis_*`, então o banco antigo não aceita as novas. `docker compose down -v` SÓ quando o dono decidir; depois `docker compose up -d`, `npx prisma migrate deploy` e `backend/prisma/bootstrap/endurecer-banco.sql`. Atualizar as variáveis de shell e `.env` locais (`PRAXIS_*`, URLs com `praxis_app`, `praxis_owner` e `praxis_psi`) e renomear `~/.cache/notta-pgtool` para `~/.cache/praxis-pgtool` se existir (os docs já usam o nome novo).
+- [ ] Recriar o banco de desenvolvimento: as migrations já aplicadas foram editadas para os papéis `praxis_*`, então o banco antigo não aceita as novas. `docker compose down -v` SÓ quando o dono decidir; depois `docker compose up -d`, `npx prisma migrate deploy` e `backend/prisma/bootstrap/endurecer-banco.sql`. Atualizar as variáveis de shell e `.env` locais (`PRAXIS_*`, URLs com `praxis_app`, `praxis_owner` e `praxis_psi`) e renomear `~/.cache/notta-pgtool` para `~/.cache/praxis-pgtool` se existir (os docs já usam o nome novo). **Dado cifrado antes de 2026-11-13 fica ilegível** (o rótulo de criptografia mudou, ver 0.1 E); recriar o banco resolve.
 - [ ] Decidir o logo e o ícone (favicon e ícone de app). O que existe é um wordmark provisório: "praxis" + ponto azul + "psi" em Red Hat Display Black (`frontend/src/app/ui/wordmark.component.ts`). O manual de marca da Praxis (PDF que o dono enviou) não define lockup de produto.
 - [ ] Comprar o domínio (o manual cita `praxis.com.br` só como exemplo: confirmar) e verificar no Resend. Destrava os itens 24, 47, 48, 65 e o deploy.
 - [ ] Definir o controlador dos dados (razão social e CNPJ da Praxis), o encarregado e o papel (controlador ou operador). Entra no termo de consentimento, na página `/seguranca` e no plano de incidente (item 54).
 - [ ] Revisão jurídica do texto do termo (`v1-rascunho`) e do plano de incidente (`docs/PLANO-DE-INCIDENTE.md`); depois ligar `PRAXIS_TERMO_REVISADO=1` em produção. Fazer um simulado de incidente.
 - [ ] Contratar o plano pago do Gemini antes de qualquer dado real passar pela IA.
-- [ ] Se quiser trocar `NottaPsiBack` (identificador do app para o SelahIA): mudar nos DOIS lados juntos, em `SELAH_APP_KEYS` do SelahIA e em `backend/src/ia/selahia.client.ts` (e os testes que o citam). Hoje foi mantido de propósito.
+- [ ] Renomear `NottaPsiBack` (identificador do app para o SelahIA) para o nome novo: tarefa pronta para o Claude Code na seção 0.2 logo abaixo (precisa mexer nos DOIS lados juntos).
 
 **B. Decisões de produto abertas:** ver a seção 7 (item 67, salvar rascunho no celular, registro manual de consentimento, planos, canal do paciente, reativação de psicólogo, entre outras).
 
@@ -45,10 +45,23 @@ Este documento é para um agente de código (Codex ou outro Claude) que vai cont
 **E. Cuidados que já custaram caro (não repita):**
 - Nunca `prisma migrate diff --shadow-database-url`, `migrate reset` nem `db push --force-reset` apontando para o banco de desenvolvimento: já recriou o schema uma vez.
 - Nunca `docker compose down -v` sem o dono pedir. Nunca `pkill -f` (já matou o próprio shell): mate por PID.
-- O rótulo HKDF `notta-psi|clinica|<id>` em `backend/src/criptografia/criptografia.service.ts` é CONGELADO: renomeá-lo torna ilegível todo dado e backup já cifrado (o teste do vetor conhecido protege isso).
+- O rótulo HKDF é `praxis-psi|clinica|<id>` (`backend/src/criptografia/criptografia.service.ts`). Foi trocado UMA vez, de `notta-psi`, em 2026-11-13, antes de existir dado real; revisor conferiu os vetores com Python independente e 7 mutantes caíram. Daqui em diante é CONGELADO: mudar qualquer caractere torna ilegível todo dado e backup já cifrado, e só com uma migração que recifre tudo.
 - Texto sobre o azul da marca é SEMPRE preto (branco dá 2,3:1 e reprova); os testes de `frontend/src/app/ui/*.spec.ts` fixam as cores em valor literal.
 - `git push` pode dar 503 do lado do GitHub: tente de novo com espera (2, 4, 8, 16 s) e confira com `git fetch` que subiu de verdade.
 - Ferramentas desta sessão de nuvem que não existem aqui: `graphify` e a pasta `.superpowers`.
+
+## 0.2 Tarefa pendente para o Claude Code: renomear `NottaPsiBack`
+
+**O que é:** `NottaPsiBack` é o nome com que este app se identifica ao SelahIA (cabeçalho `x-source-app`). O SelahIA associa esse nome à chave do app em `SELAH_APP_KEYS="<nome>:<chave>"`. Os dois lados precisam usar o MESMO nome; por isso não foi trocado junto com o resto da renomeação para praxis. Nome novo sugerido: `PraxisPsiBack` (confirmar com o dono).
+
+**Passos (um commit pequeno por repositório):**
+1. Neste repositório, trocar `NottaPsiBack` em: `backend/src/ia/selahia.client.ts` (cabeçalho `'x-source-app'`, perto da linha 159), `backend/src/ia/ia.config.ts` (mensagem de erro, perto da linha 67), `backend/src/ia/selahia.client.spec.ts` (perto da linha 125), `backend/test/geracao-ia.e2e-spec.ts` (o SelahIA falso registra a fonte, perto da linha 558), `backend/.env.example` (comentários, perto das linhas 52 e 54), `docs/HANDOFF.md` (seção 3, SelahIA local) e `docs/superpowers/plans/2026-09-27-nucleo-clinico-plan.md`. Para achar tudo: `grep -rn "NottaPsiBack" --exclude-dir=node_modules --exclude-dir=.git .`.
+2. No repositório do SelahIA (`/home/caminhao/codeStage/SelahIA`, na máquina do dono, FORA deste repositório): trocar o nome em `SELAH_APP_KEYS` (no `.env` e em qualquer script ou doc), mantendo a mesma chave. Conferir no código dele (`grep -rn "NottaPsiBack"`) se o nome também aparece em alguma lista de apps permitidos. Não confirmado: como o SelahIA valida o nome; leia o código dele antes.
+3. Subir os dois juntos. Hoje só existe ambiente de desenvolvimento; se algum dia estiver em produção, aceitar os dois nomes por um tempo no SelahIA.
+4. Verificar: `cd backend && npm test` e `npx jest --config test/jest-e2e.json geracao-ia` (SelahIA falso); depois uma geração real contra o SelahIA local com dado FICTÍCIO (comandos na seção 3) e confirmar que não volta 401 nem 403.
+5. Atualizar este Handoff: marcar a tarefa como feita e tirar `NottaPsiBack` da seção 0.1 A, da seção 3, da seção 7 e da seção 9.
+
+**Risco:** se só um dos lados for trocado, a geração por IA para de funcionar (o SelahIA recusa o app); o resto do praxis.psi não é afetado.
 
 ## 1. O que é o produto
 
@@ -116,7 +129,7 @@ Nada está pela metade e a árvore fica limpa. Entregas desde 2026-11-06, todas 
 - **Números verdes:** back 796 unit e e2e 551 em paralelo + 91 em série; front 724 testes, build, lint, CSP.
 
 ### Histórico por entrega (mais recente primeiro, texto original preservado)
-**Atualização de 2026-11-13: o produto agora se chama praxis.psi (empresa Praxis).** Troca feita em todo o repositório (telas, docs, README, CLAUDE.md, título da aba) e também nos nomes técnicos: papéis do banco `praxis_app`/`praxis_owner`, banco `praxis_psi`, variáveis `PRAXIS_*`, cookies `praxis_acesso`/`praxis_refresh`/`praxis_csrf`, cabeçalho `x-praxis-cliente`, `deploy/nginx-praxis.conf.example`. **Duas exceções de propósito, não renomear sem planejamento:** (1) o rótulo do HKDF `notta-psi|clinica|<id>` em `backend/src/criptografia/criptografia.service.ts` é um rótulo criptográfico congelado (mudar torna ilegível todo dado e backup já cifrado; o teste do vetor conhecido protege); (2) `x-source-app: NottaPsiBack` no cliente do SelahIA, que é um combinado com o SelahIA (`SELAH_APP_KEYS="NottaPsiBack:<chave>"`): trocar os dois lados juntos quando o dono quiser. As migrations já aplicadas foram editadas (papéis `praxis_*`): bancos antigos precisam ser recriados (`docker compose down -v` só com o dono pedindo). Neste ambiente o Postgres 16 do sistema usa a porta 5432 e os novos papéis foram criados ao lado dos antigos (que ainda existem). O repositório do GitHub e a pasta local são renomeados pelo dono (o remote antigo redireciona). **Marca:** o manual da Praxis está no PDF que o dono enviou; fonte da empresa Red Hat Display e Red Hat Text; cores do app ainda em decisão (a comparação visual A/B/C ficou só como simulação). Logo e ícone em decisão.
+**Atualização de 2026-11-13: o produto agora se chama praxis.psi (empresa Praxis).** Troca feita em todo o repositório (telas, docs, README, CLAUDE.md, título da aba) e também nos nomes técnicos: papéis do banco `praxis_app`/`praxis_owner`, banco `praxis_psi`, variáveis `PRAXIS_*`, cookies `praxis_acesso`/`praxis_refresh`/`praxis_csrf`, cabeçalho `x-praxis-cliente`, `deploy/nginx-praxis.conf.example`. **Exceções (atualizado em 2026-11-13):** o rótulo do HKDF foi trocado de `notta-psi` para `praxis-psi|clinica|<id>` e agora está congelado (ver 0.1 E); o `x-source-app: NottaPsiBack` do cliente do SelahIA ainda NÃO foi renomeado, porque exige trocar os dois lados juntos (tarefa pronta na seção 0.2). As migrations já aplicadas foram editadas (papéis `praxis_*`): bancos antigos precisam ser recriados (`docker compose down -v` só com o dono pedindo). Neste ambiente o Postgres 16 do sistema usa a porta 5432 e os novos papéis foram criados ao lado dos antigos (que ainda existem). O repositório do GitHub e a pasta local são renomeados pelo dono (o remote antigo redireciona). **Marca:** o manual da Praxis está no PDF que o dono enviou; fonte da empresa Red Hat Display e Red Hat Text; cores do app ainda em decisão (a comparação visual A/B/C ficou só como simulação). Logo e ícone em decisão.
 
 **Atualização de 2026-11-11 (4):** a **tela de Início** foi feita (item 79 em `docs/FEATURES.md`, `frontend/src/app/pages/inicio.page.*`): só consome `GET /pacientes`. Ideia futura, não feita: card de rascunhos pendentes (exige rota nova no back, porque hoje rascunho só se lista por paciente).
 
@@ -165,7 +178,7 @@ Decisões tomadas em 2026-11-11 e 2026-11-13 (não reabra): rascunho é apagado 
 - **Limite de 5 cadastros por hora por IP** conta também as tentativas recusadas por senha fraca: manter ou não contar.
 - **Planos (item 77):** preços, limite diário de IA por plano, se "multidisciplinar" significa outras profissões (muda o produto, hoje é só psicologia), recibo no plano Individual, acompanhamento entre sessões no Plus ou em todos. O Google Agenda e Meet exigem verificação do app no Google (escopo OAuth sensível), que leva semanas; vale começar cedo.
 - **Reativação de psicólogo desativado** e liberação do e-mail dele (hoje o e-mail continua ocupado).
-- **Nome do identificador `NottaPsiBack`** no SelahIA (ver seção 0.1 A).
+- **Nome novo do identificador `NottaPsiBack`** no SelahIA: confirmar `PraxisPsiBack` (tarefa na seção 0.2).
 
 ## 8. Como implementar sem quebrar o que existe
 
@@ -193,7 +206,7 @@ Decisões tomadas em 2026-11-11 e 2026-11-13 (não reabra): rascunho é apagado 
 - (2026-11-13) As policies antigas `documento_dono_delete` e `geracaoia_dono_delete` deixam o dono do banco apagar rascunho e geração sem trigger, e a policy `clinica_descartar_select` abre todas as colunas de `Clinica` ao dono com a flag ligada. A proteção real é a credencial `praxis_owner` fora do app (item 56).
 - (2026-11-13) A exportação do paciente é um JSON NÃO cifrado, com dado clínico em claro; a guarda é do psicólogo. O limite de 10 exportações por hora também conta 400, 404 e 413, de propósito.
 - (2026-11-13) A exclusão por anonimização não apaga linhas: preserva consentimento e trilha sem identificar o paciente. O texto já enviado ao serviço de IA de terceiros não é apagado por nós. Uma chamada de IA já em voo quando a exclusão commita termina, mas o banco barra o documento novo e o pedido vira FALHOU.
-- (2026-11-13) Renomeação: o HKDF `notta-psi|clinica|<id>` e o `x-source-app: NottaPsiBack` são identificadores congelados de propósito (seção 0.1 E e A).
+- (2026-11-13) Renomeação: o rótulo HKDF virou `praxis-psi|clinica|<id>` (congelado daqui em diante; dado cifrado antes dessa data é ilegível) e o `x-source-app: NottaPsiBack` ainda não foi renomeado (seção 0.2); trocar só um dos lados derruba a IA.
 
 ## 10. Como se comunicar com o dono
 

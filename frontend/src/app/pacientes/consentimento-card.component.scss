@@ -95,3 +95,12 @@
   min-width: 5rem;
   font-weight: var(--fw-medium);
 }
+
+// Escala do manual de marca: estado, datas, origem, versao e historico em legenda 14px; o texto
+// explicativo fica em corpo 18px.
+.consentimento-desde,
+.consentimento-origem,
+.consentimento-termo,
+.consentimento-historico {
+  font-size: var(--fs-legenda);
+}

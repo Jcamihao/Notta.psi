@@ -108,3 +108,9 @@
     margin: 0;
   }
 }
+
+// Escala do manual de marca: faixas de aviso em legenda 14px (Text Medium), com o destaque de fundo.
+.leitura-faixa {
+  font-size: var(--fs-legenda);
+  font-weight: var(--fw-medium);
+}
